@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Le Jeu du Duc 👑</title>
+  <link rel="icon" type="image/png" href="icon.png">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: white;
+      text-align: center;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      transition: background 0.6s;
+      background: linear-gradient(135deg,#ff0066,#ffcc00);
+    }
+
+    .logo {
+      width: 80px;
+      cursor: pointer;
+      margin: 0 auto 1rem auto;
+      display: block;
+      transition: transform 0.2s;
+    }
+    .logo:hover { transform: scale(1.1); }
+
+    h1 { margin: 0.5rem 0; }
+
+    .card {
+      background: rgba(0,0,0,0.45);
+      padding: 1.5rem;
+      border-radius: 1.5rem;
+      width: 90%;
+      max-width: 600px;
+      min-height: 350px;
+      margin: auto;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+
+    .player-input-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 1rem 0;
+    }
+
+    input {
+      padding: 0.7rem;
+      border-radius: 1rem;
+      border: none;
+      flex: 1;
+      max-width: 250px;
+      font-size: 1rem;
+      text-align: center;
+    }
+
+    button {
+      padding: 0.7rem 1.2rem;
+      border: none;
+      border-radius: 2rem;
+      font-size: 1rem;
+      background: #ffcc00;
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    button:hover { transform: scale(1.05); background: #ffdd33; }
+
+    .hidden { display: none; }
+
+    .question-type {
+      font-size: 1.6rem;
+      font-weight: bold;
+      margin: 0.5rem auto;
+    }
+
+    .question {
+      font-size: 1.3rem;
+      font-weight: bold;
+      margin: 0.5rem 0;
+      min-height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    #playerList {
+      margin-top: 0.5rem;
+      font-size: 1.1rem;
+      line-height: 1.6;
+    }
+    .player-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255,255,255,0.15);
+      padding: 0.4rem 0.8rem;
+      border-radius: 0.8rem;
+      margin: 0.3rem auto;
+      max-width: 250px;
+    }
+    .remove-btn {
+      background: none;
+      border: none;
+      color: #ff4444;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    #answerBox { margin-top: 0.5rem; display: none; }
+
+    .modes {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .mode-card {
+      background: rgba(255,255,255,0.15);
+      border-radius: 1rem;
+      padding: 1rem;
+      cursor: pointer;
+      font-weight: bold;
+      transition: transform 0.2s, background 0.3s;
+    }
+    .mode-card:hover { transform: scale(1.05); background: rgba(255,255,255,0.3); }
+    .mode-card.active { background: #ffcc00; color: black; }
+    .mode-card.fullwidth { grid-column: span 2; }
+
+    #customWeights {
+      margin-top: 1rem;
+      background: rgba(255,255,255,0.1);
+      padding: 1rem;
+      border-radius: 1rem;
+    }
+    .slider-container {
+      margin: 0.5rem 0;
+      text-align: left;
+    }
+    .slider-container label {
+      display: block;
+      font-size: 0.9rem;
+      margin-bottom: 0.3rem;
+    }
+    .slider-container input { width: 100%; }
+
+    @media (max-width: 600px) {
+      .question { font-size: 1.1rem; min-height: 100px; }
+      .modes { grid-template-columns: 1fr; }
+      .mode-card.fullwidth { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div id="setup" class="card">
+    <img src="icon.png" alt="Logo Jeu du Duc" class="logo">
+    <h1>Le Jeu du Duc</h1>
+    <div class="player-input-container">
+      <input type="text" id="playerInput" placeholder="Entre un prénom">
+      <button id="addBtn">Ajouter</button>
+    </div>
+    <div id="playerList"></div>
+
+    <p>Choisis un mode :</p>
+    <div class="modes">
+      <div class="mode-card" data-mode="debut">🎉 Début de torgnole</div>
+      <div class="mode-card" data-mode="hardcore">🔥 Sexy pas raffiné</div>
+      <div class="mode-card" data-mode="alcool">🍻 Torgnole express</div>
+      <div class="mode-card" data-mode="culture">🧠 Culture G.</div>
+      <div class="mode-card fullwidth" data-mode="custom">🎛️ Personnalisé</div>
+    </div>
+
+    <div id="customWeights" class="hidden">
+      <div class="slider-container">
+        <label>🎉 Début de torgnole</label>
+        <input type="range" min="0" max="100" value="25" id="weight-debut">
+      </div>
+      <div class="slider-container">
+        <label>🔥 Sexy pas raffiné</label>
+        <input type="range" min="0" max="100" value="25" id="weight-hardcore">
+      </div>
+      <div class="slider-container">
+        <label>🍻 Torgnole express</label>
+        <input type="range" min="0" max="100" value="25" id="weight-alcool">
+      </div>
+      <div class="slider-container">
+        <label>🧠 Culture G.</label>
+        <input type="range" min="0" max="100" value="25" id="weight-culture">
+      </div>
+    </div>
+
+    <button id="startBtn">🎲 Lancer la partie</button>
+  </div>
+
+  <div id="game" class="card hidden">
+    <img src="icon.png" alt="Logo Jeu du Duc" id="backLogo" class="logo">
+    <div id="typeBox" class="question-type"></div>
+    <p class="question" id="currentQuestion"></p>
+    <div id="answerBox">
+      <button id="showAnswerBtn">Voir la réponse</button>
+      <p id="answerText"></p>
+    </div>
+  </div>
+
+  <script>
+    const players=[];
+    let currentMode="debut";
+    let rapidityMode=false;
+    let weights={debut:25,hardcore:25,alcool:25,culture:25};
+
+    // -------------------------
+    // MOTEUR DU JEU
+    // -------------------------
+    const setupScreen=document.getElementById("setup"),gameScreen=document.getElementById("game"),playerInput=document.getElementById("playerInput"),playerList=document.getElementById("playerList"),currentQuestionEl=document.getElementById("currentQuestion"),typeBox=document.getElementById("typeBox"),answerBox=document.getElementById("answerBox"),showAnswerBtn=document.getElementById("showAnswerBtn"),answerText=document.getElementById("answerText"),backLogo=document.getElementById("backLogo"),customWeightsBox=document.getElementById("customWeights");
+    const sliders={debut:document.getElementById("weight-debut"),hardcore:document.getElementById("weight-hardcore"),alcool:document.getElementById("weight-alcool"),culture:document.getElementById("weight-culture")};
+
+    function addPlayer(){const name=playerInput.value.trim();if(name&&players.length<30){players.push(name);renderPlayerList();playerInput.value="";playerInput.focus();}}
+    function removePlayer(i){players.splice(i,1);renderPlayerList();}
+    function renderPlayerList(){playerList.innerHTML="";players.forEach((p,i)=>{const div=document.createElement("div");div.classList.add("player-item");div.innerHTML=`${p} <button class="remove-btn" onclick="removePlayer(${i}); event.stopPropagation()">❌</button>`;playerList.appendChild(div);});}
+
+    function setBackground(type){const bg={"VÉRITÉ":"linear-gradient(135deg,#FFD86F,#FFAA00)","ACTION":"linear-gradient(135deg,#FF6A6A,#CC0000)","CULTURE G.":"linear-gradient(135deg,#6FB1FC,#4364F7)","RAPIDITÉ":"linear-gradient(135deg,#FFB347,#FF7E5F)","CUSTOM":"linear-gradient(135deg,#7928CA,#FF0080)"};document.body.style.background=bg[type]||"linear-gradient(135deg,#ff0066,#ffcc00)";}
+
+    function startGame(){if(currentMode!=="culture"&&players.length<2&&currentMode!=="custom"){alert("Ajoute au moins 2 joueurs !");return;}setupScreen.classList.add("hidden");gameScreen.classList.remove("hidden");showQuestion();}
+
+    function pickCustomMode(){const total=weights.debut+weights.hardcore+weights.alcool+weights.culture;let r=Math.random()*total;if(r<weights.debut)return"debut";r-=weights.debut;if(r<weights.hardcore)return"hardcore";r-=weights.hardcore;if(r<weights.alcool)return"alcool";return"culture";}
+
+    function showQuestion(){currentQuestionEl.textContent="";typeBox.textContent="";answerBox.style.display="none";answerText.textContent="";rapidityMode=false;
+      if(Math.random()<0.1){rapidityMode=true;typeBox.textContent="RAPIDITÉ";setBackground("RAPIDITÉ");currentQuestionEl.textContent="⚡ Question de rapidité pour tout le monde ! (Cliquez pour révéler)";return;}
+      let mode=currentMode;if(mode==="custom")mode=pickCustomMode();
+      if(mode==="culture"){const q=cultureQuestions[Math.floor(Math.random()*cultureQuestions.length)];const player=players[Math.floor(Math.random()*players.length)];typeBox.textContent="CULTURE G.";setBackground("CULTURE G.");currentQuestionEl.textContent=`${player}, ${q.question}`;showAnswerBtn.style.display="inline-block";answerBox.style.display="block";showAnswerBtn.onclick=e=>{e.stopPropagation();answerText.textContent="✅ Réponse : "+q.answer;showAnswerBtn.style.display="none";};}
+      else if(mode==="debut"||mode==="hardcore"||mode==="alcool"){const pool={debut:debutQuestions,hardcore:hardcoreQuestions,alcool:alcoolQuestions}[mode];const [type,text]=pool[Math.floor(Math.random()*pool.length)].split("|");let player=players[Math.floor(Math.random()*players.length)];let qText=text.replace("{player}",player);if(qText.includes("{other}")){let other;do{other=players[Math.floor(Math.random()*players.length)];}while(other===player&&players.length>1);qText=qText.replace("{other}",other);}typeBox.textContent=type;setBackground(type);currentQuestionEl.textContent=qText;}}
+    
+    function nextQuestion(e){if(e.target.id==="showAnswerBtn")return;if(e.clientX>window.innerWidth/2){if(rapidityMode&&currentQuestionEl.textContent.includes("⚡")){const q=rapidityQuestions[Math.floor(Math.random()*rapidityQuestions.length)];currentQuestionEl.textContent=q;rapidityMode=false;}else showQuestion();}}
+
+    document.querySelectorAll(".mode-card").forEach(card=>{card.addEventListener("click",()=>{document.querySelectorAll(".mode-card").forEach(c=>c.classList.remove("active"));card.classList.add("active");currentMode=card.dataset.mode;customWeightsBox.classList.toggle("hidden",currentMode!=="custom");});});
+    backLogo.addEventListener("click",()=>{gameScreen.classList.add("hidden");setupScreen.classList.remove("hidden");document.body.style.background="linear-gradient(135deg,#ff0066,#ffcc00)";});
+    Object.keys(sliders).forEach(key=>{sliders[key].addEventListener("input",()=>{let total=0;Object.keys(sliders).forEach(k=>total+=+sliders[k].value);Object.keys(sliders).forEach(k=>weights[k]=+sliders[k].value/total*100);});});
+
+    document.getElementById("addBtn").addEventListener("click",addPlayer);
+    document.getElementById("startBtn").addEventListener("click",startGame);
+    gameScreen.addEventListener("click",nextQuestion);
+    playerInput.addEventListener("keyup",e=>{if(e.key==="Enter")addPlayer();});
+    document.querySelector('.mode-card[data-mode="debut"]').classList.add("active");
+    window.removePlayer=removePlayer;
+
+    // -------------------------
+    // LISTE DES QUESTIONS (À MODIFIER ICI)
+    // -------------------------
+    const debutQuestions=[
+      "VÉRITÉ|{player}, quel est ton plat préféré ?",
+      "ACTION|{player}, raconte une blague.",
+      "VÉRITÉ|{player}, quelle est ta plus grande peur ?",
+      "ACTION|{player}, fais un compliment à {other}."
+    ];
+    const hardcoreQuestions=[
+      "ACTION|{player}, bois 3 gorgées d'affilée.",
+      "VÉRITÉ|{player}, quelle est ta plus grosse honte ?",
+      "ACTION|{player}, fais 15 pompes ou bois un shot.",
+      "VÉRITÉ|{player}, as-tu déjà eu un crush sur {other} ?"
+    ];
+    const alcoolQuestions=[
+      "ACTION|{player}, bois 2 gorgées.",
+      "ACTION|{player}, distribue 3 gorgées.",
+      "ACTION|{player}, choisis quelqu'un qui doit boire avec toi.",
+      "ACTION|{player}, bois autant de gorgées que tu as de lettres dans ton prénom."
+    ];
+    const cultureQuestions=[
+      {question:"Quelle est la capitale de l'Australie ?",answer:"Canberra"},
+      {question:"Combien y a-t-il de joueurs dans une équipe de football ?",answer:"11"},
+      {question:"Qui a peint la Joconde ?",answer:"Léonard de Vinci"},
+      {question:"Quelle est la planète la plus proche du Soleil ?",answer:"Mercure"}
+    ];
+    const rapidityQuestions=[
+      "⚡ Combien font 6 x 7 ?",
+      "⚡ Citez trois capitales européennes.",
+      "⚡ Donnez un film avec Leonardo DiCaprio.",
+      "⚡ Quelle est la racine carrée de 144 ?"
+    ];
+  </script>
+</body>
+</html>
