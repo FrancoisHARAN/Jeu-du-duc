@@ -304,6 +304,13 @@
         </div>
         <div id="eliminationResult" class="hidden"></div>
         <button id="nextRound" class="hidden">➡️</button>
+        <button id="newGame" class="hidden">Nouvelle partie</button>
+      </div>
+      <div id="whiteGuess" class="hidden">
+        <h2>Mister White éliminé</h2>
+        <p>Devine le mot des civils :</p>
+        <input id="whiteGuessInput" placeholder="Mot" />
+        <button id="whiteGuessSubmit">Valider</button>
       </div>
   </div>
 
@@ -3208,7 +3215,13 @@
     const voteList=document.getElementById('voteList');
     const eliminationResult=document.getElementById('eliminationResult');
     const nextRound=document.getElementById('nextRound');
+    const playArea=document.getElementById('play');
+    const whiteGuess=document.getElementById('whiteGuess');
+    const whiteGuessInput=document.getElementById('whiteGuessInput');
+    const whiteGuessSubmit=document.getElementById('whiteGuessSubmit');
+    const newGame=document.getElementById('newGame');
     const roleDisplay={civil:'Civil',undercover:'Undercover',misterwhite:'Mister White'};
+    let eliminationMessage='';
 
     function autoRoles(){
       const n=Number(playerCountInput.value);
@@ -3221,6 +3234,9 @@
     autoRoles();
 
     document.getElementById('start').addEventListener('click', startUndercover);
+
+    newGame.addEventListener('click',()=>location.reload());
+    whiteGuessSubmit.addEventListener('click',handleWhiteGuess);
 
     let currentPair=null;
     let revealIndex=0;
@@ -3282,6 +3298,7 @@
       eliminationResult.classList.add('hidden');
       voteArea.classList.add('hidden');
       nextRound.classList.add('hidden');
+      newGame.classList.add('hidden');
       voteBtn.classList.remove('hidden');
       const alive=players.filter(p=>p.alive);
       let first;
@@ -3307,23 +3324,42 @@
       p.alive=false;
       voteArea.classList.add('hidden');
       const counts=countRoles();
-      eliminationResult.innerHTML=`${p.name} était ${roleDisplay[p.role]}.<br>Civils: ${counts.civil} | Undercover: ${counts.undercover} | Mister White: ${counts.misterwhite}`;
+      eliminationMessage=`${p.name} était ${roleDisplay[p.role]}.<br>Civils: ${counts.civil} | Undercover: ${counts.undercover} | Mister White: ${counts.misterwhite}`;
       if(p.role==='misterwhite'){
-        const guess=prompt('Mister White, quel est le mot des civils ?');
-        if(guess && guess.trim().toLowerCase()===currentPair.civil.toLowerCase()){
-          eliminationResult.innerHTML+='<br>Mister White a trouvé le mot, il gagne !';
-          eliminationResult.classList.remove('hidden');
-          return;
-        }else{
-          eliminationResult.innerHTML+='<br>Mauvaise réponse.';
-        }
+        whiteGuessInput.value='';
+        playArea.classList.add('hidden');
+        whiteGuess.classList.remove('hidden');
+        eliminationResult.classList.add('hidden');
+        return;
       }
+      eliminationResult.innerHTML=eliminationMessage;
       const winner=checkVictory();
       if(winner){
         eliminationResult.innerHTML+=`<br>${winner==='civils'?'Les civils':'Les traitres'} gagnent !`;
+        newGame.classList.remove('hidden');
       }else{
         nextRound.classList.remove('hidden');
       }
+      eliminationResult.classList.remove('hidden');
+    }
+
+    function handleWhiteGuess(){
+      const guess=whiteGuessInput.value.trim();
+      if(guess && guess.toLowerCase()===currentPair.civil.toLowerCase()){
+        eliminationResult.innerHTML=eliminationMessage+'<br>Mister White a trouvé le mot, il gagne !';
+        newGame.classList.remove('hidden');
+      }else{
+        eliminationResult.innerHTML=eliminationMessage+'<br>Mauvaise réponse.';
+        const winner=checkVictory();
+        if(winner){
+          eliminationResult.innerHTML+=`<br>${winner==='civils'?'Les civils':'Les traitres'} gagnent !`;
+          newGame.classList.remove('hidden');
+        }else{
+          nextRound.classList.remove('hidden');
+        }
+      }
+      whiteGuess.classList.add('hidden');
+      playArea.classList.remove('hidden');
       eliminationResult.classList.remove('hidden');
     }
 
