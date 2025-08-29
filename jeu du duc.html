@@ -276,24 +276,35 @@
   <div id="undercover" class="hidden">
     <img src="icon.png" alt="Retour" id="backUndercover" class="logo">
     <h1>Undercover</h1>
-    <div id="config">
-      <label>Nombre de joueurs : <input type="number" id="playerCount" min="4" value="4" /></label>
-      <div id="playersInputs"></div>
-      <div id="roleConfig">
-        <p>Répartition des rôles :</p>
-        <label>Civils <input type="number" id="civilCount" min="0" /></label>
-        <label>Undercover <input type="number" id="underCount" min="0" /></label>
-        <label>Mister White <input type="number" id="whiteCount" min="0" /></label>
+      <div id="config">
+        <label>Nombre de joueurs : <input type="number" id="playerCount" min="4" value="4" /></label>
+        <div id="roleConfig">
+          <p>Répartition des rôles :</p>
+          <label>Civils <input type="number" id="civilCount" min="0" /></label>
+          <label>Undercover <input type="number" id="underCount" min="0" /></label>
+          <label>Mister White <input type="number" id="whiteCount" min="0" /></label>
+        </div>
+        <button id="start">Démarrer</button>
       </div>
-      <button id="start">Démarrer</button>
-    </div>
 
-    <div id="reveal" class="hidden">
-      <h2 id="revealName"></h2>
-      <p id="secretWord" class="hidden"></p>
-      <button id="showWord">Voir le mot</button>
-      <button id="nextPlayer" class="hidden">Joueur suivant</button>
-    </div>
+      <div id="reveal" class="hidden">
+        <h2 id="askName">Entre ton prénom</h2>
+        <input id="nameInput" placeholder="Prénom" />
+        <button id="validateName">Valider</button>
+        <h2 id="revealName" class="hidden"></h2>
+        <p id="secretWord" class="hidden"></p>
+        <button id="nextPlayer" class="hidden"></button>
+      </div>
+      <div id="play" class="hidden">
+        <h2 id="starter"></h2>
+        <button id="voteBtn">Vote</button>
+        <div id="voteArea" class="hidden">
+          <h3>Choisis un joueur</h3>
+          <div id="voteList"></div>
+        </div>
+        <div id="eliminationResult" class="hidden"></div>
+        <button id="nextRound" class="hidden">➡️</button>
+      </div>
   </div>
 
   <script>
@@ -3172,127 +3183,190 @@
     ];
   </script>
   <script>
-  (()=>{
-  let currentMode='undercover';
-  const wordPairs=[
-    {civil:'chaise',under:'table'},
-    {civil:'chien',under:'loup'},
-    {civil:'voiture',under:'camion'},
-    {civil:'pomme',under:'poire'}
-  ];
-  const players=[];
-  const playerCountInput=document.getElementById('playerCount');
-  const playersInputsDiv=document.getElementById('playersInputs');
-  const civilInput=document.getElementById('civilCount');
-  const underInput=document.getElementById('underCount');
-  const whiteInput=document.getElementById('whiteCount');
+    (()=>{
+    let currentMode='undercover';
+    const wordPairs=[
+      {civil:'chaise',under:'table'},
+      {civil:'chien',under:'loup'},
+      {civil:'voiture',under:'camion'},
+      {civil:'pomme',under:'poire'}
+    ];
+    const players=[];
+    const playerCountInput=document.getElementById('playerCount');
+    const civilInput=document.getElementById('civilCount');
+    const underInput=document.getElementById('underCount');
+    const whiteInput=document.getElementById('whiteCount');
+    const askName=document.getElementById('askName');
+    const nameInput=document.getElementById('nameInput');
+    const validateName=document.getElementById('validateName');
+    const revealName=document.getElementById('revealName');
+    const secretWord=document.getElementById('secretWord');
+    const nextPlayer=document.getElementById('nextPlayer');
+    const starter=document.getElementById('starter');
+    const voteBtn=document.getElementById('voteBtn');
+    const voteArea=document.getElementById('voteArea');
+    const voteList=document.getElementById('voteList');
+    const eliminationResult=document.getElementById('eliminationResult');
+    const nextRound=document.getElementById('nextRound');
+    const roleDisplay={civil:'Civil',undercover:'Undercover',misterwhite:'Mister White'};
 
-  function updatePlayerInputs(){
-    const n=Number(playerCountInput.value);
-    playersInputsDiv.innerHTML='';
-    for(let i=0;i<n;i++){
-      const inp=document.createElement('input');
-      inp.placeholder='Joueur '+(i+1);
-      playersInputsDiv.appendChild(inp);
+    function autoRoles(){
+      const n=Number(playerCountInput.value);
+      whiteInput.value=n>=4?1:0;
+      underInput.value=n>=7?2:1;
+      civilInput.value=n-Number(whiteInput.value)-Number(underInput.value);
     }
+
+    playerCountInput.addEventListener('change', autoRoles);
     autoRoles();
-  }
 
-  function autoRoles(){
-    const n=Number(playerCountInput.value);
-    whiteInput.value=n>=4?1:0;
-    underInput.value=n>=7?2:1;
-    civilInput.value=n-Number(whiteInput.value)-Number(underInput.value);
-  }
+    document.getElementById('start').addEventListener('click', startUndercover);
 
-  playerCountInput.addEventListener('change', updatePlayerInputs);
-  updatePlayerInputs();
+    let currentPair=null;
+    let revealIndex=0;
+    let round=0;
 
-  document.getElementById('start').addEventListener('click', startUndercover);
-
-  function startUndercover(){
-    players.length=0;
-    playersInputsDiv.querySelectorAll('input').forEach(inp=>{
-      const name=inp.value.trim()||('Joueur'+(players.length+1));
-      players.push({name,role:'',word:'',alive:true});
-    });
-    assignRoles(players);
-    assignWords();
-    revealWords();
-  }
-
-  function assignRoles(list){
-    let civ=Number(civilInput.value);
-    let und=Number(underInput.value);
-    let white=Number(whiteInput.value);
-    const shuffled=[...list].sort(()=>Math.random()-0.5);
-    shuffled.forEach(p=>{
-      if(white>0){p.role='misterwhite';white--;}
-      else if(und>0){p.role='undercover';und--;}
-      else if(civ>0){p.role='civil';civ--;}
-      else p.role='civil';
-    });
-  }
-
-  function assignWords(){
-    const pair=wordPairs[Math.floor(Math.random()*wordPairs.length)];
-    players.forEach(p=>{
-      if(p.role==='civil')p.word=pair.civil;
-      else if(p.role==='undercover')p.word=pair.under;
-      else p.word='';
-    });
-  }
-
-  let revealIndex=0;
-  function revealWords(){
-    document.getElementById('config').classList.add('hidden');
-    document.getElementById('reveal').classList.remove('hidden');
-    showReveal();
-  }
-
-  function showReveal(){
-    const p=players[revealIndex];
-    document.getElementById('revealName').textContent=p.name;
-    document.getElementById('secretWord').textContent=p.word||'Aucun mot - improvise !';
-    document.getElementById('secretWord').classList.add('hidden');
-    document.getElementById('showWord').classList.remove('hidden');
-    document.getElementById('nextPlayer').classList.add('hidden');
-  }
-
-  document.getElementById('showWord').addEventListener('click',()=>{
-    document.getElementById('secretWord').classList.remove('hidden');
-    document.getElementById('showWord').classList.add('hidden');
-    document.getElementById('nextPlayer').classList.remove('hidden');
-  });
-
-  document.getElementById('nextPlayer').addEventListener('click',()=>{
-    revealIndex++;
-    if(revealIndex>=players.length){
-      document.getElementById('reveal').innerHTML='<h2>Bonne partie !</h2>';
-    }else{
-      showReveal();
+    function startUndercover(){
+      players.length=0;
+      const n=Number(playerCountInput.value);
+      for(let i=0;i<n;i++){
+        players.push({name:'',role:'',word:'',alive:true});
+      }
+      assignRoles(players);
+      assignWords();
+      revealIndex=0;
+      document.getElementById('config').classList.add('hidden');
+      document.getElementById('reveal').classList.remove('hidden');
+      showNameEntry();
     }
-  });
 
-  function nextTurn(){
-    const list=[...players.filter(p=>p.alive)];
-    let order;
-    do{order=list.sort(()=>Math.random()-0.5);}while(order[0] && order[0].role==='misterwhite');
-    return order;
-  }
+    function showNameEntry(){
+      askName.classList.remove('hidden');
+      nameInput.classList.remove('hidden');
+      validateName.classList.remove('hidden');
+      revealName.classList.add('hidden');
+      secretWord.classList.add('hidden');
+      nextPlayer.classList.add('hidden');
+      nameInput.value='';
+      nameInput.focus();
+    }
 
-  function votePhase(){
-    // Placeholder for vote logic
-  }
+    validateName.addEventListener('click',()=>{
+      const name=nameInput.value.trim()||('Joueur'+(revealIndex+1));
+      const p=players[revealIndex];
+      p.name=name;
+      revealName.textContent=name;
+      secretWord.textContent=p.word||'Aucun mot - improvise !';
+      askName.classList.add('hidden');
+      nameInput.classList.add('hidden');
+      validateName.classList.add('hidden');
+      revealName.classList.remove('hidden');
+      secretWord.classList.remove('hidden');
+      nextPlayer.textContent=revealIndex===players.length-1?'Lancer la partie':'Joueur suivant';
+      nextPlayer.classList.remove('hidden');
+    });
 
-  function checkVictory(){
-    const civ=players.filter(p=>p.alive && p.role==='civil').length;
-    const traitres=players.filter(p=>p.alive && p.role!=='civil').length;
-    if(traitres===0)return 'civils';
-    if(civ<=traitres)return 'traitres';
-    return null;
-  }
-  })();
+    nextPlayer.addEventListener('click',()=>{
+      revealIndex++;
+      if(revealIndex>=players.length){
+        document.getElementById('reveal').classList.add('hidden');
+        document.getElementById('play').classList.remove('hidden');
+        round=0;
+        startRound();
+      }else{
+        showNameEntry();
+      }
+    });
+
+    function startRound(){
+      eliminationResult.classList.add('hidden');
+      voteArea.classList.add('hidden');
+      nextRound.classList.add('hidden');
+      voteBtn.classList.remove('hidden');
+      const alive=players.filter(p=>p.alive);
+      let first;
+      do{
+        first=alive[Math.floor(Math.random()*alive.length)];
+      }while(round===0 && first.role==='misterwhite' && alive.length>1);
+      starter.textContent=first.name+' commence';
+    }
+
+    voteBtn.addEventListener('click',()=>{
+      voteList.innerHTML='';
+      players.filter(p=>p.alive).forEach(p=>{
+        const btn=document.createElement('button');
+        btn.textContent=p.name;
+        btn.addEventListener('click',()=>eliminatePlayer(p));
+        voteList.appendChild(btn);
+      });
+      voteArea.classList.remove('hidden');
+      voteBtn.classList.add('hidden');
+    });
+
+    function eliminatePlayer(p){
+      p.alive=false;
+      voteArea.classList.add('hidden');
+      const counts=countRoles();
+      eliminationResult.innerHTML=`${p.name} était ${roleDisplay[p.role]}.<br>Civils: ${counts.civil} | Undercover: ${counts.undercover} | Mister White: ${counts.misterwhite}`;
+      if(p.role==='misterwhite'){
+        const guess=prompt('Mister White, quel est le mot des civils ?');
+        if(guess && guess.trim().toLowerCase()===currentPair.civil.toLowerCase()){
+          eliminationResult.innerHTML+='<br>Mister White a trouvé le mot, il gagne !';
+          eliminationResult.classList.remove('hidden');
+          return;
+        }else{
+          eliminationResult.innerHTML+='<br>Mauvaise réponse.';
+        }
+      }
+      const winner=checkVictory();
+      if(winner){
+        eliminationResult.innerHTML+=`<br>${winner==='civils'?'Les civils':'Les traitres'} gagnent !`;
+      }else{
+        nextRound.classList.remove('hidden');
+      }
+      eliminationResult.classList.remove('hidden');
+    }
+
+    nextRound.addEventListener('click',()=>{
+      round++;
+      startRound();
+    });
+
+    function assignRoles(list){
+      let civ=Number(civilInput.value);
+      let und=Number(underInput.value);
+      let white=Number(whiteInput.value);
+      const shuffled=[...list].sort(()=>Math.random()-0.5);
+      shuffled.forEach(p=>{
+        if(white>0){p.role='misterwhite';white--;}
+        else if(und>0){p.role='undercover';und--;}
+        else if(civ>0){p.role='civil';civ--;}
+        else p.role='civil';
+      });
+    }
+
+    function assignWords(){
+      currentPair=wordPairs[Math.floor(Math.random()*wordPairs.length)];
+      players.forEach(p=>{
+        if(p.role==='civil')p.word=currentPair.civil;
+        else if(p.role==='undercover')p.word=currentPair.under;
+        else p.word='';
+      });
+    }
+
+    function countRoles(){
+      const res={civil:0,undercover:0,misterwhite:0};
+      players.forEach(p=>{if(p.alive)res[p.role]++;});
+      return res;
+    }
+
+    function checkVictory(){
+      const counts=countRoles();
+      if(counts.undercover===0 && counts.misterwhite===0)return 'civils';
+      if(counts.civil<=counts.undercover+counts.misterwhite)return 'traitres';
+      return null;
+    }
+    })();
   </script>
 </body>
 </html>
