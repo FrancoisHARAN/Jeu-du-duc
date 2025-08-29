@@ -6,17 +6,25 @@
   <title>Le Jeu du Duc 👑</title>
   <link rel="icon" type="image/png" href="icon.png">
   <style>
+    :root {
+      --orange: #ff7a18;
+      --orange-dark: #ff5714;
+      --yellow: #ffcc00;
+      --text-dark: #222;
+      --text-light: #fff;
+    }
+
     body {
       margin: 0;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      color: white;
+      color: var(--text-light);
       text-align: center;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       justify-content: center;
       transition: background 0.6s;
-      background: linear-gradient(135deg,#ff0066,#ffcc00);
+      background: linear-gradient(135deg,var(--orange),var(--yellow));
     }
 
     .logo {
@@ -28,17 +36,21 @@
     }
     .logo:hover { transform: scale(1.1); }
 
-    h1 { margin: 0.5rem 0; }
+    h1 {
+      margin: 0.5rem 0;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+    }
 
     .card {
-      background: rgba(0,0,0,0.45);
+      background: rgba(0,0,0,0.5);
       padding: 1.5rem;
       border-radius: 1.5rem;
       width: 90%;
       max-width: 600px;
       min-height: 350px;
       margin: auto;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+      backdrop-filter: blur(6px);
       display: flex;
       flex-direction: column;
       justify-content: flex-start;
@@ -48,32 +60,37 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 0.5rem;
-      margin: 1rem 0;
+      gap: 1rem;
+      margin: 1.2rem 0;
     }
 
     input {
-      padding: 0.7rem;
+      padding: 0.7rem 1rem;
       border-radius: 1rem;
-      border: none;
+      border: 2px solid var(--yellow);
       flex: 1;
       max-width: 250px;
       font-size: 1rem;
       text-align: center;
+      color: var(--text-dark);
+      background: var(--text-light);
     }
 
     button {
-      padding: 0.7rem 1.2rem;
+      padding: 0.7rem 1.4rem;
       border: none;
       border-radius: 2rem;
       font-size: 1rem;
-      background: #ffcc00;
-      color: black;
+      background: linear-gradient(135deg,var(--yellow),var(--orange));
+      color: var(--text-dark);
       font-weight: bold;
       cursor: pointer;
-      transition: transform 0.2s;
+      transition: transform 0.2s, filter 0.2s;
     }
-    button:hover { transform: scale(1.05); background: #ffdd33; }
+    button:hover {
+      transform: scale(1.05);
+      filter: brightness(1.1);
+    }
 
     .hidden { display: none; }
 
@@ -81,6 +98,7 @@
       font-size: 1.6rem;
       font-weight: bold;
       margin: 0.5rem auto;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
     }
 
     .question {
@@ -92,6 +110,7 @@
       align-items: center;
       justify-content: center;
       text-align: center;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
     }
 
     #playerList {
@@ -103,16 +122,16 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: rgba(255,255,255,0.15);
-      padding: 0.4rem 0.8rem;
+      background: rgba(255,255,255,0.2);
+      padding: 0.5rem 0.8rem;
       border-radius: 0.8rem;
-      margin: 0.3rem auto;
+      margin: 0.4rem auto;
       max-width: 250px;
     }
     .remove-btn {
       background: none;
       border: none;
-      color: #ff4444;
+      color: #ff1744;
       font-weight: bold;
       cursor: pointer;
       font-size: 0.9rem;
@@ -127,20 +146,26 @@
       margin-top: 1rem;
     }
     .mode-card {
-      background: rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.1);
       border-radius: 1rem;
       padding: 1rem;
       cursor: pointer;
       font-weight: bold;
       transition: transform 0.2s, background 0.3s;
+      border: 2px solid transparent;
+      color: var(--text-light);
     }
-    .mode-card:hover { transform: scale(1.05); background: rgba(255,255,255,0.3); }
-    .mode-card.active { background: #ffcc00; color: black; }
+    .mode-card:hover { transform: scale(1.05); background: rgba(255,255,255,0.25); }
+    .mode-card.active {
+      background: linear-gradient(135deg,var(--yellow),var(--orange));
+      color: var(--text-dark);
+      border-color: var(--orange-dark);
+    }
     .mode-card.fullwidth { grid-column: span 2; }
 
     #customWeights {
       margin-top: 1rem;
-      background: rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.12);
       padding: 1rem;
       border-radius: 1rem;
     }
@@ -229,7 +254,16 @@
     function removePlayer(i){players.splice(i,1);renderPlayerList();}
     function renderPlayerList(){playerList.innerHTML="";players.forEach((p,i)=>{const div=document.createElement("div");div.classList.add("player-item");div.innerHTML=`${p} <button class="remove-btn" onclick="removePlayer(${i}); event.stopPropagation()">❌</button>`;playerList.appendChild(div);});}
 
-    function setBackground(type){const bg={"VÉRITÉ":"linear-gradient(135deg,#FFD86F,#FFAA00)","ACTION":"linear-gradient(135deg,#FF6A6A,#CC0000)","CULTURE G.":"linear-gradient(135deg,#6FB1FC,#4364F7)","RAPIDITÉ":"linear-gradient(135deg,#FFB347,#FF7E5F)","CUSTOM":"linear-gradient(135deg,#7928CA,#FF0080)"};document.body.style.background=bg[type]||"linear-gradient(135deg,#ff0066,#ffcc00)";}
+    function setBackground(type){
+      const bg={
+        "VÉRITÉ":"linear-gradient(135deg,#FFB74D,#FF9100)",
+        "ACTION":"linear-gradient(135deg,#FF7043,#E53935)",
+        "CULTURE G.":"linear-gradient(135deg,#FFD54F,#FFA000)",
+        "RAPIDITÉ":"linear-gradient(135deg,#FF8A00,#FF3D00)",
+        "CUSTOM":"linear-gradient(135deg,#FF7A18,#FF3D00)"
+      };
+      document.body.style.background=bg[type]||"linear-gradient(135deg,#ff7a18,#ffcc00)";
+    }
 
     function startGame(){if(currentMode!=="culture"&&players.length<2&&currentMode!=="custom"){alert("Ajoute au moins 2 joueurs !");return;}setupScreen.classList.add("hidden");gameScreen.classList.remove("hidden");showQuestion();}
 
@@ -244,7 +278,7 @@
     function nextQuestion(e){if(e.target.id==="showAnswerBtn")return;if(e.clientX>window.innerWidth/2){if(rapidityMode&&currentQuestionEl.textContent.includes("⚡")){const q=rapidityQuestions[Math.floor(Math.random()*rapidityQuestions.length)];currentQuestionEl.textContent=q;rapidityMode=false;}else showQuestion();}}
 
     document.querySelectorAll(".mode-card").forEach(card=>{card.addEventListener("click",()=>{document.querySelectorAll(".mode-card").forEach(c=>c.classList.remove("active"));card.classList.add("active");currentMode=card.dataset.mode;customWeightsBox.classList.toggle("hidden",currentMode!=="custom");});});
-    backLogo.addEventListener("click",()=>{gameScreen.classList.add("hidden");setupScreen.classList.remove("hidden");document.body.style.background="linear-gradient(135deg,#ff0066,#ffcc00)";});
+    backLogo.addEventListener("click",()=>{gameScreen.classList.add("hidden");setupScreen.classList.remove("hidden");document.body.style.background="linear-gradient(135deg,#ff7a18,#ffcc00)";});
     Object.keys(sliders).forEach(key=>{sliders[key].addEventListener("input",()=>{let total=0;Object.keys(sliders).forEach(k=>total+=+sliders[k].value);Object.keys(sliders).forEach(k=>weights[k]=+sliders[k].value/total*100);});});
 
     document.getElementById("addBtn").addEventListener("click",addPlayer);
