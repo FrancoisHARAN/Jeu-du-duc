@@ -218,6 +218,13 @@
     #undercover h1{cursor:pointer;}
     #secretWord{font-size:2.5rem;font-weight:bold;margin-top:1rem;}
 
+    /* Styles spécifiques pour Time's Up mini */
+    #timesup{font-family:Arial,sans-serif;padding:1rem;text-align:center;background:#222;color:#fff;}
+    #timesup input,#timesup select,#timesup button{padding:0.5rem;margin:0.2rem;border-radius:0.5rem;border:none;}
+    #timesup button{cursor:pointer;background:#ffcc00;color:#222;font-weight:bold;}
+    #tsTimerDisplay{font-size:1.5rem;margin:0.5rem 0;}
+    #tsCurrentWord{font-size:2rem;font-weight:bold;margin:1rem 0;}
+
   </style>
 </head>
 <body>
@@ -262,6 +269,7 @@
     <div id="otherGames" class="other-games">
       <h2>Autres jeux</h2>
       <button id="undercoverBtn">Undercover</button>
+      <button id="timesupBtn">Time's Up mini</button>
     </div>
   </div>
 
@@ -314,6 +322,49 @@
         <input id="whiteGuessInput" placeholder="Mot" />
         <button id="whiteGuessSubmit">Valider</button>
       </div>
+  </div>
+
+  <div id="timesup" class="hidden">
+    <img src="icon.png" alt="Retour" id="backTimesup" class="logo">
+    <h1>Time's Up mini</h1>
+    <div id="tsConfig">
+      <div class="player-input-container">
+        <input type="text" id="tsPlayerInput" placeholder="Nom joueur/équipe">
+        <button id="tsAddPlayer">Ajouter</button>
+      </div>
+      <div id="tsPlayerList"></div>
+      <label>Durée du tour :
+        <select id="tsDuration">
+          <option value="30">30s</option>
+          <option value="45">45s</option>
+          <option value="60">60s</option>
+        </select>
+      </label>
+      <label>Nombre de mots :
+        <select id="tsWordCount">
+          <option value="20">20</option>
+          <option value="30">30</option>
+        </select>
+      </label>
+      <button id="tsStart">Commencer</button>
+    </div>
+
+    <div id="tsGame" class="hidden">
+      <h2 id="tsRoundTitle"></h2>
+      <h3 id="tsPlayerTurn"></h3>
+      <p id="tsTimerDisplay"></p>
+      <p id="tsCurrentWord"></p>
+      <div>
+        <button id="tsFoundBtn">Trouvé</button>
+        <button id="tsSkipBtn">Passer</button>
+      </div>
+    </div>
+
+    <div id="tsScore" class="hidden">
+      <h2 id="tsScoreTitle"></h2>
+      <div id="tsScoreList"></div>
+      <button id="tsNextBtn"></button>
+    </div>
   </div>
 
   <script>
@@ -389,6 +440,7 @@
 
     document.getElementById("addBtn").addEventListener("click",addPlayer);
     document.getElementById("startBtn").addEventListener("click",startGame);
+    document.getElementById("timesupBtn").addEventListener("click",()=>{setupScreen.classList.add("hidden");gameScreen.classList.add("hidden");document.getElementById("timesup").classList.remove("hidden");document.body.style.background="#222";});
     document.getElementById("undercoverBtn").addEventListener("click",()=>{setupScreen.classList.add("hidden");gameScreen.classList.add("hidden");undercoverScreen.classList.remove("hidden");document.body.style.background="#222";});
     backUndercover.addEventListener("click",()=>{undercoverScreen.classList.add("hidden");setupScreen.classList.remove("hidden");document.body.style.background="linear-gradient(135deg,#ff7a18,#ffcc00)";});
     undercoverTitle.addEventListener("click",()=>{document.getElementById("config").classList.remove("hidden");document.getElementById("reveal").classList.add("hidden");document.getElementById("play").classList.add("hidden");});
@@ -4032,6 +4084,165 @@
       if(counts.civil<=counts.undercover+counts.misterwhite)return 'traitres';
       return null;
     }
+    })();
+
+    // -------------------------
+    // TIME'S UP MINI
+    // -------------------------
+    (()=>{
+      const timesupScreen=document.getElementById('timesup');
+      const backTimesup=document.getElementById('backTimesup');
+      const tsConfig=document.getElementById('tsConfig');
+      const tsPlayerInput=document.getElementById('tsPlayerInput');
+      const tsAddPlayer=document.getElementById('tsAddPlayer');
+      const tsPlayerList=document.getElementById('tsPlayerList');
+      const tsDuration=document.getElementById('tsDuration');
+      const tsWordCount=document.getElementById('tsWordCount');
+      const tsStart=document.getElementById('tsStart');
+      const tsGame=document.getElementById('tsGame');
+      const tsRoundTitle=document.getElementById('tsRoundTitle');
+      const tsPlayerTurn=document.getElementById('tsPlayerTurn');
+      const tsTimerDisplay=document.getElementById('tsTimerDisplay');
+      const tsCurrentWord=document.getElementById('tsCurrentWord');
+      const tsFoundBtn=document.getElementById('tsFoundBtn');
+      const tsSkipBtn=document.getElementById('tsSkipBtn');
+      const tsScore=document.getElementById('tsScore');
+      const tsScoreTitle=document.getElementById('tsScoreTitle');
+      const tsScoreList=document.getElementById('tsScoreList');
+      const tsNextBtn=document.getElementById('tsNextBtn');
+
+      const baseWords=["Eiffel","Zidane","MacBook","Le Seigneur des Anneaux","Pizza","Tour de France","Shrek","Louvre","Baguette","Star Wars","Titanic","Harry Potter","Tour Eiffel","Mona Lisa"];
+      const tsPlayers=[];
+      let deck=[],remaining=[],round=1,currentIndex=0,currentWord="",timer=null,timeLeft=0,turnDuration=30;
+
+      backTimesup.addEventListener('click',()=>{
+        timesupScreen.classList.add('hidden');
+        document.getElementById('setup').classList.remove('hidden');
+        document.body.style.background="linear-gradient(135deg,#ff7a18,#ffcc00)";
+      });
+
+      function renderPlayers(){
+        tsPlayerList.innerHTML="";
+        tsPlayers.forEach(p=>{
+          const div=document.createElement('div');
+          div.classList.add('player-item');
+          div.textContent=p.name;
+          tsPlayerList.appendChild(div);
+        });
+      }
+
+      function addPlayer(){
+        const name=tsPlayerInput.value.trim();
+        if(name){
+          tsPlayers.push({name,score:0});
+          renderPlayers();
+          tsPlayerInput.value="";
+          tsPlayerInput.focus();
+        }
+      }
+      tsAddPlayer.addEventListener('click',addPlayer);
+      tsPlayerInput.addEventListener('keyup',e=>{if(e.key==='Enter')addPlayer();});
+
+      tsStart.addEventListener('click',startTimesUp);
+
+      function startTimesUp(){
+        if(tsPlayers.length<2){alert('Ajoute au moins 2 joueurs');return;}
+        turnDuration=Number(tsDuration.value);
+        deck=generateDeck(Number(tsWordCount.value));
+        round=1;
+        tsPlayers.forEach(p=>p.score=0);
+        tsConfig.classList.add('hidden');
+        tsGame.classList.remove('hidden');
+        startRound();
+      }
+
+      function generateDeck(n){
+        return [...baseWords].sort(()=>Math.random()-0.5).slice(0,n);
+      }
+
+      function startRound(){
+        remaining=[...deck];
+        currentIndex=0;
+        const titles=['Manche 1 : description','Manche 2 : un mot','Manche 3 : mime'];
+        tsRoundTitle.textContent=titles[round-1];
+        startTurn();
+      }
+
+      function startTurn(){
+        if(remaining.length===0){endRound();return;}
+        tsPlayerTurn.textContent=tsPlayers[currentIndex].name;
+        currentWord=remaining.shift();
+        tsCurrentWord.textContent=currentWord;
+        timeLeft=turnDuration;
+        tsTimerDisplay.textContent=timeLeft+'s';
+        timer=setInterval(()=>{
+          timeLeft--;
+          tsTimerDisplay.textContent=timeLeft+'s';
+          if(timeLeft<=0) endTurn();
+        },1000);
+      }
+
+      tsFoundBtn.addEventListener('click',foundWord);
+      tsSkipBtn.addEventListener('click',skipWord);
+
+      function foundWord(){
+        tsPlayers[currentIndex].score++;
+        if(remaining.length===0){endRound();return;}
+        currentWord=remaining.shift();
+        tsCurrentWord.textContent=currentWord;
+      }
+
+      function skipWord(){
+        remaining.push(currentWord);
+        currentWord=remaining.shift();
+        tsCurrentWord.textContent=currentWord;
+      }
+
+      function endTurn(){
+        clearInterval(timer);
+        remaining.unshift(currentWord);
+        currentIndex=(currentIndex+1)%tsPlayers.length;
+        startTurn();
+      }
+
+      function endRound(){
+        clearInterval(timer);
+        tsGame.classList.add('hidden');
+        tsScore.classList.remove('hidden');
+        if(round<3){
+          tsScoreTitle.textContent=`Manche ${round} terminée`;
+          showScores();
+          tsNextBtn.textContent='Manche suivante';
+          tsNextBtn.onclick=()=>{
+            tsScore.classList.add('hidden');
+            tsGame.classList.remove('hidden');
+            round++;
+            startRound();
+          };
+        }else{
+          tsScoreTitle.textContent='Classement final';
+          showScores(true);
+          tsNextBtn.textContent='Retour menu';
+          tsNextBtn.onclick=()=>{
+            tsScore.classList.add('hidden');
+            timesupScreen.classList.add('hidden');
+            tsConfig.classList.remove('hidden');
+            document.getElementById('setup').classList.remove('hidden');
+            document.body.style.background="linear-gradient(135deg,#ff7a18,#ffcc00)";
+          };
+        }
+      }
+
+      function showScores(final=false){
+        tsScoreList.innerHTML='';
+        const arr=[...tsPlayers];
+        if(final)arr.sort((a,b)=>b.score-a.score);
+        arr.forEach(p=>{
+          const div=document.createElement('div');
+          div.textContent=`${p.name} : ${p.score}`;
+          tsScoreList.appendChild(div);
+        });
+      }
     })();
   </script>
 </body>
