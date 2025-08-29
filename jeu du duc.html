@@ -216,6 +216,36 @@
     #undercover button{cursor:pointer;background:#ffcc00;color:#222;font-weight:bold;}
     #undercover #playersInputs input{display:block;margin:0.3rem auto;width:200px;text-align:center;}
 
+    #voteList{
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:center;
+      gap:0.5rem;
+    }
+    .vote-card{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:0.3rem;
+      min-width:80px;
+      padding:0.5rem;
+      border:2px solid var(--yellow);
+      border-radius:0.5rem;
+      background:#fff;
+      color:var(--text-dark);
+      cursor:pointer;
+    }
+    .vote-card .id-emoji{font-size:1.5rem;}
+    #secretWord{
+      display:inline-block;
+      background:var(--yellow);
+      color:var(--text-dark);
+      padding:0.4rem 0.8rem;
+      border-radius:0.5rem;
+      margin-top:1rem;
+      font-weight:bold;
+    }
+
   </style>
 </head>
 <body>
@@ -3272,7 +3302,11 @@
       const p=players[revealIndex];
       p.name=name;
       revealName.textContent=name;
-      secretWord.textContent=p.word||'Aucun mot - improvise !';
+      if(p.role==='misterwhite'){
+        secretWord.textContent='Tu es Mister White !';
+      }else{
+        secretWord.textContent=p.word;
+      }
       askName.classList.add('hidden');
       nameInput.classList.add('hidden');
       validateName.classList.add('hidden');
@@ -3308,17 +3342,18 @@
       starter.textContent=first.name+' commence';
     }
 
-    voteBtn.addEventListener('click',()=>{
-      voteList.innerHTML='';
-      players.filter(p=>p.alive).forEach(p=>{
-        const btn=document.createElement('button');
-        btn.textContent=p.name;
-        btn.addEventListener('click',()=>eliminatePlayer(p));
-        voteList.appendChild(btn);
+      voteBtn.addEventListener('click',()=>{
+        voteList.innerHTML='';
+        players.filter(p=>p.alive).forEach(p=>{
+          const btn=document.createElement('button');
+          btn.classList.add('vote-card');
+          btn.innerHTML=`<span class="id-emoji">🪪</span><span>${p.name}</span>`;
+          btn.addEventListener('click',()=>eliminatePlayer(p));
+          voteList.appendChild(btn);
+        });
+        voteArea.classList.remove('hidden');
+        voteBtn.classList.add('hidden');
       });
-      voteArea.classList.remove('hidden');
-      voteBtn.classList.add('hidden');
-    });
 
     function eliminatePlayer(p){
       p.alive=false;
