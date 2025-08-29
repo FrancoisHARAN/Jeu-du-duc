@@ -218,6 +218,11 @@
     #undercover h1{cursor:pointer;}
     #secretWord{font-size:2.5rem;font-weight:bold;margin-top:1rem;}
 
+    /* Styles pour Blanc-manger coco light */
+    #bmc{font-family:Arial,sans-serif;padding:1rem;text-align:center;background:#222;color:#fff;}
+    #bmc input,#bmc button{padding:0.5rem;margin:0.2rem;border-radius:0.5rem;border:none;}
+    #bmc button{cursor:pointer;background:#ffcc00;color:#222;font-weight:bold;}
+
   </style>
 </head>
 <body>
@@ -262,6 +267,7 @@
     <div id="otherGames" class="other-games">
       <h2>Autres jeux</h2>
       <button id="undercoverBtn">Undercover</button>
+      <button id="bmcBtn">Blanc-manger coco light 🃏</button>
     </div>
   </div>
 
@@ -316,6 +322,23 @@
       </div>
   </div>
 
+  <div id="bmc" class="hidden">
+    <img src="icon.png" alt="Retour" id="backBmc" class="logo">
+    <h1>Blanc-manger coco light 🃏</h1>
+    <div id="bmcSetup">
+      <input id="bmcName" placeholder="Prénom" />
+      <button id="bmcAdd">Ajouter</button>
+      <ul id="bmcPlayerList"></ul>
+      <button id="bmcStart" class="hidden">Commencer</button>
+    </div>
+    <div id="bmcPlay" class="hidden">
+      <p id="bmcPhrase"></p>
+      <p id="bmcMaster"></p>
+      <p id="bmcStarter"></p>
+      <button id="bmcNext">Phrase suivante</button>
+    </div>
+  </div>
+
   <script>
     const players=[];
     let currentMode="debut";
@@ -325,7 +348,7 @@
     // -------------------------
     // MOTEUR DU JEU
     // -------------------------
-    const setupScreen=document.getElementById("setup"),gameScreen=document.getElementById("game"),playerInput=document.getElementById("playerInput"),playerList=document.getElementById("playerList"),currentQuestionEl=document.getElementById("currentQuestion"),typeBox=document.getElementById("typeBox"),answerBox=document.getElementById("answerBox"),showAnswerBtn=document.getElementById("showAnswerBtn"),answerText=document.getElementById("answerText"),backLogo=document.getElementById("backLogo"),customWeightsBox=document.getElementById("customWeights"),undercoverScreen=document.getElementById("undercover"),backUndercover=document.getElementById("backUndercover"),undercoverTitle=document.getElementById("undercoverTitle");
+const setupScreen=document.getElementById("setup"),gameScreen=document.getElementById("game"),playerInput=document.getElementById("playerInput"),playerList=document.getElementById("playerList"),currentQuestionEl=document.getElementById("currentQuestion"),typeBox=document.getElementById("typeBox"),answerBox=document.getElementById("answerBox"),showAnswerBtn=document.getElementById("showAnswerBtn"),answerText=document.getElementById("answerText"),backLogo=document.getElementById("backLogo"),customWeightsBox=document.getElementById("customWeights"),undercoverScreen=document.getElementById("undercover"),backUndercover=document.getElementById("backUndercover"),undercoverTitle=document.getElementById("undercoverTitle"),bmcScreen=document.getElementById("bmc"),backBmc=document.getElementById("backBmc");
     const sliders={debut:document.getElementById("weight-debut"),hardcore:document.getElementById("weight-hardcore"),alcool:document.getElementById("weight-alcool"),culture:document.getElementById("weight-culture")};
 
     function addPlayer(){const name=playerInput.value.trim();if(name&&players.length<30){players.push(name);renderPlayerList();playerInput.value="";playerInput.focus();}}
@@ -391,6 +414,8 @@
     document.getElementById("startBtn").addEventListener("click",startGame);
     document.getElementById("undercoverBtn").addEventListener("click",()=>{setupScreen.classList.add("hidden");gameScreen.classList.add("hidden");undercoverScreen.classList.remove("hidden");document.body.style.background="#222";});
     backUndercover.addEventListener("click",()=>{undercoverScreen.classList.add("hidden");setupScreen.classList.remove("hidden");document.body.style.background="linear-gradient(135deg,#ff7a18,#ffcc00)";});
+    document.getElementById("bmcBtn").addEventListener("click",()=>{setupScreen.classList.add("hidden");gameScreen.classList.add("hidden");undercoverScreen.classList.add("hidden");bmcScreen.classList.remove("hidden");document.body.style.background="#222";});
+    backBmc.addEventListener("click",()=>{bmcScreen.classList.add("hidden");setupScreen.classList.remove("hidden");document.body.style.background="linear-gradient(135deg,#ff7a18,#ffcc00)";document.getElementById("bmcSetup").classList.remove("hidden");document.getElementById("bmcPlay").classList.add("hidden");});
     undercoverTitle.addEventListener("click",()=>{document.getElementById("config").classList.remove("hidden");document.getElementById("reveal").classList.add("hidden");document.getElementById("play").classList.add("hidden");});
     gameScreen.addEventListener("click",nextQuestion);
     playerInput.addEventListener("keyup",e=>{if(e.key==="Enter")addPlayer();});
@@ -4032,6 +4057,64 @@
       if(counts.civil<=counts.undercover+counts.misterwhite)return 'traitres';
       return null;
     }
+    })();
+  </script>
+  <script>
+    (()=>{
+      const bmcSetup=document.getElementById('bmcSetup'),
+        bmcPlay=document.getElementById('bmcPlay'),
+        bmcName=document.getElementById('bmcName'),
+        bmcAdd=document.getElementById('bmcAdd'),
+        bmcPlayerList=document.getElementById('bmcPlayerList'),
+        bmcStart=document.getElementById('bmcStart'),
+        bmcPhrase=document.getElementById('bmcPhrase'),
+        bmcMaster=document.getElementById('bmcMaster'),
+        bmcStarter=document.getElementById('bmcStarter'),
+        bmcNext=document.getElementById('bmcNext');
+      const bmcPlayers=[];
+      const bmcPhrases=[
+        "Je n'ai jamais _______.",
+        "Hier, j'ai trouvé _______ sous mon lit.",
+        "Mon super pouvoir serait _______."
+      ];
+      function renderBmcPlayers(){
+        bmcPlayerList.innerHTML='';
+        bmcPlayers.forEach(p=>{
+          const li=document.createElement('li');
+          li.textContent=p;
+          bmcPlayerList.appendChild(li);
+        });
+      }
+      function addBmcPlayer(){
+        const name=bmcName.value.trim();
+        if(name){
+          bmcPlayers.push(name);
+          bmcName.value='';
+          renderBmcPlayers();
+          if(bmcPlayers.length>1)bmcStart.classList.remove('hidden');
+        }
+      }
+      function startBmc(){
+        if(bmcPlayers.length<2)return;
+        bmcSetup.classList.add('hidden');
+        bmcPlay.classList.remove('hidden');
+        newBmcRound();
+      }
+      function newBmcRound(){
+        const phrase=bmcPhrases[Math.floor(Math.random()*bmcPhrases.length)];
+        bmcPhrase.textContent=phrase;
+        const masterIdx=Math.floor(Math.random()*bmcPlayers.length);
+        let starterIdx;
+        do{
+          starterIdx=Math.floor(Math.random()*bmcPlayers.length);
+        }while(starterIdx===masterIdx && bmcPlayers.length>1);
+        bmcMaster.textContent='Maître du jeu : '+bmcPlayers[masterIdx];
+        bmcStarter.textContent=bmcPlayers[starterIdx]+' commence';
+      }
+      bmcAdd.addEventListener('click',addBmcPlayer);
+      bmcName.addEventListener('keyup',e=>{if(e.key==='Enter')addBmcPlayer();});
+      bmcStart.addEventListener('click',startBmc);
+      bmcNext.addEventListener('click',newBmcRound);
     })();
   </script>
 </body>
