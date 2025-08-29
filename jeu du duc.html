@@ -215,6 +215,8 @@
     #undercover input,#undercover button{padding:0.5rem;margin:0.2rem;border-radius:0.5rem;border:none;}
     #undercover button{cursor:pointer;background:#ffcc00;color:#222;font-weight:bold;}
     #undercover #playersInputs input{display:block;margin:0.3rem auto;width:200px;text-align:center;}
+    #undercover h1{cursor:pointer;}
+    #secretWord{font-size:2.5rem;font-weight:bold;margin-top:1rem;}
 
   </style>
 </head>
@@ -275,7 +277,7 @@
 
   <div id="undercover" class="hidden">
     <img src="icon.png" alt="Retour" id="backUndercover" class="logo">
-    <h1>Undercover</h1>
+    <h1 id="undercoverTitle">Undercover</h1>
       <div id="config">
         <label>Nombre de joueurs : <input type="number" id="playerCount" min="4" value="4" /></label>
         <div id="roleConfig">
@@ -316,7 +318,7 @@
     // -------------------------
     // MOTEUR DU JEU
     // -------------------------
-    const setupScreen=document.getElementById("setup"),gameScreen=document.getElementById("game"),playerInput=document.getElementById("playerInput"),playerList=document.getElementById("playerList"),currentQuestionEl=document.getElementById("currentQuestion"),typeBox=document.getElementById("typeBox"),answerBox=document.getElementById("answerBox"),showAnswerBtn=document.getElementById("showAnswerBtn"),answerText=document.getElementById("answerText"),backLogo=document.getElementById("backLogo"),customWeightsBox=document.getElementById("customWeights"),undercoverScreen=document.getElementById("undercover"),backUndercover=document.getElementById("backUndercover");
+    const setupScreen=document.getElementById("setup"),gameScreen=document.getElementById("game"),playerInput=document.getElementById("playerInput"),playerList=document.getElementById("playerList"),currentQuestionEl=document.getElementById("currentQuestion"),typeBox=document.getElementById("typeBox"),answerBox=document.getElementById("answerBox"),showAnswerBtn=document.getElementById("showAnswerBtn"),answerText=document.getElementById("answerText"),backLogo=document.getElementById("backLogo"),customWeightsBox=document.getElementById("customWeights"),undercoverScreen=document.getElementById("undercover"),backUndercover=document.getElementById("backUndercover"),undercoverTitle=document.getElementById("undercoverTitle");
     const sliders={debut:document.getElementById("weight-debut"),hardcore:document.getElementById("weight-hardcore"),alcool:document.getElementById("weight-alcool"),culture:document.getElementById("weight-culture")};
 
     function addPlayer(){const name=playerInput.value.trim();if(name&&players.length<30){players.push(name);renderPlayerList();playerInput.value="";playerInput.focus();}}
@@ -382,6 +384,7 @@
     document.getElementById("startBtn").addEventListener("click",startGame);
     document.getElementById("undercoverBtn").addEventListener("click",()=>{setupScreen.classList.add("hidden");gameScreen.classList.add("hidden");undercoverScreen.classList.remove("hidden");document.body.style.background="#222";});
     backUndercover.addEventListener("click",()=>{undercoverScreen.classList.add("hidden");setupScreen.classList.remove("hidden");document.body.style.background="linear-gradient(135deg,#ff7a18,#ffcc00)";});
+    undercoverTitle.addEventListener("click",()=>{document.getElementById("config").classList.remove("hidden");document.getElementById("reveal").classList.add("hidden");document.getElementById("play").classList.add("hidden");});
     gameScreen.addEventListener("click",nextQuestion);
     playerInput.addEventListener("keyup",e=>{if(e.key==="Enter")addPlayer();});
     document.querySelector('.mode-card[data-mode="debut"]').classList.add("active");
@@ -3255,13 +3258,19 @@
       const name=nameInput.value.trim()||('Joueur'+(revealIndex+1));
       const p=players[revealIndex];
       p.name=name;
-      revealName.textContent=name;
-      secretWord.textContent=p.word||'Aucun mot - improvise !';
       askName.classList.add('hidden');
       nameInput.classList.add('hidden');
       validateName.classList.add('hidden');
-      revealName.classList.remove('hidden');
-      secretWord.classList.remove('hidden');
+      if(p.role==='misterwhite'){
+        revealName.classList.add('hidden');
+        secretWord.textContent='🖕tu es Mister White 🖕';
+        secretWord.classList.remove('hidden');
+      }else{
+        revealName.textContent='ton mot est 👇';
+        revealName.classList.remove('hidden');
+        secretWord.textContent=p.word;
+        secretWord.classList.remove('hidden');
+      }
       nextPlayer.textContent=revealIndex===players.length-1?'Lancer la partie':'Joueur suivant';
       nextPlayer.classList.remove('hidden');
     });
