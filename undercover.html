@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Undercover</title>
+  <style>
+    body{font-family: Arial, sans-serif;margin:0;padding:1rem;text-align:center;background:#222;color:#fff;}
+    .hidden{display:none;}
+    input,button{padding:0.5rem;margin:0.2rem;border-radius:0.5rem;border:none;}
+    button{cursor:pointer;background:#ffcc00;color:#222;font-weight:bold;}
+    #playersInputs input{display:block;margin:0.3rem auto;width:200px;text-align:center;}
+  </style>
+</head>
+<body>
+  <h1>Undercover</h1>
+  <div id="config">
+    <label>Nombre de joueurs : <input type="number" id="playerCount" min="4" value="4" /></label>
+    <div id="playersInputs"></div>
+    <div id="roleConfig">
+      <p>Répartition des rôles :</p>
+      <label>Civils <input type="number" id="civilCount" min="0" /></label>
+      <label>Undercover <input type="number" id="underCount" min="0" /></label>
+      <label>Mister White <input type="number" id="whiteCount" min="0" /></label>
+    </div>
+    <button id="start">Démarrer</button>
+  </div>
+
+  <div id="reveal" class="hidden">
+    <h2 id="revealName"></h2>
+    <p id="secretWord" class="hidden"></p>
+    <button id="showWord">Voir le mot</button>
+    <button id="nextPlayer" class="hidden">Joueur suivant</button>
+  </div>
+
+  <script>
+  let currentMode = 'undercover';
+  const wordPairs=[
+    {civil:'chaise',under:'table'},
+    {civil:'chien',under:'loup'},
+    {civil:'voiture',under:'camion'},
+    {civil:'pomme',under:'poire'}
+  ];
+  const players=[];
+
+  const playerCountInput=document.getElementById('playerCount');
+  const playersInputsDiv=document.getElementById('playersInputs');
+  const civilInput=document.getElementById('civilCount');
+  const underInput=document.getElementById('underCount');
+  const whiteInput=document.getElementById('whiteCount');
+
+  function updatePlayerInputs(){
+    const n=Number(playerCountInput.value);
+    playersInputsDiv.innerHTML='';
+    for(let i=0;i<n;i++){
+      const inp=document.createElement('input');
+      inp.placeholder='Joueur '+(i+1);
+      playersInputsDiv.appendChild(inp);
+    }
+    autoRoles();
+  }
+
+  function autoRoles(){
+    const n=Number(playerCountInput.value);
+    whiteInput.value = n>=4 ? 1:0;
+    underInput.value = n>=7 ? 2:1;
+    civilInput.value = n - Number(whiteInput.value) - Number(underInput.value);
+  }
+
+  playerCountInput.addEventListener('change', updatePlayerInputs);
+  updatePlayerInputs();
+
+  document.getElementById('start').addEventListener('click', startUndercover);
+
+  function startUndercover(){
+    players.length=0;
+    playersInputsDiv.querySelectorAll('input').forEach(inp=>{
+      const name=inp.value.trim()||('Joueur'+(players.length+1));
+      players.push({name,role:'',word:'',alive:true});
+    });
+    assignRoles(players);
+    assignWords();
+    revealWords();
+  }
+
+  function assignRoles(players){
+    let civ=Number(civilInput.value);
+    let und=Number(underInput.value);
+    let white=Number(whiteInput.value);
+    const shuffled=[...players].sort(()=>Math.random()-0.5);
+    shuffled.forEach(p=>{
+      if(white>0){p.role='misterwhite';white--;}
+      else if(und>0){p.role='undercover';und--;}
+      else if(civ>0){p.role='civil';civ--;}
+      else p.role='civil';
+    });
+  }
+
+  function assignWords(){
+    const pair=wordPairs[Math.floor(Math.random()*wordPairs.length)];
+    players.forEach(p=>{
+      if(p.role==='civil')p.word=pair.civil;
+      else if(p.role==='undercover')p.word=pair.under;
+      else p.word='';
+    });
+  }
+
+  let revealIndex=0;
+  function revealWords(){
+    document.getElementById('config').classList.add('hidden');
+    document.getElementById('reveal').classList.remove('hidden');
+    showReveal();
+  }
+
+  function showReveal(){
+    const p=players[revealIndex];
+    document.getElementById('revealName').textContent=p.name;
+    document.getElementById('secretWord').textContent=p.word||"Aucun mot - improvise !";
+    document.getElementById('secretWord').classList.add('hidden');
+    document.getElementById('showWord').classList.remove('hidden');
+    document.getElementById('nextPlayer').classList.add('hidden');
+  }
+
+  document.getElementById('showWord').addEventListener('click',()=>{
+    document.getElementById('secretWord').classList.remove('hidden');
+    document.getElementById('showWord').classList.add('hidden');
+    document.getElementById('nextPlayer').classList.remove('hidden');
+  });
+
+  document.getElementById('nextPlayer').addEventListener('click',()=>{
+    revealIndex++;
+    if(revealIndex>=players.length){
+      document.getElementById('reveal').innerHTML='<h2>Bonne partie !</h2>';
+    }else{
+      showReveal();
+    }
+  });
+
+  // The following functions are placeholders for full game phases
+  function nextTurn(){
+    // Mister White should never be first
+    const list=[...players.filter(p=>p.alive)];
+    let order;
+    do{order=list.sort(()=>Math.random()-0.5);}while(order[0] && order[0].role==='misterwhite');
+    return order;
+  }
+
+  function votePhase(){
+    // Placeholder for vote logic
+  }
+
+  function checkVictory(){
+    const civ=players.filter(p=>p.alive && p.role==='civil').length;
+    const traitres=players.filter(p=>p.alive && p.role!=='civil').length;
+    if(traitres===0)return 'civils';
+    if(civ<=traitres)return 'traitres';
+    return null;
+  }
+  </script>
+</body>
+</html>

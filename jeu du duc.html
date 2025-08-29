@@ -96,6 +96,13 @@
   margin-top: 1rem;
 }
 
+.other-games {
+  margin-top: 1rem;
+}
+.other-games h2 {
+  margin: 0.5rem 0;
+}
+
 .hidden { 
   display: none; 
 }
@@ -244,6 +251,10 @@
     </div>
 
     <button id="startBtn">🎲 Lancer la partie</button>
+    <div id="otherGames" class="other-games">
+      <h2>Autres jeux</h2>
+      <button id="undercoverBtn">Undercover</button>
+    </div>
   </div>
 
   <div id="game" class="card hidden">
@@ -329,6 +340,7 @@
 
     document.getElementById("addBtn").addEventListener("click",addPlayer);
     document.getElementById("startBtn").addEventListener("click",startGame);
+    document.getElementById("undercoverBtn").addEventListener("click",()=>{window.location.href="undercover.html";});
     gameScreen.addEventListener("click",nextQuestion);
     playerInput.addEventListener("keyup",e=>{if(e.key==="Enter")addPlayer();});
     document.querySelector('.mode-card[data-mode="debut"]').classList.add("active");
