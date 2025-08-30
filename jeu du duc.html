@@ -219,6 +219,14 @@
     #secretWord{font-size:2.5rem;font-weight:bold;margin-top:1rem;}
 
   </style>
+  <style>
+    /* Styles spécifiques pour Time's Up mini */
+    #timeup{font-family:Arial,sans-serif;padding:1rem;text-align:center;background:#222;color:#fff;}
+    #timeup input,#timeup select,#timeup button{padding:0.5rem;margin:0.2rem;border-radius:0.5rem;border:none;}
+    #timeup button{cursor:pointer;background:#ffcc00;color:#222;font-weight:bold;}
+    #timeupTimerDisplay{font-size:1.5rem;margin:0.5rem 0;}
+    #timeupCurrentWord{font-size:2rem;font-weight:bold;margin:1rem 0;}
+  </style>
 </head>
 <body>
   <div id="setup" class="card">
@@ -262,6 +270,7 @@
     <div id="otherGames" class="other-games">
       <h2>Autres jeux</h2>
       <button id="undercoverBtn">Undercover</button>
+      <button id="timeupBtn">Time's Up! Mini</button>
     </div>
   </div>
 
@@ -312,8 +321,51 @@
         <h2>Mister White éliminé</h2>
         <p>Devine le mot des civils :</p>
         <input id="whiteGuessInput" placeholder="Mot" />
-        <button id="whiteGuessSubmit">Valider</button>
+      <button id="whiteGuessSubmit">Valider</button>
       </div>
+  </div>
+
+  <div id="timeup" class="hidden">
+    <img src="icon.png" alt="Retour" id="backTimeup" class="logo">
+    <h1>Time's Up! Mini</h1>
+    <div id="timeupConfig">
+      <div class="player-input-container">
+        <input type="text" id="timeupPlayerInput" placeholder="Nom joueur/équipe">
+        <button id="timeupAddPlayerBtn">Ajouter</button>
+      </div>
+      <div id="timeupPlayerList"></div>
+      <label>Durée du tour :
+        <select id="timeupDuration">
+          <option value="30">30s</option>
+          <option value="45">45s</option>
+          <option value="60">60s</option>
+        </select>
+      </label>
+      <label>Nombre de mots :
+        <select id="timeupWordCount">
+          <option value="20">20</option>
+          <option value="30">30</option>
+        </select>
+      </label>
+      <button id="timeupStart">Commencer</button>
+    </div>
+
+    <div id="timeupGame" class="hidden">
+      <h2 id="timeupRoundTitle"></h2>
+      <h3 id="timeupPlayerTurn"></h3>
+      <p id="timeupTimerDisplay"></p>
+      <p id="timeupCurrentWord"></p>
+      <div>
+        <button id="timeupFoundBtn">Trouvé</button>
+        <button id="timeupSkipBtn">Passer</button>
+      </div>
+    </div>
+
+    <div id="timeupScore" class="hidden">
+      <h2 id="timeupScoreTitle"></h2>
+      <div id="timeupScoreList"></div>
+      <button id="timeupNextBtn"></button>
+    </div>
   </div>
 
   <script>
@@ -4032,6 +4084,179 @@
       if(counts.civil<=counts.undercover+counts.misterwhite)return 'traitres';
       return null;
     }
+    })();
+  </script>
+
+  <script>
+    document.getElementById('timeupBtn').addEventListener('click', () => {
+      const homeScreen = document.getElementById('setup');
+      const mainGameScreen = document.getElementById('game');
+      homeScreen.classList.add('hidden');
+      mainGameScreen.classList.add('hidden');
+      document.getElementById('timeup').classList.remove('hidden');
+      document.body.style.background = '#222';
+    });
+
+    (() => {
+      const timeupScreen = document.getElementById('timeup');
+      const backTimeup = document.getElementById('backTimeup');
+      const timeupConfig = document.getElementById('timeupConfig');
+      const timeupPlayerInput = document.getElementById('timeupPlayerInput');
+      const timeupAddPlayerBtn = document.getElementById('timeupAddPlayerBtn');
+      const timeupPlayerList = document.getElementById('timeupPlayerList');
+      const timeupDuration = document.getElementById('timeupDuration');
+      const timeupWordCount = document.getElementById('timeupWordCount');
+      const timeupStart = document.getElementById('timeupStart');
+      const timeupGame = document.getElementById('timeupGame');
+      const timeupRoundTitle = document.getElementById('timeupRoundTitle');
+      const timeupPlayerTurn = document.getElementById('timeupPlayerTurn');
+      const timeupTimerDisplay = document.getElementById('timeupTimerDisplay');
+      const timeupCurrentWord = document.getElementById('timeupCurrentWord');
+      const timeupFoundBtn = document.getElementById('timeupFoundBtn');
+      const timeupSkipBtn = document.getElementById('timeupSkipBtn');
+      const timeupScore = document.getElementById('timeupScore');
+      const timeupScoreTitle = document.getElementById('timeupScoreTitle');
+      const timeupScoreList = document.getElementById('timeupScoreList');
+      const timeupNextBtn = document.getElementById('timeupNextBtn');
+
+      const timeupBaseWords = ["Eiffel","Zidane","MacBook","Le Seigneur des Anneaux","Pizza","Tour de France","Shrek","Louvre","Baguette","Star Wars","Titanic","Harry Potter","Tour Eiffel","Mona Lisa"];
+      const timeupPlayers = [];
+      let timeupDeck = [], timeupRemaining = [], timeupRound = 1, timeupIndex = 0, timeupWord = "", timeupTimer = null, timeupTimeLeft = 0, timeupTurnDuration = 30;
+
+      backTimeup.addEventListener('click', () => {
+        clearInterval(timeupTimer);
+        timeupPlayers.length = 0;
+        timeupPlayerList.innerHTML = '';
+        timeupConfig.classList.remove('hidden');
+        timeupGame.classList.add('hidden');
+        timeupScore.classList.add('hidden');
+        timeupScreen.classList.add('hidden');
+        document.getElementById('setup').classList.remove('hidden');
+        document.body.style.background = "linear-gradient(135deg,#ff7a18,#ffcc00)";
+      });
+
+      function timeupRenderPlayers() {
+        timeupPlayerList.innerHTML = '';
+        timeupPlayers.forEach(p => {
+          const div = document.createElement('div');
+          div.classList.add('player-item');
+          div.textContent = p.name;
+          timeupPlayerList.appendChild(div);
+        });
+      }
+
+      function timeupAddPlayer() {
+        const name = timeupPlayerInput.value.trim();
+        if (name) {
+          timeupPlayers.push({ name, score: 0 });
+          timeupRenderPlayers();
+          timeupPlayerInput.value = '';
+          timeupPlayerInput.focus();
+        }
+      }
+      timeupAddPlayerBtn.addEventListener('click', timeupAddPlayer);
+      timeupPlayerInput.addEventListener('keyup', e => { if (e.key === 'Enter') timeupAddPlayer(); });
+
+      timeupStart.addEventListener('click', startTimeupGame);
+
+      function startTimeupGame() {
+        if (timeupPlayers.length < 2) { alert('Ajoute au moins 2 joueurs'); return; }
+        timeupTurnDuration = Number(timeupDuration.value);
+        timeupDeck = timeupGenerateDeck(Number(timeupWordCount.value));
+        timeupRound = 1;
+        timeupPlayers.forEach(p => p.score = 0);
+        timeupConfig.classList.add('hidden');
+        timeupGame.classList.remove('hidden');
+        startTimeupRound();
+      }
+
+      function timeupGenerateDeck(n) {
+        return [...timeupBaseWords].sort(() => Math.random() - 0.5).slice(0, n);
+      }
+
+      function startTimeupRound() {
+        timeupRemaining = [...timeupDeck];
+        timeupIndex = 0;
+        const titles = ['Manche 1 : description', 'Manche 2 : un mot', 'Manche 3 : mime'];
+        timeupRoundTitle.textContent = titles[timeupRound - 1];
+        startTimeupTurn();
+      }
+
+      function startTimeupTurn() {
+        if (timeupRemaining.length === 0) { timeupEndRound(); return; }
+        timeupPlayerTurn.textContent = timeupPlayers[timeupIndex].name;
+        timeupWord = timeupRemaining.shift();
+        timeupCurrentWord.textContent = timeupWord;
+        timeupTimeLeft = timeupTurnDuration;
+        timeupTimerDisplay.textContent = timeupTimeLeft + 's';
+        timeupTimer = setInterval(() => {
+          timeupTimeLeft--;
+          timeupTimerDisplay.textContent = timeupTimeLeft + 's';
+          if (timeupTimeLeft <= 0) timeupEndTurn();
+        }, 1000);
+      }
+
+      timeupFoundBtn.addEventListener('click', timeupFoundWord);
+      timeupSkipBtn.addEventListener('click', timeupSkipWord);
+
+      function timeupFoundWord() {
+        timeupPlayers[timeupIndex].score++;
+        if (timeupRemaining.length === 0) { timeupEndRound(); return; }
+        timeupWord = timeupRemaining.shift();
+        timeupCurrentWord.textContent = timeupWord;
+      }
+
+      function timeupSkipWord() {
+        timeupRemaining.push(timeupWord);
+        timeupWord = timeupRemaining.shift();
+        timeupCurrentWord.textContent = timeupWord;
+      }
+
+      function timeupEndTurn() {
+        clearInterval(timeupTimer);
+        timeupRemaining.unshift(timeupWord);
+        timeupIndex = (timeupIndex + 1) % timeupPlayers.length;
+        startTimeupTurn();
+      }
+
+      function timeupEndRound() {
+        clearInterval(timeupTimer);
+        timeupGame.classList.add('hidden');
+        timeupScore.classList.remove('hidden');
+        if (timeupRound < 3) {
+          timeupScoreTitle.textContent = `Manche ${timeupRound} terminée`;
+          timeupShowScores();
+          timeupNextBtn.textContent = 'Manche suivante';
+          timeupNextBtn.onclick = () => {
+            timeupScore.classList.add('hidden');
+            timeupGame.classList.remove('hidden');
+            timeupRound++;
+            startTimeupRound();
+          };
+        } else {
+          timeupScoreTitle.textContent = 'Classement final';
+          timeupShowScores(true);
+          timeupNextBtn.textContent = 'Retour menu';
+          timeupNextBtn.onclick = () => {
+            timeupScore.classList.add('hidden');
+            timeupScreen.classList.add('hidden');
+            timeupConfig.classList.remove('hidden');
+            document.getElementById('setup').classList.remove('hidden');
+            document.body.style.background = "linear-gradient(135deg,#ff7a18,#ffcc00)";
+          };
+        }
+      }
+
+      function timeupShowScores(final = false) {
+        timeupScoreList.innerHTML = '';
+        const arr = [...timeupPlayers];
+        if (final) arr.sort((a, b) => b.score - a.score);
+        arr.forEach(p => {
+          const div = document.createElement('div');
+          div.textContent = `${p.name} : ${p.score}`;
+          timeupScoreList.appendChild(div);
+        });
+      }
     })();
   </script>
 </body>
