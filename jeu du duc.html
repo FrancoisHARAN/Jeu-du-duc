@@ -265,6 +265,20 @@
       display: block;
     }
 
+    /* Killer game styles */
+    #killer-screen{padding:1rem;text-align:center;background:#222;color:#fff;min-height:100vh;}
+    .killer-hidden{display:none;}
+    .killer-card{background:rgba(0,0,0,0.5);padding:1.5rem;border-radius:1.5rem;width:90%;max-width:600px;margin:auto;box-shadow:0 8px 20px rgba(0,0,0,0.5);backdrop-filter:blur(6px);}
+    .killer-logo{width:80px;cursor:pointer;margin:0 auto 1rem auto;display:block;transition:transform 0.2s;}
+    .killer-logo:hover{transform:scale(1.1);}
+    .killer-player-input-container{display:flex;justify-content:center;align-items:center;gap:1rem;margin:1.2rem 0;}
+    .killer-player-input-container input{background:#fff;color:#000;padding:0.4rem;border-radius:0.5rem;border:none;}
+    .killer-player-input-container button{padding:0.4rem 0.8rem;border-radius:0.5rem;border:none;background:#ff7a18;color:#000;cursor:pointer;}
+    .killer-player-list{margin-top:0.5rem;}
+    .killer-player-item{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.2);padding:0.5rem 0.8rem;border-radius:0.8rem;margin:0.4rem auto;max-width:250px;}
+    .killer-dead{text-decoration:line-through;opacity:0.5;}
+    #killer-secret{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;justify-content:center;align-items:center;}
+
   </style>
 </head>
 <body>
@@ -310,6 +324,7 @@
       <h2>Autres jeux</h2>
       <button id="undercoverBtn">Undercover</button>
       <button id="bmcBtn">Blanc-Manger Coco</button>
+      <button id="killer-btn">Killer</button>
     </div>
   </div>
 
@@ -380,6 +395,36 @@
       <div id="bmcChoices"></div>
       <div id="bmcScores"></div>
       <button id="bmcNextRound" class="hidden">Manche suivante</button>
+    </div>
+  </div>
+
+  <div id="killer-screen" class="killer-hidden">
+    <img src="icon.png" alt="Retour" id="killer-back" class="killer-logo">
+    <h1>Killer</h1>
+    <div id="killer-setup" class="killer-card">
+      <div class="killer-player-input-container">
+        <input id="killer-player-input" placeholder="Pseudo">
+        <button id="killer-add-btn">Ajouter</button>
+      </div>
+      <div id="killer-player-list" class="killer-player-list"></div>
+      <button id="killer-start-btn">Nouvelle Partie</button>
+    </div>
+    <div id="killer-distribution" class="killer-card killer-hidden">
+      <div id="killer-reveal-list" class="killer-player-list"></div>
+      <button id="killer-distribute-done">Commencer</button>
+    </div>
+    <div id="killer-game" class="killer-card killer-hidden">
+      <div id="killer-alive-list" class="killer-player-list"></div>
+    </div>
+    <div id="killer-end" class="killer-card killer-hidden">
+      <h2 id="killer-winner"></h2>
+      <button id="killer-new-btn">Nouvelle Partie</button>
+    </div>
+    <div id="killer-secret" class="killer-hidden">
+      <div class="killer-card">
+        <h2 id="killer-secret-title"></h2>
+        <p id="killer-secret-text"></p>
+      </div>
     </div>
   </div>
 
@@ -4193,6 +4238,135 @@
       if(bmcState.gameOver){bmcPlay.classList.add('hidden');bmcSetup.classList.remove('hidden');bmcNextRound.classList.add('hidden');}
       else{bmcNextRound.classList.add('hidden');bmcState.masterIndex=(bmcState.masterIndex+1)%bmcState.players.length;startBmcRound();}
     });
+
+    // ----- Killer game -----
+    const killerScreen=document.getElementById('killer-screen');
+    const killerBack=document.getElementById('killer-back');
+    const killerSetup=document.getElementById('killer-setup');
+    const killerDistribution=document.getElementById('killer-distribution');
+    const killerGame=document.getElementById('killer-game');
+    const killerEnd=document.getElementById('killer-end');
+    const killerPlayerInput=document.getElementById('killer-player-input');
+    const killerAddBtn=document.getElementById('killer-add-btn');
+    const killerPlayerList=document.getElementById('killer-player-list');
+    const killerStartBtn=document.getElementById('killer-start-btn');
+    const killerRevealList=document.getElementById('killer-reveal-list');
+    const killerDistributeDone=document.getElementById('killer-distribute-done');
+    const killerAliveList=document.getElementById('killer-alive-list');
+    const killerWinner=document.getElementById('killer-winner');
+    const killerNewBtn=document.getElementById('killer-new-btn');
+    const killerSecret=document.getElementById('killer-secret');
+    const killerSecretTitle=document.getElementById('killer-secret-title');
+    const killerSecretText=document.getElementById('killer-secret-text');
+    const killerGestures=[
+      "boire un shooter 🥃",
+      "boire un cul-sec 🥃",
+      "danser sur une table 💃",
+      "dire une phrase en anglais (ou une autre langue étrangère) 🇬🇧",
+      "dire une phrase en italien 🇮🇹",
+      "danser un moonwalk 🕺",
+      "danser chorégraphier la danse de Rabbi Jacob 🎩",
+      "faire au moins trois jongles avec un ballon (ou tout autre objet) ⚽",
+      "faire une \"ola\" 🙌",
+      "exécuter les pas d'un madison ou d'un kuduro 🕺",
+      "faire un selfie avec toi 🤳",
+      "faire finir au moins 5 de tes phrases 🦜",
+      "faire 3 fois le tour de la même table en moins de 5 minutes ⏱",
+      "prêter son téléphone 📱",
+      "servir un truc à manger ou à boire 🥨",
+      "raconter une blague 🤡",
+      "découvrir quel est son livre préféré 📕",
+      "chanter 🎙",
+      "obtenir une question à propos de ta passion pour les chaussettes 🧦",
+      "obtenir une question à propos de ta collection de tickets de métro 🛂",
+      "obtenir une question à propos de ta passion pour les chèvres 🐐",
+      "dire une réplique d'OSS 117 (comment est votre blanquette?) 🎥",
+      "dire une réplique de la Cité de la Peur (Prenez un chewing-gum Emile) 🎥",
+      "nettoyer quelque chose 🧽",
+      "fouiller les cheveux à la recherche d'un insecte 🐜",
+      "dire le prénom de ses parents 🧓",
+      "imiter un autre joueur 🦜",
+      "porter son verre pendant qu'on parle 🤵",
+      "complimenter sur toi 😳",
+      "préparer un cocktail 🤵",
+      "ranger quelque chose dans la pièce 🧽",
+      "faire bailler 😪",
+      "faire écouter du Jul 👆",
+      "décapsuler une bière 🍺",
+      "trinquer avec toi 🍻",
+      "lui servir sa boisson préférée 🥃",
+      "le présenter à quelqu'un qu'il ne connaît pas 👋",
+      "faire goûter une boisson qu'il n'aime pas 👬",
+      "lâcher un pas de danse 🕺",
+      "faire sonner ton téléphone 📱"
+    ];
+
+    let killerState;
+    try{
+      const stored=JSON.parse(localStorage.getItem('killer.state'));
+      if(stored&&Array.isArray(stored.players)&&['setup','distribution','game','end'].includes(stored.stage)){
+        killerState=stored;
+      }else{
+        throw new Error('bad state');
+      }
+    }catch(e){
+      killerState={stage:'setup',players:[]};
+      killerSave();
+    }
+
+    function killerSave(){localStorage.setItem('killer.state',JSON.stringify(killerState));}
+
+    function killerRenderStage(){
+      killerSetup.classList.add('killer-hidden');
+      killerDistribution.classList.add('killer-hidden');
+      killerGame.classList.add('killer-hidden');
+      killerEnd.classList.add('killer-hidden');
+      if(killerState.stage==='setup'){killerSetup.classList.remove('killer-hidden');killerRenderPlayerList();}
+      else if(killerState.stage==='distribution'){killerDistribution.classList.remove('killer-hidden');killerRenderRevealList();}
+      else if(killerState.stage==='game'){killerGame.classList.remove('killer-hidden');killerRenderGame();}
+      else if(killerState.stage==='end'){killerEnd.classList.remove('killer-hidden');killerRenderEnd();}
+      else{killerState={stage:'setup',players:[]};killerSave();killerSetup.classList.remove('killer-hidden');killerRenderPlayerList();}
+    }
+
+    function killerRenderPlayerList(){
+      killerPlayerList.innerHTML=killerState.players.map((p,i)=>`<div class="killer-player-item">${p.name}<button class="killer-remove-btn" data-i="${i}">❌</button></div>`).join('');
+      killerPlayerList.querySelectorAll('.killer-remove-btn').forEach(btn=>{btn.addEventListener('click',()=>{killerState.players.splice(btn.dataset.i,1);killerSave();killerRenderPlayerList();});});
+    }
+
+    function killerAddPlayer(){const name=killerPlayerInput.value.trim();if(!name)return;killerState.players.push({name});killerPlayerInput.value='';killerSave();killerRenderPlayerList();}
+    killerAddBtn.addEventListener('click',killerAddPlayer);
+    killerPlayerInput.addEventListener('keyup',e=>{if(e.key==='Enter')killerAddPlayer();});
+
+    function killerStart(){if(killerState.players.length<2)return;killerState.stage='distribution';const shuffled=[...killerState.players].sort(()=>Math.random()-0.5);shuffled.forEach((p,i)=>{const target=shuffled[(i+1)%shuffled.length];p.target=target.name;p.gesture=killerGestures[Math.floor(Math.random()*killerGestures.length)];p.alive=true;p.kills=0;});killerSave();killerRenderStage();}
+    killerStartBtn.addEventListener('click',killerStart);
+
+    function killerRenderRevealList(){killerRevealList.innerHTML=killerState.players.map((p,i)=>`<button class="killer-reveal-btn" data-i="${i}">${p.name}</button>`).join('');killerRevealList.querySelectorAll('.killer-reveal-btn').forEach(btn=>{btn.addEventListener('click',()=>{killerShowCard(killerState.players[btn.dataset.i]);});});}
+
+    function killerShowCard(p){killerSecretTitle.textContent=p.name;killerSecretText.innerHTML=`Ta victime est ${p.target}<br>Geste : ${p.gesture}`;killerSecret.classList.remove('killer-hidden');setTimeout(()=>killerSecret.classList.add('killer-hidden'),3000);}
+
+    killerDistributeDone.addEventListener('click',()=>{killerState.stage='game';killerSave();killerRenderStage();});
+
+    function killerRenderGame(){killerAliveList.innerHTML=killerState.players.map((p,i)=>`<div class="killer-player-item ${p.alive?'':'killer-dead'}">${p.name} (${p.kills}) ${p.alive?'<button class="killer-kill-btn" data-i="'+i+'">☠️</button>':''}</div>`).join('');killerAliveList.querySelectorAll('.killer-kill-btn').forEach(btn=>{btn.addEventListener('click',()=>{killerEliminate(btn.dataset.i);});});}
+
+    function killerEliminate(idx){const victim=killerState.players[idx];if(!victim.alive)return;victim.alive=false;const assassin=killerState.players.find(p=>p.target===victim.name&&p.alive);if(assassin){assassin.kills++;assassin.target=victim.target;assassin.gesture=victim.gesture;}killerSave();const alive=killerState.players.filter(p=>p.alive);if(alive.length<=1){killerState.stage='end';killerSave();killerRenderStage();}else killerRenderGame();}
+
+    function killerRenderEnd(){const alive=killerState.players.filter(p=>p.alive);if(alive.length===1){const winner=alive[0];killerWinner.innerHTML=`${winner.name} gagne avec ${winner.kills} élimination(s)!`;}else{const sorted=[...killerState.players].sort((a,b)=>b.kills-a.kills);killerWinner.innerHTML=sorted.map(p=>`${p.name}: ${p.kills}`).join('<br>');}}
+
+    killerNewBtn.addEventListener('click',()=>{killerState={stage:'setup',players:[]};killerSave();killerRenderStage();});
+
+    document.getElementById('killer-btn').addEventListener('click',()=>{
+      setupScreen.classList.add('hidden');
+      gameScreen.classList.add('hidden');
+      if(!killerState||!Array.isArray(killerState.players)||killerState.players.length===0){
+        killerState={stage:'setup',players:[]};
+        killerSave();
+      }
+      killerScreen.classList.remove('killer-hidden');
+      document.body.style.background='#222';
+      killerRenderStage();
+    });
+
+    killerBack.addEventListener('click',()=>{killerScreen.classList.add('killer-hidden');setupScreen.classList.remove('hidden');document.body.style.background='linear-gradient(135deg,#ff7a18,#ffcc00)';});
     })();
   </script>
 </body>
