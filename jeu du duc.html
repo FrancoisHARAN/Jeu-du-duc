@@ -23,6 +23,7 @@
       display: flex;
       flex-direction: column;
       justify-content: center;
+      align-items: center;
       transition: background 0.6s;
       background: linear-gradient(135deg,var(--orange),var(--yellow));
     }
@@ -103,8 +104,27 @@
   margin: 0.5rem 0;
 }
 
-.hidden { 
-  display: none; 
+.hidden {
+  display: none;
+}
+
+.result-screen {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 1rem;
+  background: rgba(0,0,0,0.6);
+  font-size: 1.2rem;
+  text-align: center;
+}
+
+.result-screen .victory {
+  color: #4caf50;
+  font-weight: bold;
+}
+
+.result-screen .defeat {
+  color: #f44336;
+  font-weight: bold;
 }
 
 .question-type {
@@ -332,7 +352,7 @@
           <h3>Choisis un joueur</h3>
           <div id="voteList"></div>
         </div>
-        <div id="eliminationResult" class="hidden"></div>
+        <div id="eliminationResult" class="result-screen hidden"></div>
         <button id="nextRound" class="hidden">➡️</button>
         <button id="newGame" class="hidden">Nouvelle partie</button>
       </div>
@@ -4016,7 +4036,9 @@
       eliminationResult.innerHTML=eliminationMessage;
       const winner=checkVictory();
       if(winner){
-        eliminationResult.innerHTML+=`<br>${winner==='civils'?'Les civils':'Les traitres'} gagnent !`;
+        const resultClass=winner==='civils'?'victory':'defeat';
+        const resultText=winner==='civils'?'Les civils gagnent !':'Les traitres gagnent !';
+        eliminationResult.innerHTML+=`<br><span class="${resultClass}">${resultText}</span>`;
         newGame.classList.remove('hidden');
       }else{
         nextRound.classList.remove('hidden');
@@ -4027,13 +4049,15 @@
     function handleWhiteGuess(){
       const guess=whiteGuessInput.value.trim();
       if(guess && guess.toLowerCase()===currentPair.civil.toLowerCase()){
-        eliminationResult.innerHTML=eliminationMessage+'<br>Mister White a trouvé le mot, il gagne !';
+        eliminationResult.innerHTML=eliminationMessage+'<br><span class="victory">Mister White a trouvé le mot, il gagne !</span>';
         newGame.classList.remove('hidden');
       }else{
-        eliminationResult.innerHTML=eliminationMessage+'<br>Mauvaise réponse.';
+        eliminationResult.innerHTML=eliminationMessage+'<br><span class="defeat">Mauvaise réponse.</span>';
         const winner=checkVictory();
         if(winner){
-          eliminationResult.innerHTML+=`<br>${winner==='civils'?'Les civils':'Les traitres'} gagnent !`;
+          const resultClass=winner==='civils'?'victory':'defeat';
+          const resultText=winner==='civils'?'Les civils gagnent !':'Les traitres gagnent !';
+          eliminationResult.innerHTML+=`<br><span class="${resultClass}">${resultText}</span>`;
           newGame.classList.remove('hidden');
         }else{
           nextRound.classList.remove('hidden');
