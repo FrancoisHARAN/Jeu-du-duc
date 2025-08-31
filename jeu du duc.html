@@ -4495,10 +4495,50 @@ timeupStartRound.addEventListener('click',()=>{
   timeupRender();
 });
 
-        timeupRoundTitle.textContent=`Manche ${timeupState.round} - ${rules[timeupState.round]}`;
-        timeupTurnInfo.textContent=`${p.name} (Équipe ${p.team})`;
-        timeupCardDisplay.textContent=timeupState.currentCard||'';
-      }
+// BEGIN timeup-round-helpers
+const shuffle = typeof window.shuffle === 'function'
+  ? window.shuffle
+  : arr => arr.sort(() => Math.random() - 0.5);
+
+if (typeof window.timeupRenderIntro !== 'function') {
+  window.timeupRenderIntro = function () {
+    const texts = {1:'Décris librement',2:'Un seul mot',3:'Mime seulement'};
+    timeupIntroTitle.textContent = `Manche ${timeupState.round}`;
+    timeupIntroText.textContent = texts[timeupState.round];
+  };
+}
+
+if (typeof window.timeupStartTurn !== 'function') {
+  window.timeupStartTurn = function () {
+    timeupTimer = 30;
+    timeupTimerEl.textContent = timeupTimer;
+    clearInterval(timeupInterval);
+    timeupInterval = setInterval(() => {
+      timeupTimer--;
+      timeupTimerEl.textContent = timeupTimer;
+      if (timeupTimer <= 0) timeupEndTurn();
+    }, 1000);
+    timeupNextCard();
+    timeupRenderRound();
+  };
+}
+
+if (typeof window.timeupRenderRound !== 'function') {
+  window.timeupRenderRound = function () {
+    const p = timeupState.players[timeupState.currentPlayer];
+    const rules = {1:'Décrire librement',2:'Un seul mot',3:'Mime'};
+    timeupRoundTitle.textContent = `Manche ${timeupState.round} - ${rules[timeupState.round]}`;
+    timeupTurnInfo.textContent = `${p.name} (Équipe ${p.team})`;
+    timeupCardDisplay.textContent = timeupState.currentCard || '';
+  };
+}
+
+timeupIntroStart.addEventListener('click', () => {
+  timeupState.stage = 'round';
+  timeupSave();
+  timeupStartTurn();
+});
+// END timeup-round-helpers
 
       function timeupNextCard(){
         if(timeupState.deck.length===0){timeupEndRound();return;}
