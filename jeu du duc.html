@@ -238,11 +238,6 @@
     #undercover h1{cursor:pointer;}
     #secretWord{font-size:2.5rem;font-weight:bold;margin-top:1rem;}
 
-    /* Styles pour Blanc-Manger Coco */
-    #bmc{font-family:Arial,sans-serif;padding:1rem;text-align:center;background:#222;color:#fff;}
-    #bmc input,#bmc textarea,#bmc button{padding:0.5rem;margin:0.2rem;border-radius:0.5rem;border:none;}
-    #bmc button{cursor:pointer;background:#ffcc00;color:#222;font-weight:bold;}
-
     /* Mise en forme de la zone de vote */
     #voteList {
       display: grid;
@@ -349,7 +344,6 @@
     <div id="otherGames" class="other-games">
       <h2>Autres jeux</h2>
       <button id="undercoverBtn">Undercover</button>
-      <button id="bmcBtn">Blanc-Manger Coco</button>
       <button id="killer-btn">Killer</button>
       <button id="timeup-btn">Time's Up</button>
     </div>
@@ -404,25 +398,6 @@
         <input id="whiteGuessInput" placeholder="Mot" />
         <button id="whiteGuessSubmit">Valider</button>
       </div>
-  </div>
-
-  <div id="bmc" class="hidden">
-    <img src="icon.png" alt="Retour" id="backBmc" class="logo">
-    <h1>Blanc-Manger Coco</h1>
-    <div id="bmcSetup">
-      <p>Joueurs (séparés par des virgules) :</p>
-      <textarea id="bmcNames" placeholder="Alice,Bob,Charlie"></textarea>
-      <p>Score cible :</p>
-      <input type="number" id="bmcTarget" min="1" value="5">
-      <button id="bmcStart">Démarrer</button>
-    </div>
-    <div id="bmcPlay" class="hidden">
-      <h2 id="bmcRolePrompt"></h2>
-      <p id="bmcQuestion"></p>
-      <div id="bmcChoices"></div>
-      <div id="bmcScores"></div>
-      <button id="bmcNextRound" class="hidden">Manche suivante</button>
-    </div>
   </div>
 
   <div id="killer-screen" class="killer-hidden">
@@ -518,7 +493,7 @@
     // -------------------------
     // MOTEUR DU JEU
     // -------------------------
-    const setupScreen=document.getElementById("setup"),gameScreen=document.getElementById("game"),playerInput=document.getElementById("playerInput"),playerList=document.getElementById("playerList"),currentQuestionEl=document.getElementById("currentQuestion"),typeBox=document.getElementById("typeBox"),answerBox=document.getElementById("answerBox"),showAnswerBtn=document.getElementById("showAnswerBtn"),answerText=document.getElementById("answerText"),backLogo=document.getElementById("backLogo"),customWeightsBox=document.getElementById("customWeights"),undercoverScreen=document.getElementById("undercover"),backUndercover=document.getElementById("backUndercover"),undercoverTitle=document.getElementById("undercoverTitle"),bmcScreen=document.getElementById("bmc"),backBmc=document.getElementById("backBmc"),bmcBtn=document.getElementById("bmcBtn"),bmcSetup=document.getElementById("bmcSetup"),bmcNames=document.getElementById("bmcNames"),bmcTarget=document.getElementById("bmcTarget"),bmcStart=document.getElementById("bmcStart"),bmcPlay=document.getElementById("bmcPlay"),bmcRolePrompt=document.getElementById("bmcRolePrompt"),bmcQuestion=document.getElementById("bmcQuestion"),bmcChoices=document.getElementById("bmcChoices"),bmcScores=document.getElementById("bmcScores"),bmcNextRound=document.getElementById("bmcNextRound");
+    const setupScreen=document.getElementById("setup"),gameScreen=document.getElementById("game"),playerInput=document.getElementById("playerInput"),playerList=document.getElementById("playerList"),currentQuestionEl=document.getElementById("currentQuestion"),typeBox=document.getElementById("typeBox"),answerBox=document.getElementById("answerBox"),showAnswerBtn=document.getElementById("showAnswerBtn"),answerText=document.getElementById("answerText"),backLogo=document.getElementById("backLogo"),customWeightsBox=document.getElementById("customWeights"),undercoverScreen=document.getElementById("undercover"),backUndercover=document.getElementById("backUndercover"),undercoverTitle=document.getElementById("undercoverTitle");
     const sliders={debut:document.getElementById("weight-debut"),hardcore:document.getElementById("weight-hardcore"),alcool:document.getElementById("weight-alcool"),culture:document.getElementById("weight-culture")};
 
     function addPlayer(){const name=playerInput.value.trim();if(name&&players.length<30){players.push(name);renderPlayerList();playerInput.value="";playerInput.focus();}}
@@ -587,8 +562,6 @@
     document.getElementById("undercoverBtn").addEventListener("click",()=>{setupScreen.classList.add("hidden");gameScreen.classList.add("hidden");undercoverScreen.classList.remove("hidden");document.body.style.background="#222";});
     backUndercover.addEventListener("click",()=>{undercoverScreen.classList.add("hidden");setupScreen.classList.remove("hidden");document.body.style.background="linear-gradient(135deg,#ff7a18,#ffcc00)";});
     undercoverTitle.addEventListener("click",()=>{document.getElementById("config").classList.remove("hidden");document.getElementById("reveal").classList.add("hidden");document.getElementById("play").classList.add("hidden");});
-    bmcBtn.addEventListener("click",()=>{setupScreen.classList.add("hidden");gameScreen.classList.add("hidden");bmcScreen.classList.remove("hidden");document.body.style.background="#222";});
-    backBmc.addEventListener("click",()=>{bmcScreen.classList.add("hidden");setupScreen.classList.remove("hidden");document.body.style.background="linear-gradient(135deg,#ff7a18,#ffcc00)";});
     gameScreen.addEventListener("click",nextQuestion);
     playerInput.addEventListener("keyup",e=>{if(e.key==="Enter")addPlayer();});
     document.querySelector('.mode-card[data-mode="debut"]').classList.add("active");
@@ -4234,92 +4207,6 @@
       return null;
     }
 
-    // ----- Blanc-Manger Coco -----
-    const bmcPrompts=[
-      "Hier, j’ai découvert que mon colocataire avait ____ dans son placard.",
-      "Les dinosaures ont disparu à cause de ____.",
-      "C’est toujours une bonne idée de commencer une réunion par ____.",
-      "Le secret de la longévité : ____."
-    ];
-    const bmcResponses=[
-      "un lama gonflable",
-      "trois tonnes de mayonnaise",
-      "un slip léopard",
-      "des spores extraterrestres",
-      "une collection de chaussettes dépareillées",
-      "une chanson de Céline Dion",
-      "un débat politique de 8 heures",
-      "une baguette magique"
-    ];
-    const bmcState={players:[],masterIndex:0,target:5,prompt:'',submissions:[],chooserOrder:[],chooserPos:0,gameOver:false};
-    function drawBmcCard(){return bmcResponses[Math.floor(Math.random()*bmcResponses.length)];}
-    bmcStart.addEventListener('click',()=>{
-      const names=bmcNames.value.split(',').map(n=>n.trim()).filter(Boolean);
-      bmcState.players=names.map(n=>({name:n,hand:[],score:0}));
-      bmcState.target=Number(bmcTarget.value)||5;
-      bmcState.players.forEach(p=>{for(let i=0;i<5;i++)p.hand.push(drawBmcCard());});
-      bmcState.masterIndex=0;
-      bmcSetup.classList.add('hidden');
-      bmcPlay.classList.remove('hidden');
-      updateBmcScores();
-      startBmcRound();
-    });
-    function startBmcRound(){
-      bmcState.prompt=bmcPrompts[Math.floor(Math.random()*bmcPrompts.length)];
-      bmcState.submissions=[];
-      bmcState.chooserOrder=[];
-      for(let i=0;i<bmcState.players.length;i++)if(i!==bmcState.masterIndex)bmcState.chooserOrder.push(i);
-      bmcState.chooserPos=0;
-      askBmcPlayer();
-    }
-    function askBmcPlayer(){
-      const idx=bmcState.chooserOrder[bmcState.chooserPos];
-      const player=bmcState.players[idx];
-      bmcRolePrompt.textContent=`À ${player.name} de jouer`;
-      bmcQuestion.textContent=bmcState.prompt;
-      bmcChoices.innerHTML='';
-      player.hand.forEach((card,i)=>{
-        const btn=document.createElement('button');
-        btn.textContent=card;
-        btn.addEventListener('click',()=>{
-          bmcState.submissions.push({playerIdx:idx,text:card});
-          player.hand.splice(i,1);
-          player.hand.push(drawBmcCard());
-          bmcState.chooserPos++;
-          if(bmcState.chooserPos<bmcState.chooserOrder.length)askBmcPlayer();else askBmcMaster();
-        });
-        bmcChoices.appendChild(btn);
-      });
-    }
-    function askBmcMaster(){
-      const master=bmcState.players[bmcState.masterIndex];
-      bmcRolePrompt.textContent=`Maître du tour : ${master.name}`;
-      bmcQuestion.textContent=bmcState.prompt;
-      bmcChoices.innerHTML='';
-      const options=[...bmcState.submissions].sort(()=>Math.random()-0.5);
-      options.forEach(sub=>{
-        const btn=document.createElement('button');
-        btn.innerHTML=bmcState.prompt.replace('____',sub.text);
-        btn.addEventListener('click',()=>{
-          const winner=bmcState.players[sub.playerIdx];
-          winner.score++;
-          bmcRolePrompt.textContent=`${winner.name} gagne cette manche !`;
-          bmcQuestion.textContent='';
-          bmcChoices.innerHTML='';
-          updateBmcScores();
-          if(winner.score>=bmcState.target){bmcRolePrompt.textContent=`${winner.name} remporte la partie !`;bmcNextRound.textContent='Rejouer';bmcState.gameOver=true;}
-          else{bmcNextRound.textContent='Manche suivante';bmcState.gameOver=false;}
-          bmcNextRound.classList.remove('hidden');
-        });
-        bmcChoices.appendChild(btn);
-      });
-    }
-    function updateBmcScores(){bmcScores.innerHTML=bmcState.players.map(p=>`${p.name}: ${p.score}`).join('<br>');}
-    bmcNextRound.addEventListener('click',()=>{
-      if(bmcState.gameOver){bmcPlay.classList.add('hidden');bmcSetup.classList.remove('hidden');bmcNextRound.classList.add('hidden');}
-      else{bmcNextRound.classList.add('hidden');bmcState.masterIndex=(bmcState.masterIndex+1)%bmcState.players.length;startBmcRound();}
-    });
-
     // ----- Killer game -----
     const killerScreen=document.getElementById('killer-screen');
     const killerBack=document.getElementById('killer-back');
@@ -4697,7 +4584,6 @@ timeupState = {
         gameScreen.classList.add('hidden');
         if(typeof killerScreen!=='undefined')killerScreen.classList.add('killer-hidden');
         if(typeof undercoverScreen!=='undefined')undercoverScreen.classList.add('hidden');
-        if(typeof bmcScreen!=='undefined')bmcScreen.classList.add('hidden');
         timeupScreen.classList.remove('timeup-hidden');
         document.body.style.background='#222';
         timeupRender();
