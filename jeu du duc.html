@@ -4429,9 +4429,10 @@
     })();
 
     (function(){
-      const timeupScreen=document.getElementById('timeup-game');
-      const timeupBack=document.getElementById('timeup-back');
-      const timeupSetup=document.getElementById('timeup-setup');
+        const timeupScreen=document.getElementById('timeup-game');
+        const timeupBack=document.getElementById('timeup-back');
+        const timeupBtn=document.getElementById('timeup-btn');
+        const timeupSetup=document.getElementById('timeup-setup');
 // Sections principales
 const timeupTeams=document.getElementById('timeup-teams');
 const timeupCards=document.getElementById('timeup-cards');
@@ -4692,16 +4693,20 @@ timeupState = {
         timeupRender();
       });
 
-      document.getElementById('timeup-btn').addEventListener('click',()=>{
-        setupScreen.classList.add('hidden');
-        gameScreen.classList.add('hidden');
-        if(typeof killerScreen!=='undefined')killerScreen.classList.add('killer-hidden');
-        if(typeof undercoverScreen!=='undefined')undercoverScreen.classList.add('hidden');
-        if(typeof bmcScreen!=='undefined')bmcScreen.classList.add('hidden');
-        timeupScreen.classList.remove('timeup-hidden');
-        document.body.style.background='#222';
-        timeupRender();
-      });
+      // BEGIN timeup-button-guard
+      if(timeupBtn){
+        timeupBtn.addEventListener('click',()=>{
+          setupScreen.classList.add('hidden');
+          gameScreen.classList.add('hidden');
+          if(typeof killerScreen!=='undefined')killerScreen.classList.add('killer-hidden');
+          if(typeof undercoverScreen!=='undefined')undercoverScreen.classList.add('hidden');
+          if(typeof bmcScreen!=='undefined')bmcScreen.classList.add('hidden');
+          timeupScreen.classList.remove('timeup-hidden');
+          document.body.style.background='#222';
+          timeupRender();
+        });
+      }
+      // END timeup-button-guard
 
       timeupBack.addEventListener('click',()=>{
         timeupScreen.classList.add('timeup-hidden');
