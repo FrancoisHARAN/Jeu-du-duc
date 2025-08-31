@@ -4429,9 +4429,10 @@
     })();
 
     (function(){
-      const timeupScreen=document.getElementById('timeup-game');
-      const timeupBack=document.getElementById('timeup-back');
-      const timeupSetup=document.getElementById('timeup-setup');
+        const timeupScreen=document.getElementById('timeup-game');
+        const timeupBack=document.getElementById('timeup-back');
+        const timeupBtn=document.getElementById('timeup-btn');
+        const timeupSetup=document.getElementById('timeup-setup');
 // Sections principales
 const timeupTeams=document.getElementById('timeup-teams');
 const timeupCards=document.getElementById('timeup-cards');
@@ -4607,10 +4608,50 @@ timeupStartRound.addEventListener('click',()=>{
   timeupRender();
 });
 
-        timeupRoundTitle.textContent=`Manche ${timeupState.round} - ${rules[timeupState.round]}`;
-        timeupTurnInfo.textContent=`${p.name} (Équipe ${p.team})`;
-        timeupCardDisplay.textContent=timeupState.currentCard||'';
-      }
+// BEGIN timeup-round-helpers
+const shuffle = typeof window.shuffle === 'function'
+  ? window.shuffle
+  : arr => arr.sort(() => Math.random() - 0.5);
+
+if (typeof window.timeupRenderIntro !== 'function') {
+  window.timeupRenderIntro = function () {
+    const texts = {1:'Décris librement',2:'Un seul mot',3:'Mime seulement'};
+    timeupIntroTitle.textContent = `Manche ${timeupState.round}`;
+    timeupIntroText.textContent = texts[timeupState.round];
+  };
+}
+
+if (typeof window.timeupStartTurn !== 'function') {
+  window.timeupStartTurn = function () {
+    timeupTimer = 30;
+    timeupTimerEl.textContent = timeupTimer;
+    clearInterval(timeupInterval);
+    timeupInterval = setInterval(() => {
+      timeupTimer--;
+      timeupTimerEl.textContent = timeupTimer;
+      if (timeupTimer <= 0) timeupEndTurn();
+    }, 1000);
+    timeupNextCard();
+    timeupRenderRound();
+  };
+}
+
+if (typeof window.timeupRenderRound !== 'function') {
+  window.timeupRenderRound = function () {
+    const p = timeupState.players[timeupState.currentPlayer];
+    const rules = {1:'Décrire librement',2:'Un seul mot',3:'Mime'};
+    timeupRoundTitle.textContent = `Manche ${timeupState.round} - ${rules[timeupState.round]}`;
+    timeupTurnInfo.textContent = `${p.name} (Équipe ${p.team})`;
+    timeupCardDisplay.textContent = timeupState.currentCard || '';
+  };
+}
+
+timeupIntroStart.addEventListener('click', () => {
+  timeupState.stage = 'round';
+  timeupSave();
+  timeupStartTurn();
+});
+// END timeup-round-helpers
 
       function timeupNextCard(){
         if(timeupState.deck.length===0){timeupEndRound();return;}
@@ -4692,16 +4733,20 @@ timeupState = {
         timeupRender();
       });
 
-      document.getElementById('timeup-btn').addEventListener('click',()=>{
-        setupScreen.classList.add('hidden');
-        gameScreen.classList.add('hidden');
-        if(typeof killerScreen!=='undefined')killerScreen.classList.add('killer-hidden');
-        if(typeof undercoverScreen!=='undefined')undercoverScreen.classList.add('hidden');
-        if(typeof bmcScreen!=='undefined')bmcScreen.classList.add('hidden');
-        timeupScreen.classList.remove('timeup-hidden');
-        document.body.style.background='#222';
-        timeupRender();
-      });
+      // BEGIN timeup-button-guard
+      if(timeupBtn){
+        timeupBtn.addEventListener('click',()=>{
+          setupScreen.classList.add('hidden');
+          gameScreen.classList.add('hidden');
+          if(typeof killerScreen!=='undefined')killerScreen.classList.add('killer-hidden');
+          if(typeof undercoverScreen!=='undefined')undercoverScreen.classList.add('hidden');
+          if(typeof bmcScreen!=='undefined')bmcScreen.classList.add('hidden');
+          timeupScreen.classList.remove('timeup-hidden');
+          document.body.style.background='#222';
+          timeupRender();
+        });
+      }
+      // END timeup-button-guard
 
       timeupBack.addEventListener('click',()=>{
         timeupScreen.classList.add('timeup-hidden');
