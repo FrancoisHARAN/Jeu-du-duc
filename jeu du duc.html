@@ -278,10 +278,32 @@
     #killer-secret{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;justify-content:center;align-items:center;}
 
     /* Time's Up game styles */
-    #timeup-game{padding:1rem;text-align:center;background:#222;color:#fff;}
-    .timeup-hidden{display:none;}
-    .timeup-section{background:rgba(0,0,0,0.5);padding:1.5rem;border-radius:1.5rem;width:90%;max-width:600px;margin:auto;box-shadow:0 8px 20px rgba(0,0,0,0.5);backdrop-filter:blur(6px);}
-    #timeup-timer{font-size:2rem;margin:1rem;}
+    #timeup-game {
+      padding: 1rem;
+      text-align: center;
+      background: #222;
+      color: #fff;
+    }
+
+    .timeup-hidden {
+      display: none;
+    }
+
+    .timeup-section {
+      background: rgba(0, 0, 0, 0.5);
+      padding: 1.5rem;
+      border-radius: 1.5rem;
+      width: 90%;
+      max-width: 600px;
+      margin: auto;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(6px);
+    }
+
+    #timeup-timer {
+      font-size: 2rem;
+      margin: 1rem;
+    }
 
   </style>
 </head>
@@ -4425,9 +4447,48 @@
       const timeupFinalScores=document.getElementById('timeup-final-scores');
       const timeupNewGame=document.getElementById('timeup-new-game');
 
-      const TIMEUP_DEFAULT_CARDS=[
-        'Charles de Gaulle','Pokémon','La Tour Eiffel','Albert Einstein','Le Petit Prince','Mickey Mouse','La Joconde','Le Père Noël','Napoléon','Spider-Man','Harry Potter','Beyoncé','La Statue de la Liberté','Shakespeare','Leonardo DiCaprio','Le Titanic','Star Wars','Madonna','Michael Jackson','Le Mont Everest','Barack Obama','Le fromage','Tour de France','Neil Armstrong','Pikachu','Kung-fu','Jules César','Pablo Picasso','Cristiano Ronaldo','BMW','Facebook','Instagram','Minecraft','La machine à café','Balle de tennis','Ballon de foot','Le Soleil','La Lune','La bicyclette','Le chocolat'
-      ];
+        const TIMEUP_DEFAULT_CARDS = [
+          'Charles de Gaulle',
+          'Pokémon',
+          'La Tour Eiffel',
+          'Albert Einstein',
+          'Le Petit Prince',
+          'Mickey Mouse',
+          'La Joconde',
+          'Le Père Noël',
+          'Napoléon',
+          'Spider-Man',
+          'Harry Potter',
+          'Beyoncé',
+          'La Statue de la Liberté',
+          'Shakespeare',
+          'Leonardo DiCaprio',
+          'Le Titanic',
+          'Star Wars',
+          'Madonna',
+          'Michael Jackson',
+          'Le Mont Everest',
+          'Barack Obama',
+          'Le fromage',
+          'Tour de France',
+          'Neil Armstrong',
+          'Pikachu',
+          'Kung-fu',
+          'Jules César',
+          'Pablo Picasso',
+          'Cristiano Ronaldo',
+          'BMW',
+          'Facebook',
+          'Instagram',
+          'Minecraft',
+          'La machine à café',
+          'Balle de tennis',
+          'Ballon de foot',
+          'Le Soleil',
+          'La Lune',
+          'La bicyclette',
+          'Le chocolat'
+        ];
 
       let timeupState=JSON.parse(localStorage.getItem('timeup.state')||'{"stage":"setup","players":[],"cards":[],"round":1,"deck":[],"currentPlayer":0,"currentCard":null,"scores":{},"startTeam":1}');
       let timeupTimer=30;
@@ -4499,7 +4560,11 @@
       function shuffle(arr){return arr.sort(()=>Math.random()-0.5);}
 
       function timeupRenderIntro(){
-        const texts={1:'Décris librement',2:'Un seul mot',3:'Mime seulement'};
+        const texts = {
+          1: 'Décris librement',
+          2: 'Un seul mot',
+          3: 'Mime seulement'
+        };
         timeupIntroTitle.textContent=`Manche ${timeupState.round}`;
         timeupIntroText.textContent=texts[timeupState.round];
       }
@@ -4517,7 +4582,11 @@
 
       function timeupRenderRound(){
         const p=timeupState.players[timeupState.currentPlayer];
-        const rules={1:'Décrire librement',2:'Un seul mot',3:'Mime'};
+        const rules = {
+          1: 'Décrire librement',
+          2: 'Un seul mot',
+          3: 'Mime'
+        };
         timeupRoundTitle.textContent=`Manche ${timeupState.round} - ${rules[timeupState.round]}`;
         timeupTurnInfo.textContent=`${p.name} (Équipe ${p.team})`;
         timeupCardDisplay.textContent=timeupState.currentCard||'';
