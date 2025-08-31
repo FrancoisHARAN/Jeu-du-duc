@@ -510,6 +510,9 @@
     <div id="timeup-intro" class="timeup-section timeup-hidden">
       <h2 id="timeup-intro-title"></h2>
       <p id="timeup-intro-text"></p>
+      <!-- BEGIN timeup-intro-team-display -->
+      <p id="timeup-intro-team"></p>
+      <!-- END timeup-intro-team-display -->
       <button id="timeup-intro-start">Commencer</button>
     </div>
     <div id="timeup-round" class="timeup-section timeup-hidden">
@@ -4491,6 +4494,9 @@ const timeupCardCount=document.getElementById('timeup-card-count');
       const timeupStartRound=document.getElementById('timeup-start-round');
       const timeupIntroTitle=document.getElementById('timeup-intro-title');
       const timeupIntroText=document.getElementById('timeup-intro-text');
+      // BEGIN timeup-intro-team-elem
+      const timeupIntroTeam=document.getElementById('timeup-intro-team');
+      // END timeup-intro-team-elem
       const timeupIntroStart=document.getElementById('timeup-intro-start');
       const timeupRoundTitle=document.getElementById('timeup-round-title');
       const timeupTurnInfo=document.getElementById('timeup-turn-info');
@@ -4694,6 +4700,12 @@ if (typeof window.timeupRenderIntro !== 'function') {
     const texts = {1:'Décris librement',2:'Un seul mot',3:'Mime seulement'};
     timeupIntroTitle.textContent = `Manche ${timeupState.round}`;
     timeupIntroText.textContent = texts[timeupState.round];
+    // BEGIN timeup-intro-team-render
+    if(timeupIntroTeam){
+      const p=timeupState.players[timeupState.currentPlayer];
+      timeupIntroTeam.textContent = `Équipe ${p.team} commence`;
+    }
+    // END timeup-intro-team-render
   };
 }
 
