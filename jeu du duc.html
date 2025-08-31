@@ -483,10 +483,17 @@
         <button id="timeup-add-player">Ajouter</button>
       </div>
   <div id="timeup-player-list"></div>
-<button id="timeup-start-teams" disabled>Suivant</button>
-<!-- BEGIN timeup-min-players -->
-<p id="timeup-min-players" style="color:red">Minimum 4 joueurs</p>
-<!-- END timeup-min-players -->
+  <!-- BEGIN timeup-timer-select -->
+  <select id="timeup-timer-select">
+    <option value="30">30s</option>
+    <option value="45" selected>45s</option>
+    <option value="60">60s</option>
+  </select>
+  <!-- END timeup-timer-select -->
+  <button id="timeup-start-teams" disabled>Suivant</button>
+  <!-- BEGIN timeup-min-players -->
+  <p id="timeup-min-players" style="color:red">Minimum 4 joueurs</p>
+  <!-- END timeup-min-players -->
 </div>
 
 <!-- Choix des équipes -->
@@ -518,7 +525,9 @@
     <div id="timeup-round" class="timeup-section timeup-hidden">
       <h2 id="timeup-round-title"></h2>
       <p id="timeup-turn-info"></p>
-      <div id="timeup-timer">30</div>
+      <!-- BEGIN timeup-timer-default -->
+      <div id="timeup-timer">45</div>
+      <!-- END timeup-timer-default -->
       <div id="timeup-card-display"></div>
       <!-- BEGIN timeup-round-buttons -->
       <div id="timeup-round-buttons">
@@ -4619,6 +4628,9 @@ const timeupEnd=document.getElementById('timeup-end');
 const timeupPlayerInput=document.getElementById('timeup-player-input');
 const timeupAddPlayer=document.getElementById('timeup-add-player');
 const timeupPlayerList=document.getElementById('timeup-player-list');
+// BEGIN timeup-timer-select-elem
+const timeupTimerSelect=document.getElementById('timeup-timer-select');
+// END timeup-timer-select-elem
 // BEGIN timeup-min-players
 const timeupMinPlayers=document.getElementById('timeup-min-players');
 // END timeup-min-players
@@ -4672,12 +4684,13 @@ const TIMEUP_DEFAULT_CARDS = [
   // END timeup-card-db
 ];
 
-let timeupState = JSON.parse(localStorage.getItem('timeup.state') || 
-  '{"stage":"setup","players":[],"cards":[],"round":1,"deck":[],"currentPlayer":0,"currentCard":null,"scores":{},"startTeam":1}'
-);
-
-let timeupTimer = 30;
+// BEGIN timeup-state-init
+let timeupState = window.timeupState || JSON.parse(localStorage.getItem('timeup.state') || '{}');
+timeupState = Object.assign({stage:'setup',players:[],cards:[],round:1,deck:[],currentPlayer:0,currentCard:null,scores:{1:0,2:0},startTeam:1,turnSeconds:45}, timeupState);
+window.timeupState = timeupState;
+let timeupTimer = timeupState.turnSeconds;
 let timeupInterval = null;
+// END timeup-state-init
 
 if(typeof window.timeupReset!=='function'){
   // BEGIN timeup-reset-fn
@@ -4687,7 +4700,7 @@ if(typeof window.timeupReset!=='function'){
     document.body.style.background='linear-gradient(135deg,#ff7a18,#ffcc00)';
     // BEGIN timeup-reset-on-exit
     localStorage.removeItem('timeup.state');
-    timeupState={stage:'setup',players:[],cards:[],round:1,deck:[],currentPlayer:0,currentCard:null,scores:{},startTeam:1};
+    timeupState={stage:'setup',players:[],cards:[],round:1,deck:[],currentPlayer:0,currentCard:null,scores:{1:0,2:0},startTeam:1,turnSeconds:45};
     // END timeup-reset-on-exit
   };
   // END timeup-reset-fn
@@ -4737,6 +4750,11 @@ function timeupRenderPlayers(){
     timeupMinPlayers.style.display = timeupState.players.length < 4 ? 'block' : 'none';
   }
   // END timeup-min-players
+  // BEGIN timeup-timer-select-render
+  if(timeupTimerSelect){
+    timeupTimerSelect.value = String(timeupState.turnSeconds);
+  }
+  // END timeup-timer-select-render
 }
 
 function timeupAddPlayerFn(){
@@ -4749,11 +4767,17 @@ function timeupAddPlayerFn(){
   timeupSave();
   timeupRenderPlayers();
 }
-timeupAddPlayer.addEventListener('click', timeupAddPlayerFn);
-timeupPlayerInput.addEventListener('keyup', e=>{if(e.key==='Enter')timeupAddPlayerFn();});
+if(timeupAddPlayer){timeupAddPlayer.addEventListener('click', timeupAddPlayerFn);}
+if(timeupPlayerInput){timeupPlayerInput.addEventListener('keyup', e=>{if(e.key==='Enter')timeupAddPlayerFn();});}
+// BEGIN timeup-timer-select-listener
+if(timeupTimerSelect)timeupTimerSelect.addEventListener('change',e=>{
+  timeupState.turnSeconds=parseInt(e.target.value,10);
+  timeupSave();
+});
+// END timeup-timer-select-listener
 
 // --- Étape équipes
-timeupStartTeams.addEventListener('click',()=>{
+if(timeupStartTeams)timeupStartTeams.addEventListener('click',()=>{
   if(timeupState.players.length<4) return;
   // BEGIN timeup-random-teams
   const order = shuffle(timeupState.players.map((_,i)=>i));
@@ -4777,11 +4801,13 @@ function timeupRenderTeams(){
 
 // --- Étape cartes
 const TIMEUP_CARDS_PER_PLAYER=3;
-timeupStartCards.addEventListener('click',()=>{
+if(timeupStartCards)timeupStartCards.addEventListener('click',()=>{
   if(timeupState.players.length<4)return;
   // BEGIN timeup-auto-cards
   const total=timeupState.players.length*TIMEUP_CARDS_PER_PLAYER;
-  timeupState.cards = shuffle([...TIMEUP_DEFAULT_CARDS]).slice(0,total);
+  if(timeupState.cards.length<total){
+    timeupState.cards = shuffle([...TIMEUP_DEFAULT_CARDS]).slice(0,total);
+  }
   timeupState.round=1;
   timeupState.scores={1:0,2:0};
   timeupState.deck=shuffle([...timeupState.cards]);
@@ -4808,30 +4834,28 @@ function timeupAddCardFn(){
   timeupSave();
   timeupRenderCards();
 }
-timeupAddCard.addEventListener('click',timeupAddCardFn);
-timeupCardInput.addEventListener('keyup',e=>{if(e.key==='Enter')timeupAddCardFn();});
+if(timeupAddCard){timeupAddCard.addEventListener('click',timeupAddCardFn);}
+if(timeupCardInput){timeupCardInput.addEventListener('keyup',e=>{if(e.key==='Enter')timeupAddCardFn();});}
 
 // --- Lancer la partie
-timeupStartRound.addEventListener('click',()=>{
+// BEGIN timeup-start-round
+if(timeupStartRound)timeupStartRound.addEventListener('click',()=>{
   timeupState.round=1;
   timeupState.scores={1:0,2:0};
-
-  // si pas assez de cartes → compléter avec les défauts
   const total=timeupState.players.length*TIMEUP_CARDS_PER_PLAYER;
-  let deck = [...timeupState.cards];
-  if(deck.length<total){
-    const missing=total-deck.length;
-    deck=[...deck,...shuffle(TIMEUP_DEFAULT_CARDS).slice(0,missing)];
+  if(timeupState.cards.length<total){
+    const missing=total-timeupState.cards.length;
+    const extras=shuffle([...TIMEUP_DEFAULT_CARDS]).slice(0,missing);
+    timeupState.cards=[...timeupState.cards,...extras];
   }
-  timeupState.deck=shuffle(deck);
-
-  const startIndex = timeupState.players.findIndex(p=>p.team===timeupState.startTeam);
-  timeupState.currentPlayer = startIndex===-1?0:startIndex;
-
+  timeupState.deck=shuffle([...timeupState.cards]);
+  const startIndex=timeupState.players.findIndex(p=>p.team===timeupState.startTeam);
+  timeupState.currentPlayer=startIndex===-1?0:startIndex;
   timeupState.stage='intro';
   timeupSave();
   timeupRender();
 });
+// END timeup-start-round
 
 // BEGIN timeup-round-helpers
 const shuffle = typeof window.shuffle === 'function'
@@ -4854,8 +4878,10 @@ if (typeof window.timeupRenderIntro !== 'function') {
 
 if (typeof window.timeupStartTurn !== 'function') {
   window.timeupStartTurn = function () {
-    timeupTimer = 30;
+    // BEGIN timeup-turnseconds
+    timeupTimer = timeupState.turnSeconds;
     timeupTimerEl.textContent = timeupTimer;
+    // END timeup-turnseconds
     clearInterval(timeupInterval);
     timeupInterval = setInterval(() => {
       timeupTimer--;
@@ -4877,7 +4903,7 @@ if (typeof window.timeupRenderRound !== 'function') {
   };
 }
 
-timeupIntroStart.addEventListener('click', () => {
+if(timeupIntroStart)timeupIntroStart.addEventListener('click', () => {
   timeupState.stage = 'round';
   timeupSave();
   timeupStartTurn();
@@ -4900,22 +4926,22 @@ timeupIntroStart.addEventListener('click', () => {
         timeupStartTurn();
       }
 
-      timeupValidBtn.addEventListener('click',()=>{
+      if(timeupValidBtn){timeupValidBtn.addEventListener('click',()=>{
         if(!timeupState.currentCard)return;
         const team=timeupState.players[timeupState.currentPlayer].team;
         timeupState.scores[team]=(timeupState.scores[team]||0)+1;
         timeupState.currentCard=null;
         timeupSave();
         timeupNextCard();
-      });
+      });}
 
-      timeupPassBtn.addEventListener('click',()=>{
+      if(timeupPassBtn){timeupPassBtn.addEventListener('click',()=>{
         if(!timeupState.currentCard)return;
         timeupState.deck.unshift(timeupState.currentCard);
         timeupState.currentCard=null;
         timeupSave();
         timeupNextCard();
-      });
+      });}
 
       function timeupEndRound(){
         clearInterval(timeupInterval);
@@ -4930,10 +4956,15 @@ timeupIntroStart.addEventListener('click', () => {
         timeupNextRound.textContent=timeupState.round<3?'Manche suivante':'Voir les résultats';
       }
 
-      timeupNextRound.addEventListener('click',()=>{
+      if(timeupNextRound){timeupNextRound.addEventListener('click',()=>{
         if(timeupState.round<3){
           timeupState.round++;
+          // BEGIN timeup-next-round-setup
+          timeupState.startTeam = timeupState.startTeam===1?2:1;
           timeupState.deck=shuffle([...timeupState.cards]);
+          const startIndex=timeupState.players.findIndex(p=>p.team===timeupState.startTeam);
+          timeupState.currentPlayer=startIndex===-1?0:startIndex;
+          // END timeup-next-round-setup
           timeupState.stage='intro';
           timeupSave();
           timeupRender();
@@ -4942,13 +4973,13 @@ timeupIntroStart.addEventListener('click', () => {
           timeupSave();
           timeupRender();
         }
-      });
+      });}
 
       function timeupRenderEnd(){
         timeupFinalScores.innerHTML=`Équipe 1: ${timeupState.scores[1]||0}<br>Équipe 2: ${timeupState.scores[2]||0}`;
       }
 
-      timeupNewGame.addEventListener('click',()=>{
+      if(timeupNewGame)timeupNewGame.addEventListener('click',()=>{
 timeupState = {
   stage: 'setup',
   players: [],
@@ -4957,16 +4988,16 @@ timeupState = {
   deck: [],
   currentPlayer: 0,
   currentCard: null,
-  scores: {},
-  startTeam: 1
+  scores: {1:0,2:0},
+  startTeam: 1,
+  turnSeconds: 45
 };
         timeupSave();
         timeupRender();
       });
 
 // BEGIN timeup-button-guard
-if(timeupBtn){
-  timeupBtn.addEventListener('click',()=>{
+if(timeupBtn)timeupBtn.addEventListener('click',()=>{
     // BEGIN timeup-resume-confirm
     if(timeupState.stage!=='setup' && !confirm('Une partie de Time\'s Up est en cours. Voulez-vous la reprendre ?')){
       timeupReset();
@@ -4979,17 +5010,16 @@ if(timeupBtn){
     timeupScreen.classList.remove('timeup-hidden');
     document.body.style.background='#222';
     timeupRender();
-  });
-}
+});
 // END timeup-button-guard
 
-      timeupBack.addEventListener('click',()=>{
+      if(timeupBack){timeupBack.addEventListener('click',()=>{
         // BEGIN timeup-exit-confirm
         if(confirm('Quitter la partie de Time\'s Up ?')){
           timeupReset();
         }
         // END timeup-exit-confirm
-      });
+      });}
 
       timeupRender();
     })();
