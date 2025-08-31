@@ -543,6 +543,9 @@
     }
 
     async function startGame(){
+        // BEGIN timeup-hide-on-start
+        if(typeof timeupReset==='function')timeupReset();
+        // END timeup-hide-on-start
         if(currentMode!=="culture"&&players.length<2&&currentMode!=="custom"){alert("Ajoute au moins 2 joueurs !");return;}
         if(currentMode==="hardcore"||currentMode==="alcool"){
           await playIntroAnimation(currentMode);
@@ -590,7 +593,15 @@
 
     document.getElementById("addBtn").addEventListener("click",addPlayer);
     document.getElementById("startBtn").addEventListener("click",startGame);
-    document.getElementById("undercoverBtn").addEventListener("click",()=>{setupScreen.classList.add("hidden");gameScreen.classList.add("hidden");undercoverScreen.classList.remove("hidden");document.body.style.background="#222";});
+    document.getElementById("undercoverBtn").addEventListener("click",()=>{
+      // BEGIN timeup-hide-on-undercover
+      if(typeof timeupReset==='function')timeupReset();
+      // END timeup-hide-on-undercover
+      setupScreen.classList.add("hidden");
+      gameScreen.classList.add("hidden");
+      undercoverScreen.classList.remove("hidden");
+      document.body.style.background="#222";
+    });
     backUndercover.addEventListener("click",()=>{undercoverScreen.classList.add("hidden");setupScreen.classList.remove("hidden");document.body.style.background="linear-gradient(135deg,#ff7a18,#ffcc00)";});
     undercoverTitle.addEventListener("click",()=>{document.getElementById("config").classList.remove("hidden");document.getElementById("reveal").classList.add("hidden");document.getElementById("play").classList.add("hidden");});
     gameScreen.addEventListener("click",nextQuestion);
@@ -4408,7 +4419,16 @@
     // BEGIN killer-button-guard
     const killerBtn=document.getElementById('killer-btn');
     if(killerBtn){
-      killerBtn.addEventListener('click',()=>{setupScreen.classList.add('hidden');gameScreen.classList.add('hidden');killerScreen.classList.remove('killer-hidden');document.body.style.background='#222';killerRenderStage();});
+      killerBtn.addEventListener('click',()=>{
+        // BEGIN timeup-hide-on-killer
+        if(typeof timeupReset==='function')timeupReset();
+        // END timeup-hide-on-killer
+        setupScreen.classList.add('hidden');
+        gameScreen.classList.add('hidden');
+        killerScreen.classList.remove('killer-hidden');
+        document.body.style.background='#222';
+        killerRenderStage();
+      });
     }
     // END killer-button-guard
 
@@ -4488,6 +4508,20 @@ let timeupState = JSON.parse(localStorage.getItem('timeup.state') ||
 
 let timeupTimer = 30;
 let timeupInterval = null;
+
+if(typeof window.timeupReset!=='function'){
+  // BEGIN timeup-reset-fn
+  window.timeupReset=function(){
+    if(timeupScreen)timeupScreen.classList.add('timeup-hidden');
+    if(typeof setupScreen!=='undefined'&&setupScreen)setupScreen.classList.remove('hidden');
+    document.body.style.background='linear-gradient(135deg,#ff7a18,#ffcc00)';
+    // BEGIN timeup-reset-on-exit
+    localStorage.removeItem('timeup.state');
+    timeupState={stage:'setup',players:[],cards:[],round:1,deck:[],currentPlayer:0,currentCard:null,scores:{},startTeam:1};
+    // END timeup-reset-on-exit
+  };
+  // END timeup-reset-fn
+}
 
 function timeupSave(){ 
   localStorage.setItem('timeup.state', JSON.stringify(timeupState)); 
@@ -4757,6 +4791,11 @@ timeupState = {
 // BEGIN timeup-button-guard
 if(timeupBtn){
   timeupBtn.addEventListener('click',()=>{
+    // BEGIN timeup-resume-confirm
+    if(timeupState.stage!=='setup' && !confirm('Une partie de Time\'s Up est en cours. Voulez-vous la reprendre ?')){
+      timeupReset();
+    }
+    // END timeup-resume-confirm
     setupScreen.classList.add('hidden');
     gameScreen.classList.add('hidden');
     if(typeof killerScreen!=='undefined')killerScreen.classList.add('killer-hidden');
@@ -4769,13 +4808,11 @@ if(timeupBtn){
 // END timeup-button-guard
 
       timeupBack.addEventListener('click',()=>{
-        timeupScreen.classList.add('timeup-hidden');
-        setupScreen.classList.remove('hidden');
-        document.body.style.background='linear-gradient(135deg,#ff7a18,#ffcc00)';
-        // BEGIN timeup-reset-on-exit
-        localStorage.removeItem('timeup.state');
-        timeupState={stage:'setup',players:[],cards:[],round:1,deck:[],currentPlayer:0,currentCard:null,scores:{},startTeam:1};
-        // END timeup-reset-on-exit
+        // BEGIN timeup-exit-confirm
+        if(confirm('Quitter la partie de Time\'s Up ?')){
+          timeupReset();
+        }
+        // END timeup-exit-confirm
       });
 
       timeupRender();
