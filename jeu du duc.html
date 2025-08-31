@@ -437,8 +437,11 @@
         <input id="timeup-player-input" placeholder="Pseudo">
         <button id="timeup-add-player">Ajouter</button>
       </div>
-      <div id="timeup-player-list"></div>
-<button id="timeup-start-teams">Suivant</button>
+  <div id="timeup-player-list"></div>
+<button id="timeup-start-teams" disabled>Suivant</button>
+<!-- BEGIN timeup-min-players -->
+<p id="timeup-min-players" style="color:red">Minimum 4 joueurs</p>
+<!-- END timeup-min-players -->
 </div>
 
 <!-- Choix des équipes -->
@@ -4332,6 +4335,9 @@ const timeupEnd=document.getElementById('timeup-end');
 const timeupPlayerInput=document.getElementById('timeup-player-input');
 const timeupAddPlayer=document.getElementById('timeup-add-player');
 const timeupPlayerList=document.getElementById('timeup-player-list');
+// BEGIN timeup-min-players
+const timeupMinPlayers=document.getElementById('timeup-min-players');
+// END timeup-min-players
 
 // Gestion équipes
 const timeupStartTeams=document.getElementById('timeup-start-teams');
@@ -4369,6 +4375,10 @@ const TIMEUP_DEFAULT_CARDS = [
   'Kung-fu','Jules César','Pablo Picasso','Cristiano Ronaldo','BMW',
   'Facebook','Instagram','Minecraft','La machine à café','Balle de tennis',
   'Ballon de foot','Le Soleil','La Lune','La bicyclette','Le chocolat'
+  // BEGIN timeup-card-db
+  ,'Sauterelle','Parapluie','Kangourou','Tournesol','Dauphin'
+  ,'Boussole','Glacier','Volcan','Viking','Zèbre'
+  // END timeup-card-db
 ];
 
 let timeupState = JSON.parse(localStorage.getItem('timeup.state') || 
@@ -4402,25 +4412,34 @@ function timeupRender(){
 
 // --- Ajout joueurs
 function timeupRenderPlayers(){
+  // BEGIN timeup-hide-teams
   timeupPlayerList.innerHTML = timeupState.players.map((p,i)=>`
-    <div>${p.name} (Équipe ${p.team || "?"}) 
+    <div>${p.name}
       <button class="timeup-remove" data-i="${i}">❌</button>
     </div>`).join('');
+  // END timeup-hide-teams
   timeupPlayerList.querySelectorAll('.timeup-remove').forEach(btn=>{
     btn.addEventListener('click',()=>{
       timeupState.players.splice(btn.dataset.i,1);
       timeupSave(); timeupRenderPlayers();
     });
   });
+  // BEGIN timeup-min-players
+  if(timeupStartTeams){
+    timeupStartTeams.disabled = timeupState.players.length < 4;
+  }
+  if(timeupMinPlayers){
+    timeupMinPlayers.style.display = timeupState.players.length < 4 ? 'block' : 'none';
+  }
+  // END timeup-min-players
 }
 
 function timeupAddPlayerFn(){
   const name = timeupPlayerInput.value.trim();
   if(!name) return;
-  const team1 = timeupState.players.filter(p=>p.team===1).length;
-  const team2 = timeupState.players.filter(p=>p.team===2).length;
-  const team = team1 <= team2 ? 1 : 2;
-  timeupState.players.push({name, team});
+  // BEGIN timeup-no-team-entry
+  timeupState.players.push({name});
+  // END timeup-no-team-entry
   timeupPlayerInput.value='';
   timeupSave();
   timeupRenderPlayers();
@@ -4431,6 +4450,12 @@ timeupPlayerInput.addEventListener('keyup', e=>{if(e.key==='Enter')timeupAddPlay
 // --- Étape équipes
 timeupStartTeams.addEventListener('click',()=>{
   if(timeupState.players.length<4) return;
+  // BEGIN timeup-random-teams
+  const order = shuffle(timeupState.players.map((_,i)=>i));
+  order.forEach((playerIndex,i)=>{
+    timeupState.players[playerIndex].team = (i%2) + 1;
+  });
+  // END timeup-random-teams
   timeupState.startTeam = Math.random()<0.5?1:2;
   timeupState.stage = 'teams';
   timeupSave();
@@ -4449,10 +4474,18 @@ function timeupRenderTeams(){
 const TIMEUP_CARDS_PER_PLAYER=3;
 timeupStartCards.addEventListener('click',()=>{
   if(timeupState.players.length<4)return;
-  timeupState.stage='cards';
-  timeupState.cards=[];
+  // BEGIN timeup-auto-cards
+  const total=timeupState.players.length*TIMEUP_CARDS_PER_PLAYER;
+  timeupState.cards = shuffle([...TIMEUP_DEFAULT_CARDS]).slice(0,total);
+  timeupState.round=1;
+  timeupState.scores={1:0,2:0};
+  timeupState.deck=shuffle([...timeupState.cards]);
+  const startIndex = timeupState.players.findIndex(p=>p.team===timeupState.startTeam);
+  timeupState.currentPlayer = startIndex===-1?0:startIndex;
+  timeupState.stage='intro';
   timeupSave();
   timeupRender();
+  // END timeup-auto-cards
 });
 
 function timeupRenderCards(){
