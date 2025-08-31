@@ -271,6 +271,9 @@
     .killer-player-item{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.2);padding:0.5rem 0.8rem;border-radius:0.8rem;margin:0.4rem auto;max-width:250px;}
     .killer-dead{text-decoration:line-through;opacity:0.5;}
     #killer-secret{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;justify-content:center;align-items:center;}
+    /* BEGIN killer-secret-hide */
+    #killer-secret.killer-hidden{display:none;}
+    /* END killer-secret-hide */
 
 /* Time's Up game styles */
 #timeup-game {
@@ -4310,7 +4313,12 @@
 
     killerNewBtn.addEventListener('click',()=>{killerState={stage:'setup',players:[]};killerSave();killerRenderStage();});
 
-    document.getElementById('killer-btn').addEventListener('click',()=>{setupScreen.classList.add('hidden');gameScreen.classList.add('hidden');killerScreen.classList.remove('killer-hidden');document.body.style.background='#222';killerRenderStage();});
+    // BEGIN killer-button-guard
+    const killerBtn=document.getElementById('killer-btn');
+    if(killerBtn){
+      killerBtn.addEventListener('click',()=>{setupScreen.classList.add('hidden');gameScreen.classList.add('hidden');killerScreen.classList.remove('killer-hidden');document.body.style.background='#222';killerRenderStage();});
+    }
+    // END killer-button-guard
 
     killerBack.addEventListener('click',()=>{killerScreen.classList.add('killer-hidden');setupScreen.classList.remove('hidden');document.body.style.background='linear-gradient(135deg,#ff7a18,#ffcc00)';});
     })();
