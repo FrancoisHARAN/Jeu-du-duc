@@ -237,6 +237,11 @@
     #undercover #playersInputs input{display:block;margin:0.3rem auto;width:200px;text-align:center;}
     #undercover h1{cursor:pointer;}
     #secretWord{font-size:2.5rem;font-weight:bold;margin-top:1rem;}
+    /* BEGIN undercover-form-layout */
+    #undercover #config{display:flex;flex-direction:column;align-items:center;}
+    #undercover .form-group{display:flex;flex-direction:column;margin:0.5rem 0;}
+    #undercover #roleConfig{margin-top:1rem;}
+    /* END undercover-form-layout */
     /* BEGIN undercover-role-summary-style */
     #undercover .role-summary div{margin:0.2rem 0;}
     /* END undercover-role-summary-style */
@@ -387,12 +392,28 @@
     <img src="icon.png" alt="Retour" id="backUndercover" class="logo">
     <h1 id="undercoverTitle">Undercover</h1>
       <div id="config">
-        <label>Nombre de joueurs : <input type="number" id="playerCount" min="4" value="4" /></label>
+        <!-- // BEGIN undercover-player-count -->
+        <div class="form-group">
+          <label for="playerCount">Nombre de joueurs :</label>
+          <input type="number" id="playerCount" min="4" value="4" />
+        </div>
+        <!-- // END undercover-player-count -->
         <div id="roleConfig">
           <p>Répartition des rôles :</p>
-          <label>Civils <input type="number" id="civilCount" min="0" /></label>
-          <label>Undercover <input type="number" id="underCount" min="0" /></label>
-          <label>Mister White <input type="number" id="whiteCount" min="0" /></label>
+          <!-- // BEGIN undercover-role-inputs -->
+          <div class="form-group">
+            <label for="civilCount">Civils</label>
+            <input type="number" id="civilCount" min="0" />
+          </div>
+          <div class="form-group">
+            <label for="underCount">Undercover</label>
+            <input type="number" id="underCount" min="0" />
+          </div>
+          <div class="form-group">
+            <label for="whiteCount">Mister White</label>
+            <input type="number" id="whiteCount" min="0" />
+          </div>
+          <!-- // END undercover-role-inputs -->
         </div>
         <button id="start">Démarrer</button>
       </div>
