@@ -237,6 +237,9 @@
     #undercover #playersInputs input{display:block;margin:0.3rem auto;width:200px;text-align:center;}
     #undercover h1{cursor:pointer;}
     #secretWord{font-size:2.5rem;font-weight:bold;margin-top:1rem;}
+    /* BEGIN undercover-role-summary-style */
+    #undercover .role-summary div{margin:0.2rem 0;}
+    /* END undercover-role-summary-style */
 
     /* Mise en forme de la zone de vote */
     #voteList {
@@ -4023,15 +4026,36 @@
     const roleDisplay={civil:'Civil',undercover:'Undercover',misterwhite:'Mister White'};
     let eliminationMessage='';
 
+    // BEGIN undercover-state
+    let undercoverState=JSON.parse(localStorage.getItem('undercover.state')||'{}');
+    function undercoverSave(){localStorage.setItem('undercover.state',JSON.stringify(undercoverState));}
+    if(undercoverState.playerCount){
+      playerCountInput.value=undercoverState.playerCount;
+      civilInput.value=undercoverState.civilCount;
+      underInput.value=undercoverState.underCount;
+      whiteInput.value=undercoverState.whiteCount;
+    }
+    // END undercover-state
+
     function autoRoles(){
       const n=Number(playerCountInput.value);
       whiteInput.value=n>=4?1:0;
       underInput.value=n>=7?2:1;
       civilInput.value=n-Number(whiteInput.value)-Number(underInput.value);
+      // BEGIN undercover-autoRoles-state
+      undercoverState={...undercoverState,playerCount:n,civilCount:Number(civilInput.value),underCount:Number(underInput.value),whiteCount:Number(whiteInput.value)};
+      undercoverSave();
+      // END undercover-autoRoles-state
     }
 
     playerCountInput.addEventListener('change', autoRoles);
-    autoRoles();
+    if(!undercoverState.playerCount)autoRoles();
+
+    // BEGIN undercover-role-inputs-state
+    civilInput.addEventListener('change',()=>{undercoverState={...undercoverState,civilCount:Number(civilInput.value)};undercoverSave();});
+    underInput.addEventListener('change',()=>{undercoverState={...undercoverState,underCount:Number(underInput.value)};undercoverSave();});
+    whiteInput.addEventListener('change',()=>{undercoverState={...undercoverState,whiteCount:Number(whiteInput.value)};undercoverSave();});
+    // END undercover-role-inputs-state
 
     document.getElementById('start').addEventListener('click', startUndercover);
 
@@ -4053,7 +4077,18 @@
       revealIndex=0;
       document.getElementById('config').classList.add('hidden');
       document.getElementById('reveal').classList.remove('hidden');
-      showNameEntry();
+      // BEGIN undercover-start-storage
+      undercoverState={...undercoverState,names:undercoverState.names||[]};
+      undercoverSave();
+      if(undercoverState.names && undercoverState.names.length===n){
+        players.forEach((p,i)=>p.name=undercoverState.names[i]);
+        showReveal();
+      }else{
+        undercoverState.names=[];
+        undercoverSave();
+        showNameEntry();
+      }
+      // END undercover-start-storage
     }
 
     function showNameEntry(){
@@ -4063,14 +4098,41 @@
       revealName.classList.add('hidden');
       secretWord.classList.add('hidden');
       nextPlayer.classList.add('hidden');
-      nameInput.value='';
+      // BEGIN undercover-prefill-name
+      nameInput.value=(undercoverState.names&&undercoverState.names[revealIndex])||'';
+      // END undercover-prefill-name
       nameInput.focus();
     }
+
+    // BEGIN undercover-showReveal
+    function showReveal(){
+      const p=players[revealIndex];
+      askName.classList.add('hidden');
+      nameInput.classList.add('hidden');
+      validateName.classList.add('hidden');
+      if(p.role==='misterwhite'){
+        revealName.classList.add('hidden');
+        secretWord.textContent='🖕tu es Mister White 🖕';
+      }else{
+        revealName.textContent='ton mot est 👇';
+        revealName.classList.remove('hidden');
+        secretWord.textContent=p.word;
+      }
+      secretWord.classList.remove('hidden');
+      nextPlayer.textContent=revealIndex===players.length-1?'Lancer la partie':'Joueur suivant';
+      nextPlayer.classList.remove('hidden');
+    }
+    // END undercover-showReveal
 
     validateName.addEventListener('click',()=>{
       const name=nameInput.value.trim()||('Joueur'+(revealIndex+1));
       const p=players[revealIndex];
       p.name=name;
+      // BEGIN undercover-save-name
+      undercoverState.names=undercoverState.names||[];
+      undercoverState.names[revealIndex]=name;
+      undercoverSave();
+      // END undercover-save-name
       askName.classList.add('hidden');
       nameInput.classList.add('hidden');
       validateName.classList.add('hidden');
@@ -4096,7 +4158,10 @@
         round=0;
         startRound();
       }else{
-        showNameEntry();
+        // BEGIN undercover-nextplayer-storage
+        if(undercoverState.names && undercoverState.names.length===players.length)showReveal();
+        else showNameEntry();
+        // END undercover-nextplayer-storage
       }
     });
 
@@ -4130,7 +4195,9 @@
       p.alive=false;
       voteArea.classList.add('hidden');
       const counts=countRoles();
-      eliminationMessage=`${p.name} était ${roleDisplay[p.role]}.<br>Civils: ${counts.civil} | Undercover: ${counts.undercover} | Mister White: ${counts.misterwhite}`;
+      // BEGIN undercover-elimination-message
+      eliminationMessage=`${p.name} était ${roleDisplay[p.role]}.<div class="role-summary"><div>🙂 Civils: ${counts.civil}</div><div>🕵️ Undercover: ${counts.undercover}</div><div>👻 Mister White: ${counts.misterwhite}</div></div>`;
+      // END undercover-elimination-message
       if(p.role==='misterwhite'){
         whiteGuessInput.value='';
         playArea.classList.add('hidden');
