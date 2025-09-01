@@ -289,6 +289,12 @@
   text-align: center;
   background: #222;
   color: #fff;
+  /* BEGIN timeup-game-center */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  /* END timeup-game-center */
 }
 
 .timeup-hidden {
@@ -301,7 +307,9 @@
   border-radius: 1.5rem;
   width: 90%;
   max-width: 600px;
-  margin: auto;
+  /* BEGIN timeup-section-margin */
+  margin: 1rem auto;
+  /* END timeup-section-margin */
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(6px);
 }
@@ -312,20 +320,30 @@
 }
 
 /* BEGIN timeup-buttons-style */
-#timeup-round-buttons {
+.timeup-buttons {
   display: flex;
-  justify-content: space-around;
+  justify-content: center;
+  gap: 20px;
   margin-top: 1rem;
 }
-#timeup-valid-btn {
-  background: #4caf50;
+.btn-green {
+  background: limegreen;
+  color: black;
+  padding: 10px;
+  border-radius: 8px;
 }
-#timeup-pass-btn {
-  background: #f44336;
+.btn-red {
+  background: crimson;
+  color: black;
+  padding: 10px;
+  border-radius: 8px;
 }
-#timeup-round-buttons button {
+.timeup-card {
+  font-size: 2em;
+  margin: 20px;
+}
+.timeup-buttons button {
   flex: 1;
-  margin: 0 1rem;
 }
 /* END timeup-buttons-style */
 
@@ -528,11 +546,11 @@
       <!-- BEGIN timeup-timer-default -->
       <div id="timeup-timer">45</div>
       <!-- END timeup-timer-default -->
-      <div id="timeup-card-display"></div>
+      <div id="timeup-card" class="timeup-card"></div>
       <!-- BEGIN timeup-round-buttons -->
-      <div id="timeup-round-buttons">
-        <button id="timeup-valid-btn">Validé</button>
-        <button id="timeup-pass-btn">Passer</button>
+      <div class="timeup-buttons">
+        <button id="timeup-validate" class="btn btn-green">Validé</button>
+        <button id="timeup-pass" class="btn btn-red">Passer</button>
       </div>
       <!-- END timeup-round-buttons -->
     </div>
@@ -4656,9 +4674,9 @@ const timeupCardCount=document.getElementById('timeup-card-count');
       const timeupRoundTitle=document.getElementById('timeup-round-title');
       const timeupTurnInfo=document.getElementById('timeup-turn-info');
       const timeupTimerEl=document.getElementById('timeup-timer');
-      const timeupCardDisplay=document.getElementById('timeup-card-display');
-      const timeupValidBtn=document.getElementById('timeup-valid-btn');
-      const timeupPassBtn=document.getElementById('timeup-pass-btn');
+      const timeupCardDisplay=document.getElementById('timeup-card')||document.getElementById('timeup-card-display');
+      const timeupValidBtn=document.getElementById('timeup-validate')||document.getElementById('timeup-valid-btn');
+      const timeupPassBtn=document.getElementById('timeup-pass')||document.getElementById('timeup-pass-btn');
       const timeupScores=document.getElementById('timeup-scores');
       const timeupNextRound=document.getElementById('timeup-next-round');
       const timeupFinalScores=document.getElementById('timeup-final-scores');
@@ -4695,13 +4713,27 @@ let timeupInterval = null;
 if(typeof window.timeupReset!=='function'){
   // BEGIN timeup-reset-fn
   window.timeupReset=function(){
+    const sections=[
+      'timeup-setup','timeup-teams','timeup-cards','timeup-intro',
+      'timeup-round','timeup-round-end','timeup-end'
+    ];
+    sections.forEach(id=>{
+      const el=document.getElementById(id);
+      if(el)el.classList.add('timeup-hidden');
+    });
+    const timerEl=document.getElementById('timeup-timer');
+    if(timerEl)timerEl.textContent='';
+    const cardEl=document.getElementById('timeup-card')||document.getElementById('timeup-card-display');
+    if(cardEl)cardEl.textContent='';
     if(timeupScreen)timeupScreen.classList.add('timeup-hidden');
     if(typeof setupScreen!=='undefined'&&setupScreen)setupScreen.classList.remove('hidden');
     document.body.style.background='linear-gradient(135deg,#ff7a18,#ffcc00)';
+    clearInterval(timeupInterval);
     // BEGIN timeup-reset-on-exit
     localStorage.removeItem('timeup.state');
     timeupState={stage:'setup',players:[],cards:[],round:1,deck:[],currentPlayer:0,currentCard:null,scores:{1:0,2:0},startTeam:1,turnSeconds:45};
     // END timeup-reset-on-exit
+    if(typeof timeupSave==='function')timeupSave();
   };
   // END timeup-reset-fn
 }
@@ -4906,6 +4938,7 @@ if (typeof window.timeupRenderRound !== 'function') {
 if(timeupIntroStart)timeupIntroStart.addEventListener('click', () => {
   timeupState.stage = 'round';
   timeupSave();
+  timeupRender();
   timeupStartTurn();
 });
 // END timeup-round-helpers
