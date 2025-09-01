@@ -460,6 +460,9 @@
     }
 
     async function startGame(){
+        // BEGIN start-game-player-check
+        if(players.length<1){alert("Ajoute au moins 1 joueur !");return;}
+        // END start-game-player-check
         if(currentMode!=="culture"&&players.length<2&&currentMode!=="custom"){alert("Ajoute au moins 2 joueurs !");return;}
         if(currentMode==="hardcore"||currentMode==="alcool"){
           await playIntroAnimation(currentMode);
