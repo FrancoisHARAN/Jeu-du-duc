@@ -24,7 +24,9 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      transition: background 0.6s;
+      /* // BEGIN no-bg-transition */
+      /* transition: background 0.6s; */
+      /* // END no-bg-transition */
       background: linear-gradient(135deg,var(--orange),var(--yellow));
     }
 
@@ -470,22 +472,9 @@
       }
       
       function playIntroAnimation(mode){
-        return new Promise(resolve=>{
-          const container=document.createElement("div");
-          container.id="effect-container";
-          document.body.appendChild(container);
-          const count=30;
-          for(let i=0;i<count;i++){
-            const el=document.createElement("div");
-            el.className="effect "+(mode==="hardcore"?"flame":"spray");
-            const angle=Math.random()*Math.PI*2;
-            const dist=300+Math.random()*200;
-            el.style.setProperty("--x",Math.cos(angle)*dist+"px");
-            el.style.setProperty("--y",Math.sin(angle)*dist+"px");
-            container.appendChild(el);
-          }
-          setTimeout(()=>{container.remove();resolve();},3000);
-        });
+        // BEGIN skip-intro-animation
+        return Promise.resolve();
+        // END skip-intro-animation
       }
 
     function pickCustomMode(){const total=weights.debut+weights.hardcore+weights.alcool+weights.culture;let r=Math.random()*total;if(r<weights.debut)return"debut";r-=weights.debut;if(r<weights.hardcore)return"hardcore";r-=weights.hardcore;if(r<weights.alcool)return"alcool";return"culture";}
