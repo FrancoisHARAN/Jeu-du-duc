@@ -133,6 +133,13 @@ color: var(--text-dark);
     }
     /* // END action-btn-style */
 
+    /* // BEGIN answer-btn-style */
+    .answer-btn {
+      background: var(--yellow);
+      border-radius: 0;
+    }
+    /* // END answer-btn-style */
+
     #startBtn {
       margin-top: 1rem;
       /* // BEGIN start-btn-layout */
@@ -573,7 +580,9 @@ color: var(--text-dark);
     <p id="gorgeesText" class="hidden"></p>
     <!-- // END culture-gorgees-display -->
     <div id="answerBox">
-      <button id="showAnswerBtn">Voir la réponse</button>
+      <!-- // BEGIN answer-btn-element -->
+      <button id="showAnswerBtn" class="action-btn answer-btn">VOIR LA RÉPONSE</button>
+      <!-- // END answer-btn-element -->
       <p id="answerText"></p>
     </div>
   </div>
