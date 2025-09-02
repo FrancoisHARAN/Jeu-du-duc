@@ -130,21 +130,34 @@ color: var(--text-dark);
     }
     /* // END action-btn-style */
 
-#startBtn {
-  margin-top: 1rem;
-}
+    #startBtn {
+      margin-top: 1rem;
+      /* // BEGIN start-btn-layout */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      background: var(--pink);
+      /* // END start-btn-layout */
+    }
+    /* // BEGIN start-btn-img */
+    #startBtn img {
+      width: 24px;
+      height: 24px;
+    }
+    /* // END start-btn-img */
 
-.other-games {
-  margin-top: 1rem;
-}
-.other-games h2 {
-  margin: 0.5rem 0;
-  /* // BEGIN other-games-title-style */
-  text-transform: uppercase;
-  color: var(--text-dark);
-  font-weight: 900;
-  text-align: center;
-  /* // END other-games-title-style */
+  .other-games {
+    margin-top: 1rem;
+  }
+  .other-games h2 {
+    margin: 0.5rem 0;
+    /* // BEGIN other-games-title-style */
+    text-transform: uppercase;
+    color: var(--text-dark);
+    font-weight: 900;
+    text-align: center;
+    /* // END other-games-title-style */
 }
 
 /* // BEGIN other-games-button-style */
@@ -515,7 +528,12 @@ color: var(--text-dark);
       </div>
     </div>
 
-    <button id="startBtn" class="action-btn">🎲 Lancer la partie</button>
+    <button id="startBtn" class="action-btn">
+      <!-- // BEGIN start-btn-content -->
+      <img src="lancer.png" alt="Lancer la partie">
+      <span>Lancer la partie</span>
+      <!-- // END start-btn-content -->
+    </button>
     <div id="otherGames" class="other-games">
       <h2 class="mode-header">Autres jeux</h2>
 <button id="undercoverBtn" class="mode-card">
