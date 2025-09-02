@@ -12,6 +12,11 @@
       --yellow: #ffcc00;
       --text-dark: #222;
       --text-light: #fff;
+      /* // BEGIN da-color-scheme */
+      --pink: #ff4db8;
+      --pink-dark: #d9007a;
+      --cyan: #00d4ff;
+      /* // END da-color-scheme */
     }
 
     body {
@@ -27,7 +32,9 @@
       /* // BEGIN no-bg-transition */
       /* transition: background 0.6s; */
       /* // END no-bg-transition */
-      background: linear-gradient(135deg,var(--orange),var(--yellow));
+      /* // BEGIN da-body-background */
+      background: linear-gradient(135deg,var(--cyan),var(--pink));
+      /* // END da-body-background */
     }
 
     .logo {
@@ -70,7 +77,7 @@
     input {
       padding: 0.7rem 1rem;
       border-radius: 1rem;
-      border: 2px solid var(--yellow);
+      border: 2px solid var(--cyan);
       flex: 1;
       max-width: 250px;
       font-size: 1rem;
@@ -84,7 +91,10 @@
       border: none;
       border-radius: 2rem;
       font-size: 1rem;
-      background: linear-gradient(135deg,var(--yellow),var(--orange));
+      /* // BEGIN button-style-update */
+      background: linear-gradient(135deg,var(--cyan),var(--pink));
+      border: 3px solid #000;
+      /* // END button-style-update */
       color: var(--text-dark);
       font-weight: bold;
       cursor: pointer;
@@ -105,6 +115,18 @@
 .other-games h2 {
   margin: 0.5rem 0;
 }
+
+/* // BEGIN other-games-button-style */
+#otherGames button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+#otherGames button img {
+  width: 24px;
+  height: 24px;
+}
+/* // END other-games-button-style */
 
 .hidden {
   display: none !important;
@@ -192,14 +214,40 @@
       transition: transform 0.2s, background 0.3s;
       border: 2px solid transparent;
       color: var(--text-light);
+      /* // BEGIN mode-card-style-update */
+      background: var(--text-light);
+      border: 4px solid #000;
+      color: var(--text-dark);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      /* // END mode-card-style-update */
     }
-    .mode-card:hover { transform: scale(1.05); background: rgba(255,255,255,0.25); }
+    .mode-card:hover {
+      transform: scale(1.05);
+      background: rgba(255,255,255,0.25);
+      /* // BEGIN mode-card-hover-update */
+      background: var(--cyan);
+      /* // END mode-card-hover-update */
+    }
     .mode-card.active {
       background: linear-gradient(135deg,var(--yellow),var(--orange));
       color: var(--text-dark);
       border-color: var(--orange-dark);
+      /* // BEGIN mode-card-active-update */
+      background: linear-gradient(135deg,var(--cyan),var(--pink));
+      border-color: var(--pink-dark);
+      /* // END mode-card-active-update */
     }
     .mode-card.fullwidth { grid-column: span 2; }
+
+    /* // BEGIN mode-card-image-style */
+    .mode-card img {
+      width: 80px;
+      height: 80px;
+    }
+    /* // END mode-card-image-style */
 
     #customWeights {
       margin-top: 1rem;
@@ -241,6 +289,9 @@
     #undercover{font-family:Arial,sans-serif;padding:1rem;text-align:center;background:#222;color:#fff;}
     #undercover input,#undercover button{padding:0.5rem;margin:0.2rem;border-radius:0.5rem;border:none;}
     #undercover button{cursor:pointer;background:#ffcc00;color:#222;font-weight:bold;}
+    /* // BEGIN undercover-button-style */
+    #undercover button{background:var(--cyan);border:3px solid #000;}
+    /* // END undercover-button-style */
     #undercover #playersInputs input{display:block;margin:0.3rem auto;width:200px;text-align:center;}
     #undercover h1{cursor:pointer;}
     #secretWord{font-size:2.5rem;font-weight:bold;margin-top:1rem;}
@@ -316,11 +367,36 @@
 
     <p>Choisis un mode :</p>
     <div class="modes">
-      <div class="mode-card" data-mode="debut">🎉 Apéro chiantos</div>
-      <div class="mode-card" data-mode="hardcore">🔥 Sexy pas raffiné</div>
-      <div class="mode-card" data-mode="alcool">🍻 Torgnole express</div>
-      <div class="mode-card" data-mode="culture">🧠 Culture G.</div>
-      <div class="mode-card fullwidth" data-mode="custom">🎛️ Personnalisé</div>
+      <div class="mode-card" data-mode="debut">
+        <!-- // BEGIN mode-card-apero-image -->
+        <img src="apero.png" alt="Apéro chiantos">
+        <div>Apéro chiantos</div>
+        <!-- // END mode-card-apero-image -->
+      </div>
+      <div class="mode-card" data-mode="hardcore">
+        <!-- // BEGIN mode-card-hardcore-image -->
+        <img src="hardcore.png" alt="Sexy pas raffiné">
+        <div>Sexy pas raffiné</div>
+        <!-- // END mode-card-hardcore-image -->
+      </div>
+      <div class="mode-card" data-mode="alcool">
+        <!-- // BEGIN mode-card-alcool-image -->
+        <img src="torgnole.png" alt="Torgnole express">
+        <div>Torgnole express</div>
+        <!-- // END mode-card-alcool-image -->
+      </div>
+      <div class="mode-card" data-mode="culture">
+        <!-- // BEGIN mode-card-culture-image -->
+        <img src="cultureg.png" alt="Culture G.">
+        <div>Culture G.</div>
+        <!-- // END mode-card-culture-image -->
+      </div>
+      <div class="mode-card fullwidth" data-mode="custom">
+        <!-- // BEGIN mode-card-custom-image -->
+        <img src="personnalisé.png" alt="Personnalisé">
+        <div>Personnalisé</div>
+        <!-- // END mode-card-custom-image -->
+      </div>
     </div>
 
     <div id="customWeights" class="hidden">
@@ -345,8 +421,18 @@
     <button id="startBtn">🎲 Lancer la partie</button>
     <div id="otherGames" class="other-games">
       <h2>Autres jeux</h2>
-      <button id="undercoverBtn">Undercover</button>
-      <button id="killer-btn">Killer</button>
+      <button id="undercoverBtn">
+        <!-- // BEGIN other-games-undercover-image -->
+        <img src="undercover.png" alt="Undercover">
+        <span>Undercover</span>
+        <!-- // END other-games-undercover-image -->
+      </button>
+      <button id="killer-btn">
+        <!-- // BEGIN other-games-killer-image -->
+        <img src="killer.png" alt="Killer">
+        <span>Killer</span>
+        <!-- // END other-games-killer-image -->
+      </button>
     </div>
   </div>
 
@@ -487,7 +573,9 @@
         "RAPIDITÉ":"linear-gradient(135deg,#FF8A00,#FF3D00)",
         "CUSTOM":"linear-gradient(135deg,#FF7A18,#FF3D00)"
       };
-      document.body.style.background=bg[type]||"linear-gradient(135deg,#ff7a18,#ffcc00)";
+      // BEGIN da-default-bg
+      document.body.style.background=bg[type]||"linear-gradient(135deg,#00d4ff,#ff4db8)";
+      // END da-default-bg
     }
 
     async function startGame(){
@@ -527,7 +615,11 @@ if(typeof q==="object"&&q?.question)currentQuestionEl.textContent=q.question;
 rapidityMode=false;}else showQuestion();}}
 
     document.querySelectorAll(".mode-card").forEach(card=>{card.addEventListener("click",()=>{document.querySelectorAll(".mode-card").forEach(c=>c.classList.remove("active"));card.classList.add("active");currentMode=card.dataset.mode;customWeightsBox.classList.toggle("hidden",currentMode!=="custom");});});
-    backLogo.addEventListener("click",()=>{gameScreen.classList.add("hidden");setupScreen.classList.remove("hidden");document.body.style.background="linear-gradient(135deg,#ff7a18,#ffcc00)";});
+    backLogo.addEventListener("click",()=>{gameScreen.classList.add("hidden");setupScreen.classList.remove("hidden");
+    // BEGIN da-backlogo-bg
+    document.body.style.background="linear-gradient(135deg,#00d4ff,#ff4db8)";
+    // END da-backlogo-bg
+    });
 
     Object.keys(sliders).forEach(key=>{sliders[key].addEventListener("input",()=>{let total=0;Object.keys(sliders).forEach(k=>total+=+sliders[k].value);Object.keys(sliders).forEach(k=>weights[k]=+sliders[k].value/total*100);});});
 
@@ -539,7 +631,11 @@ rapidityMode=false;}else showQuestion();}}
       undercoverScreen.classList.remove("hidden");
       document.body.style.background="#222";
     });
-    backUndercover.addEventListener("click",()=>{undercoverScreen.classList.add("hidden");setupScreen.classList.remove("hidden");document.body.style.background="linear-gradient(135deg,#ff7a18,#ffcc00)";});
+    backUndercover.addEventListener("click",()=>{undercoverScreen.classList.add("hidden");setupScreen.classList.remove("hidden");
+    // BEGIN da-backundercover-bg
+    document.body.style.background="linear-gradient(135deg,#00d4ff,#ff4db8)";
+    // END da-backundercover-bg
+    });
     undercoverTitle.addEventListener("click",()=>{document.getElementById("config").classList.remove("hidden");document.getElementById("reveal").classList.add("hidden");document.getElementById("play").classList.add("hidden");});
     gameScreen.addEventListener("click",nextQuestion);
     playerInput.addEventListener("keyup",e=>{if(e.key==="Enter")addPlayer();});
@@ -5895,7 +5991,11 @@ rapidityMode=false;}else showQuestion();}}
     }
     // END killer-button-guard
 
-    killerBack.addEventListener('click',()=>{killerScreen.classList.add('killer-hidden');setupScreen.classList.remove('hidden');document.body.style.background='linear-gradient(135deg,#ff7a18,#ffcc00)';});
+    killerBack.addEventListener('click',()=>{killerScreen.classList.add('killer-hidden');setupScreen.classList.remove('hidden');
+    // BEGIN da-killerback-bg
+    document.body.style.background='linear-gradient(135deg,#00d4ff,#ff4db8)';
+    // END da-killerback-bg
+    });
     })();
   </script>
 </body>
