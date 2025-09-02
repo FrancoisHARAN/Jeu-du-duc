@@ -10,6 +10,9 @@
       --orange: #ff7a18;
       --orange-dark: #ff5714;
       --yellow: #ffcc00;
+      /* // BEGIN da-yellow-update */
+      --yellow: #ffe600;
+      /* // END da-yellow-update */
       --text-dark: #222;
       --text-light: #fff;
       /* // BEGIN da-color-scheme */
@@ -645,6 +648,9 @@ color: var(--text-dark);
       </div>
     </div>
   </div>
+  <!-- BEGIN rapidite-audio-element -->
+  <audio id="rapidite-audio" src="rapidite.mp3"></audio>
+  <!-- END rapidite-audio-element -->
   <script>
     const players=[];
     let currentMode="debut";
@@ -654,8 +660,11 @@ color: var(--text-dark);
     // -------------------------
     // MOTEUR DU JEU
     // -------------------------
-    const setupScreen=document.getElementById("setup"),gameScreen=document.getElementById("game"),playerInput=document.getElementById("playerInput"),playerList=document.getElementById("playerList"),currentQuestionEl=document.getElementById("currentQuestion"),typeBox=document.getElementById("typeBox"),answerBox=document.getElementById("answerBox"),showAnswerBtn=document.getElementById("showAnswerBtn"),answerText=document.getElementById("answerText"),backLogo=document.getElementById("backLogo"),customWeightsBox=document.getElementById("customWeights"),undercoverScreen=document.getElementById("undercover"),backUndercover=document.getElementById("backUndercover"),undercoverTitle=document.getElementById("undercoverTitle");
-    const sliders={debut:document.getElementById("weight-debut"),hardcore:document.getElementById("weight-hardcore"),alcool:document.getElementById("weight-alcool"),culture:document.getElementById("weight-culture")};
+const setupScreen=document.getElementById("setup"),gameScreen=document.getElementById("game"),playerInput=document.getElementById("playerInput"),playerList=document.getElementById("playerList"),currentQuestionEl=document.getElementById("currentQuestion"),typeBox=document.getElementById("typeBox"),answerBox=document.getElementById("answerBox"),showAnswerBtn=document.getElementById("showAnswerBtn"),answerText=document.getElementById("answerText"),backLogo=document.getElementById("backLogo"),customWeightsBox=document.getElementById("customWeights"),undercoverScreen=document.getElementById("undercover"),backUndercover=document.getElementById("backUndercover"),undercoverTitle=document.getElementById("undercoverTitle");
+const sliders={debut:document.getElementById("weight-debut"),hardcore:document.getElementById("weight-hardcore"),alcool:document.getElementById("weight-alcool"),culture:document.getElementById("weight-culture")};
+    // BEGIN rapidite-audio-var
+    const rapiditeAudio=document.getElementById("rapidite-audio");
+    // END rapidite-audio-var
     // BEGIN culture-toggle-setup
     const cultureToggleContainer=document.getElementById("cultureToggleContainer"),cultureToggle=document.getElementById("cultureToggle"),gorgeesText=document.getElementById("gorgeesText");
     let cultureDrinkMode=false;
@@ -706,7 +715,11 @@ color: var(--text-dark);
       let mode=currentMode;if(mode==="custom")mode=pickCustomMode();
       const rapidityMap={debut:0.08,hardcore:0.04,alcool:0.08,culture:0.02};
       const rapidityChance=rapidityMap[mode]||0;
-      if(Math.random()<rapidityChance){rapidityMode=true;typeBox.textContent="RAPIDITÉ";setBackground("RAPIDITÉ");currentQuestionEl.textContent="⚡ Question de rapidité pour tout le monde ! (Cliquez pour révéler)";return;}
+      if(Math.random()<rapidityChance){rapidityMode=true;typeBox.textContent="RAPIDITÉ";setBackground("RAPIDITÉ");currentQuestionEl.textContent="⚡ Question de rapidité pour tout le monde ! (Cliquez pour révéler)";
+      // BEGIN rapidite-jingle
+      if(rapiditeAudio){rapiditeAudio.currentTime=0;rapiditeAudio.play();}
+      // END rapidite-jingle
+      return;}
       if(mode==="culture"){const q=cultureQuestions[Math.floor(Math.random()*cultureQuestions.length)];const player=players[Math.floor(Math.random()*players.length)];typeBox.textContent="CULTURE G.";setBackground("CULTURE G.");currentQuestionEl.textContent=`${player}, ${q.question}`;showAnswerBtn.style.display="inline-block";answerBox.style.display="block";showAnswerBtn.onclick=e=>{e.stopPropagation();answerText.textContent="✅ Réponse : "+q.answer;showAnswerBtn.style.display="none";};if(cultureToggleContainer)cultureToggleContainer.classList.remove("hidden");if(cultureDrinkMode&&gorgeesText){const g=Math.floor(Math.random()*3)+1;gorgeesText.textContent=`${g} gorgée${g>1?'s':''}`;gorgeesText.classList.remove("hidden");}}
       else if(mode==="debut"||mode==="hardcore"||mode==="alcool"){const pool={debut:debutQuestions,hardcore:hardcoreQuestions,alcool:alcoolQuestions}[mode];const [type,text]=pool[Math.floor(Math.random()*pool.length)].split("|");let player=players[Math.floor(Math.random()*players.length)];let qText=text.replace(/\{player\}/g,player);if(qText.includes("{other}")){let other;do{other=players[Math.floor(Math.random()*players.length)];}while(other===player&&players.length>1);qText=qText.replace(/\{other\}/g,other);}typeBox.textContent=type;setBackground(type);currentQuestionEl.textContent=qText;}}
     
