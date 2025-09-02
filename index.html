@@ -316,18 +316,18 @@ color: var(--text-dark);
     .mode-card:hover {
       transform: scale(1.05);
       background: rgba(255,255,255,0.25);
-      /* // BEGIN mode-card-hover-update */
-      background: var(--cyan);
-      /* // END mode-card-hover-update */
+      /* // BEGIN mode-card-hover-yellow */
+      background: var(--yellow);
+      /* // END mode-card-hover-yellow */
     }
     .mode-card.active {
       background: var(--pink);
       color: var(--text-dark);
       border-color: #000;
-      /* // BEGIN mode-card-active-update */
-      background: var(--pink);
+      /* // BEGIN mode-card-active-cyan */
+      background: var(--cyan);
       border-color: #000;
-      /* // END mode-card-active-update */
+      /* // END mode-card-active-cyan */
     }
     .mode-card.fullwidth { grid-column: span 2; }
 
@@ -580,6 +580,9 @@ color: var(--text-dark);
           </div>
           <!-- // END undercover-role-inputs -->
         </div>
+        <!-- // BEGIN undercover-player-list -->
+        <div id="playersInputs"></div>
+        <!-- // END undercover-player-list -->
         <button id="start">Démarrer</button>
       </div>
 
@@ -588,6 +591,9 @@ color: var(--text-dark);
         <input id="nameInput" placeholder="Prénom" />
         <button id="validateName">Valider</button>
         <h2 id="revealName" class="hidden"></h2>
+        <!-- // BEGIN undercover-reveal-button -->
+        <button id="revealWord" class="hidden">Révéler le mot</button>
+        <!-- // END undercover-reveal-button -->
         <p id="secretWord" class="hidden"></p>
         <button id="nextPlayer" class="hidden"></button>
       </div>
@@ -725,6 +731,9 @@ rapidityMode=false;}else showQuestion();}}
       gameScreen.classList.add("hidden");
       undercoverScreen.classList.remove("hidden");
       document.body.style.background="#222";
+      // BEGIN undercover-open-render
+      renderPlayerInputs();
+      // END undercover-open-render
     });
     backUndercover.addEventListener("click",()=>{undercoverScreen.classList.add("hidden");setupScreen.classList.remove("hidden");
     // BEGIN da-backundercover-bg
@@ -5696,6 +5705,10 @@ rapidityMode=false;}else showQuestion();}}
     const civilInput=document.getElementById('civilCount');
     const underInput=document.getElementById('underCount');
     const whiteInput=document.getElementById('whiteCount');
+    // BEGIN undercover-elements
+    const playersInputs=document.getElementById('playersInputs');
+    const revealWord=document.getElementById('revealWord');
+    // END undercover-elements
     const askName=document.getElementById('askName');
     const nameInput=document.getElementById('nameInput');
     const validateName=document.getElementById('validateName');
@@ -5738,8 +5751,28 @@ rapidityMode=false;}else showQuestion();}}
       // END undercover-autoRoles-state
     }
 
-    playerCountInput.addEventListener('change', autoRoles);
+    // BEGIN undercover-render-names
+    function renderPlayerInputs(){
+      const n=Number(playerCountInput.value);
+      undercoverState.names=undercoverState.names||[];
+      playersInputs.innerHTML='';
+      for(let i=0;i<n;i++){
+        const inp=document.createElement('input');
+        inp.placeholder='Prénom';
+        inp.value=undercoverState.names[i]||'';
+        inp.addEventListener('input',()=>{undercoverState.names[i]=inp.value;undercoverSave();});
+        playersInputs.appendChild(inp);
+      }
+      undercoverState.names.length=n;
+      undercoverSave();
+    }
+    // END undercover-render-names
+
+    // BEGIN undercover-player-count-render
+    playerCountInput.addEventListener('change',()=>{autoRoles();renderPlayerInputs();});
     if(!undercoverState.playerCount)autoRoles();
+    renderPlayerInputs();
+    // END undercover-player-count-render
 
     // BEGIN undercover-role-inputs-state
     civilInput.addEventListener('change',()=>{undercoverState={...undercoverState,civilCount:Number(civilInput.value)};undercoverSave();});
@@ -5749,7 +5782,14 @@ rapidityMode=false;}else showQuestion();}}
 
     document.getElementById('start').addEventListener('click', startUndercover);
 
-    newGame.addEventListener('click',()=>location.reload());
+    // BEGIN undercover-newgame-reset
+    newGame.addEventListener('click',()=>{
+      document.getElementById('play').classList.add('hidden');
+      document.getElementById('reveal').classList.add('hidden');
+      document.getElementById('config').classList.remove('hidden');
+      renderPlayerInputs();
+    });
+    // END undercover-newgame-reset
     whiteGuessSubmit.addEventListener('click',handleWhiteGuess);
 
     let currentPair=null;
@@ -5757,28 +5797,23 @@ rapidityMode=false;}else showQuestion();}}
     let round=0;
 
     function startUndercover(){
+      // BEGIN undercover-start-names
       players.length=0;
       const n=Number(playerCountInput.value);
+      undercoverState.names=undercoverState.names||[];
       for(let i=0;i<n;i++){
-        players.push({name:'',role:'',word:'',alive:true});
+        const name=(undercoverState.names[i]&&undercoverState.names[i].trim())||('Joueur'+(i+1));
+        players.push({name,role:'',word:'',alive:true});
+        undercoverState.names[i]=name;
       }
+      undercoverSave();
       assignRoles(players);
       assignWords();
       revealIndex=0;
       document.getElementById('config').classList.add('hidden');
       document.getElementById('reveal').classList.remove('hidden');
-      // BEGIN undercover-start-storage
-      undercoverState={...undercoverState,names:undercoverState.names||[]};
-      undercoverSave();
-      if(undercoverState.names && undercoverState.names.length===n){
-        players.forEach((p,i)=>p.name=undercoverState.names[i]);
-        showReveal();
-      }else{
-        undercoverState.names=[];
-        undercoverSave();
-        showNameEntry();
-      }
-      // END undercover-start-storage
+      showReveal();
+      // END undercover-start-names
     }
 
     function showNameEntry(){
@@ -5800,19 +5835,30 @@ rapidityMode=false;}else showQuestion();}}
       askName.classList.add('hidden');
       nameInput.classList.add('hidden');
       validateName.classList.add('hidden');
+      revealName.textContent='Passez le téléphone à '+p.name;
+      revealName.classList.remove('hidden');
+      secretWord.classList.add('hidden');
+      nextPlayer.classList.add('hidden');
+      revealWord.classList.remove('hidden');
+    }
+    // END undercover-showReveal
+
+    // BEGIN undercover-reveal-action
+    revealWord.addEventListener('click',()=>{
+      const p=players[revealIndex];
+      revealWord.classList.add('hidden');
       if(p.role==='misterwhite'){
         revealName.classList.add('hidden');
         secretWord.textContent='🖕tu es Mister White 🖕';
       }else{
         revealName.textContent='ton mot est 👇';
-        revealName.classList.remove('hidden');
         secretWord.textContent=p.word;
       }
       secretWord.classList.remove('hidden');
       nextPlayer.textContent=revealIndex===players.length-1?'Lancer la partie':'Joueur suivant';
       nextPlayer.classList.remove('hidden');
-    }
-    // END undercover-showReveal
+    });
+    // END undercover-reveal-action
 
     validateName.addEventListener('click',()=>{
       const name=nameInput.value.trim()||('Joueur'+(revealIndex+1));
@@ -5848,10 +5894,9 @@ rapidityMode=false;}else showQuestion();}}
         round=0;
         startRound();
       }else{
-        // BEGIN undercover-nextplayer-storage
-        if(undercoverState.names && undercoverState.names.length===players.length)showReveal();
-        else showNameEntry();
-        // END undercover-nextplayer-storage
+        // BEGIN undercover-nextplayer
+        showReveal();
+        // END undercover-nextplayer
       }
     });
 
