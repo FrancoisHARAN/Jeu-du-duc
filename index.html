@@ -44,6 +44,9 @@ color: var(--text-dark);
       margin: 0 auto 1rem auto;
       display: block;
       transition: transform 0.2s;
+      /* // BEGIN logo-size-update */
+      width: 160px;
+      /* // END logo-size-update */
     }
     .logo:hover { transform: scale(1.1); }
 
@@ -104,8 +107,8 @@ color: var(--text-dark);
       border-radius: 2rem;
       font-size: 1rem;
       /* // BEGIN button-style-update */
-      background: linear-gradient(135deg,var(--cyan),var(--pink));
-      border: 3px solid #000;
+      background: none;
+      border: none;
       /* // END button-style-update */
       color: var(--text-dark);
       font-weight: bold;
@@ -116,6 +119,16 @@ color: var(--text-dark);
       transform: scale(1.05);
       filter: brightness(1.1);
     }
+
+    /* // BEGIN action-btn-style */
+    .action-btn {
+      background: var(--pink);
+      border: 4px solid #000;
+      color: var(--text-dark);
+      text-transform: uppercase;
+      box-shadow: 4px 4px 0 #000;
+    }
+    /* // END action-btn-style */
 
 #startBtn {
   margin-top: 1rem;
@@ -130,7 +143,7 @@ color: var(--text-dark);
   text-transform: uppercase;
   color: var(--text-dark);
   font-weight: 900;
-  text-align: left;
+  text-align: center;
   /* // END other-games-title-style */
 }
 
@@ -170,18 +183,10 @@ color: var(--text-dark);
 
 /* // BEGIN mode-header-style */
 .mode-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  justify-content: flex-start;
-  width: 100%;
   font-weight: 900;
   color: var(--text-dark);
   text-transform: uppercase;
-}
-.mode-header img {
-  width: 40px;
-  height: 40px;
+  text-align: center;
 }
 /* // END mode-header-style */
 
@@ -240,6 +245,12 @@ color: var(--text-dark);
       border-radius: 0.8rem;
       margin: 0.4rem auto;
       max-width: 250px;
+      /* // BEGIN player-item-style */
+      background: var(--text-light);
+      border: 4px solid #000;
+      box-shadow: 4px 4px 0 #000;
+      color: var(--text-dark);
+      /* // END player-item-style */
     }
     .remove-btn {
       background: none;
@@ -248,6 +259,10 @@ color: var(--text-dark);
       font-weight: bold;
       cursor: pointer;
       font-size: 0.9rem;
+      /* // BEGIN remove-btn-reset */
+      padding: 0;
+      box-shadow: none;
+      /* // END remove-btn-reset */
     }
 
     #answerBox { margin-top: 0.5rem; display: none; }
@@ -280,6 +295,9 @@ color: var(--text-dark);
       flex-direction: column;
       align-items: center;
       gap: 0.5rem;
+      box-shadow: 4px 4px 0 #000;
+      box-sizing: border-box;
+      margin: 0.5rem 0;
 /* // BEGIN mode-card-horizontal */
       flex-direction: row;
       justify-content: flex-start;
@@ -303,12 +321,12 @@ color: var(--text-dark);
       /* // END mode-card-hover-update */
     }
     .mode-card.active {
-      background: linear-gradient(135deg,var(--yellow),var(--orange));
+      background: var(--pink);
       color: var(--text-dark);
-      border-color: var(--orange-dark);
+      border-color: #000;
       /* // BEGIN mode-card-active-update */
-      background: linear-gradient(135deg,var(--cyan),var(--pink));
-      border-color: var(--pink-dark);
+      background: var(--pink);
+      border-color: #000;
       /* // END mode-card-active-update */
     }
     .mode-card.fullwidth { grid-column: span 2; }
@@ -405,7 +423,7 @@ color: var(--text-dark);
     #killer-screen{padding:1rem;text-align:center;background:#222;color:#fff;}
     .killer-hidden{display:none;}
     .killer-card{background:rgba(0,0,0,0.5);padding:1.5rem;border-radius:1.5rem;width:90%;max-width:600px;margin:auto;box-shadow:0 8px 20px rgba(0,0,0,0.5);backdrop-filter:blur(6px);}
-    .killer-logo{width:80px;cursor:pointer;margin:0 auto 1rem auto;display:block;transition:transform 0.2s;}
+    .killer-logo{width:80px;cursor:pointer;margin:0 auto 1rem auto;display:block;transition:transform 0.2s;/* // BEGIN killer-logo-size */width:160px;/* // END killer-logo-size */}
     .killer-logo:hover{transform:scale(1.1);}
     .killer-player-input-container{display:flex;justify-content:center;align-items:center;gap:1rem;margin:1.2rem 0;}
     .killer-player-list{margin-top:0.5rem;}
@@ -438,12 +456,12 @@ color: var(--text-dark);
     <!-- // END title-uppercase -->
     <div class="player-input-container">
       <input type="text" id="playerInput" placeholder="Entre un prénom">
-      <button id="addBtn">Ajouter</button>
+      <button id="addBtn" class="action-btn">Ajouter</button>
     </div>
     <div id="playerList"></div>
 
     <!-- // BEGIN choose-mode-header -->
-    <p class="mode-header"><img src="apero.png" alt="Icône choix"><span>Choisir un mode</span></p>
+    <h2 class="mode-header">Choisis un mode</h2>
     <!-- // END choose-mode-header -->
     <div class="modes">
       <div class="mode-card" data-mode="debut">
@@ -497,9 +515,9 @@ color: var(--text-dark);
       </div>
     </div>
 
-    <button id="startBtn">🎲 Lancer la partie</button>
+    <button id="startBtn" class="action-btn">🎲 Lancer la partie</button>
     <div id="otherGames" class="other-games">
-      <h2>Autres jeux</h2>
+      <h2 class="mode-header">Autres jeux</h2>
 <button id="undercoverBtn" class="mode-card">
         <!-- // BEGIN other-games-undercover-image -->
         <img src="undercover.png" alt="Undercover">
@@ -509,11 +527,6 @@ color: var(--text-dark);
       <button id="killer-btn" class="mode-card">
         <img src="killer.png" alt="Killer">
         <span>Killer</span>
-      </button>
-        <!-- // BEGIN other-games-killer-image -->
-        <img src="killer.png" alt="Killer">
-        <span>Killer</span>
-        <!-- // END other-games-killer-image -->
       </button>
     </div>
   </div>
@@ -649,14 +662,14 @@ color: var(--text-dark);
 
     function setBackground(type){
       const bg={
-        "VÉRITÉ":"linear-gradient(135deg,#FFB74D,#FF9100)",
-        "ACTION":"linear-gradient(135deg,#FF7043,#E53935)",
-        "CULTURE G.":"linear-gradient(135deg,#FFD54F,#FFA000)",
-        "RAPIDITÉ":"linear-gradient(135deg,#FF8A00,#FF3D00)",
-        "CUSTOM":"linear-gradient(135deg,#FF7A18,#FF3D00)"
+        "VÉRITÉ":"var(--yellow)",
+        "ACTION":"var(--pink)",
+        "CULTURE G.":"var(--cyan)",
+        "RAPIDITÉ":"var(--orange)",
+        "CUSTOM":"var(--orange)"
       };
       // BEGIN da-default-bg
-      document.body.style.background=bg[type]||"linear-gradient(135deg,#00d4ff,#ff4db8)";
+      document.body.style.background=bg[type]||"var(--cyan)";
       // END da-default-bg
     }
 
@@ -699,7 +712,7 @@ rapidityMode=false;}else showQuestion();}}
     document.querySelectorAll(".mode-card").forEach(card=>{card.addEventListener("click",()=>{document.querySelectorAll(".mode-card").forEach(c=>c.classList.remove("active"));card.classList.add("active");currentMode=card.dataset.mode;customWeightsBox.classList.toggle("hidden",currentMode!=="custom");});});
     backLogo.addEventListener("click",()=>{gameScreen.classList.add("hidden");setupScreen.classList.remove("hidden");
     // BEGIN da-backlogo-bg
-    document.body.style.background="linear-gradient(135deg,#00d4ff,#ff4db8)";
+    document.body.style.background="var(--cyan)";
     // END da-backlogo-bg
     });
 
@@ -715,7 +728,7 @@ rapidityMode=false;}else showQuestion();}}
     });
     backUndercover.addEventListener("click",()=>{undercoverScreen.classList.add("hidden");setupScreen.classList.remove("hidden");
     // BEGIN da-backundercover-bg
-    document.body.style.background="linear-gradient(135deg,#00d4ff,#ff4db8)";
+    document.body.style.background="var(--cyan)";
     // END da-backundercover-bg
     });
     undercoverTitle.addEventListener("click",()=>{document.getElementById("config").classList.remove("hidden");document.getElementById("reveal").classList.add("hidden");document.getElementById("play").classList.add("hidden");});
@@ -6075,7 +6088,7 @@ rapidityMode=false;}else showQuestion();}}
 
     killerBack.addEventListener('click',()=>{killerScreen.classList.add('killer-hidden');setupScreen.classList.remove('hidden');
     // BEGIN da-killerback-bg
-    document.body.style.background='linear-gradient(135deg,#00d4ff,#ff4db8)';
+    document.body.style.background='var(--cyan)';
     // END da-killerback-bg
     });
     })();
