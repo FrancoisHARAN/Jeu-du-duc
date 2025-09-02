@@ -32,9 +32,10 @@
       /* // BEGIN no-bg-transition */
       /* transition: background 0.6s; */
       /* // END no-bg-transition */
-      /* // BEGIN da-body-background */
-      background: linear-gradient(135deg,var(--cyan),var(--pink));
-      /* // END da-body-background */
+/* // BEGIN da-body-white */
+background: var(--text-light);
+color: var(--text-dark);
+/* // END da-body-white */
     }
 
     .logo {
@@ -49,6 +50,11 @@
     h1 {
       margin: 0.5rem 0;
       text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+      /* // BEGIN h1-style-update */
+      color: var(--text-dark);
+      text-transform: uppercase;
+      font-weight: 900;
+      /* // END h1-style-update */
     }
 
     .card {
@@ -64,6 +70,12 @@
       display: flex;
       flex-direction: column;
       justify-content: flex-start;
+      /* // BEGIN card-style-update */
+      background: var(--text-light);
+      border: 4px solid #000;
+      box-shadow: 6px 6px 0 #000;
+      color: var(--text-dark);
+      /* // END card-style-update */
     }
 
     .player-input-container {
@@ -114,6 +126,12 @@
 }
 .other-games h2 {
   margin: 0.5rem 0;
+  /* // BEGIN other-games-title-style */
+  text-transform: uppercase;
+  color: var(--text-dark);
+  font-weight: 900;
+  text-align: left;
+  /* // END other-games-title-style */
 }
 
 /* // BEGIN other-games-button-style */
@@ -128,9 +146,44 @@
 }
 /* // END other-games-button-style */
 
+/* // BEGIN other-games-card-update */
+#otherGames button.mode-card {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 1rem;
+}
+#otherGames button.mode-card img {
+  width: 60px;
+  height: 60px;
+}
+#otherGames button.mode-card span {
+  font-weight: bold;
+  text-transform: uppercase;
+}
+#otherGames {
+  width: 100%;
+}
+/* // END other-games-card-update */
 .hidden {
   display: none !important;
 }
+
+/* // BEGIN mode-header-style */
+.mode-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: flex-start;
+  width: 100%;
+  font-weight: 900;
+  color: var(--text-dark);
+  text-transform: uppercase;
+}
+.mode-header img {
+  width: 40px;
+  height: 40px;
+}
+/* // END mode-header-style */
 
 .result-screen {
   margin-top: 1rem;
@@ -204,6 +257,11 @@
       grid-template-columns: repeat(2, 1fr);
       gap: 1rem;
       margin-top: 1rem;
+      /* // BEGIN modes-layout-update */
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      /* // END modes-layout-update */
     }
     .mode-card {
       background: rgba(255,255,255,0.1);
@@ -222,8 +280,21 @@
       flex-direction: column;
       align-items: center;
       gap: 0.5rem;
+/* // BEGIN mode-card-horizontal */
+      flex-direction: row;
+      justify-content: flex-start;
+      width: 100%;
+      text-align: left;
+      gap: 1rem;
+      /* // END mode-card-horizontal */
       /* // END mode-card-style-update */
     }
+    /* // BEGIN mode-card-text */
+    .mode-card div {
+      text-transform: uppercase;
+      font-weight: 900;
+    }
+    /* // END mode-card-text */
     .mode-card:hover {
       transform: scale(1.05);
       background: rgba(255,255,255,0.25);
@@ -246,6 +317,10 @@
     .mode-card img {
       width: 80px;
       height: 80px;
+      /* // BEGIN mode-card-image-resize */
+      width: 60px;
+      height: 60px;
+      /* // END mode-card-image-resize */
     }
     /* // END mode-card-image-style */
 
@@ -358,14 +433,18 @@
 <body>
   <div id="setup" class="card">
     <img src="icon.png" alt="Logo Jeu du Duc" class="logo">
-    <h1>Le Jeu du Duc</h1>
+    <!-- // BEGIN title-uppercase -->
+    <h1>LE JEU DU DUC</h1>
+    <!-- // END title-uppercase -->
     <div class="player-input-container">
       <input type="text" id="playerInput" placeholder="Entre un prénom">
       <button id="addBtn">Ajouter</button>
     </div>
     <div id="playerList"></div>
 
-    <p>Choisis un mode :</p>
+    <!-- // BEGIN choose-mode-header -->
+    <p class="mode-header"><img src="apero.png" alt="Icône choix"><span>Choisir un mode</span></p>
+    <!-- // END choose-mode-header -->
     <div class="modes">
       <div class="mode-card" data-mode="debut">
         <!-- // BEGIN mode-card-apero-image -->
@@ -421,13 +500,16 @@
     <button id="startBtn">🎲 Lancer la partie</button>
     <div id="otherGames" class="other-games">
       <h2>Autres jeux</h2>
-      <button id="undercoverBtn">
+<button id="undercoverBtn" class="mode-card">
         <!-- // BEGIN other-games-undercover-image -->
         <img src="undercover.png" alt="Undercover">
         <span>Undercover</span>
         <!-- // END other-games-undercover-image -->
       </button>
-      <button id="killer-btn">
+      <button id="killer-btn" class="mode-card">
+        <img src="killer.png" alt="Killer">
+        <span>Killer</span>
+      </button>
         <!-- // BEGIN other-games-killer-image -->
         <img src="killer.png" alt="Killer">
         <span>Killer</span>
