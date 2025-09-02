@@ -732,6 +732,9 @@ const sliders={debut:document.getElementById("weight-debut"),hardcore:document.g
       if(gorgeesText)gorgeesText.classList.add("hidden");
       let mode=currentMode;if(mode==="custom")mode=pickCustomMode();
       const rapidityMap={debut:0.08,hardcore:0.04,alcool:0.08,culture:0.02};
+      // BEGIN reduce-rapidity-chance
+      if(rapidityMap){Object.assign(rapidityMap,{debut:0.02,hardcore:0.02,alcool:0.02,culture:0.02});}
+      // END reduce-rapidity-chance
       const rapidityChance=rapidityMap[mode]||0;
       if(Math.random()<rapidityChance){rapidityMode=true;typeBox.textContent="RAPIDITÉ";setBackground("RAPIDITÉ");currentQuestionEl.textContent="⚡ Question de rapidité pour tout le monde ! (Cliquez pour révéler)";
       // BEGIN rapidite-jingle
