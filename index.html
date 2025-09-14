@@ -412,7 +412,9 @@ color: var(--text-dark);
     /* // BEGIN undercover-button-style */
     #undercover button{background:var(--cyan);border:3px solid #000;}
     /* // END undercover-button-style */
-    #undercover #playersInputs input{display:block;margin:0.3rem auto;width:200px;text-align:center;}
+    /* BEGIN undercover-player-input-style */
+    #undercover #playersInputs input{display:block;width:100%;text-align:center;}
+    /* END undercover-player-input-style */
     #undercover h1{cursor:pointer;}
     #secretWord{font-size:2.5rem;font-weight:bold;margin-top:1rem;}
     /* BEGIN undercover-form-layout */
@@ -423,6 +425,15 @@ color: var(--text-dark);
     /* BEGIN undercover-role-summary-style */
     #undercover .role-summary div{margin:0.2rem 0;}
     /* END undercover-role-summary-style */
+
+    /* BEGIN undercover-da-update */
+    #undercover .under-card{background:#111;border:4px solid #000;box-shadow:6px 6px 0 #000;border-radius:1.5rem;padding:1.5rem;margin:1rem auto;width:90%;max-width:400px;color:#fff;}
+    #undercover #playersInputs{width:100%;max-width:260px;margin:auto;}
+    #undercover .under-player-item{display:flex;align-items:center;justify-content:center;gap:0.5rem;margin:0.3rem 0;}
+    #undercover .under-player-item input{flex:1;margin:0;}
+    #undercover .under-remove-btn{background:none;color:#ff1744;border:none;padding:0.3rem 0.5rem;font-weight:bold;cursor:pointer;}
+    #undercover .under-quit-btn{background:#ff1744;color:#fff;border:3px solid #000;border-radius:2rem;padding:0.6rem 1.2rem;font-weight:bold;position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);}
+    /* END undercover-da-update */
 
     /* Mise en forme de la zone de vote */
     #voteList {
@@ -590,7 +601,8 @@ color: var(--text-dark);
   <div id="undercover" class="hidden">
     <img src="icon.png" alt="Retour" id="backUndercover" class="logo">
     <h1 id="undercoverTitle">Undercover</h1>
-      <div id="config">
+      <!-- BEGIN undercover-card-config -->
+      <div id="config" class="under-card">
         <!-- // BEGIN undercover-player-count -->
         <div class="form-group">
           <label for="playerCount">Nombre de joueurs :</label>
@@ -619,8 +631,10 @@ color: var(--text-dark);
         <!-- // END undercover-player-list -->
         <button id="start">Démarrer</button>
       </div>
+      <!-- END undercover-card-config -->
 
-      <div id="reveal" class="hidden">
+      <!-- BEGIN undercover-card-reveal -->
+      <div id="reveal" class="hidden under-card">
         <h2 id="askName">Entre ton prénom</h2>
         <input id="nameInput" placeholder="Prénom" />
         <button id="validateName">Valider</button>
@@ -631,7 +645,9 @@ color: var(--text-dark);
         <p id="secretWord" class="hidden"></p>
         <button id="nextPlayer" class="hidden"></button>
       </div>
-      <div id="play" class="hidden">
+      <!-- END undercover-card-reveal -->
+      <!-- BEGIN undercover-card-play -->
+      <div id="play" class="hidden under-card">
         <h2 id="starter"></h2>
         <button id="voteBtn">Vote</button>
         <div id="voteArea" class="hidden">
@@ -642,12 +658,18 @@ color: var(--text-dark);
         <button id="nextRound" class="hidden">➡️</button>
         <button id="newGame" class="hidden">Nouvelle partie</button>
       </div>
-      <div id="whiteGuess" class="hidden">
+      <!-- END undercover-card-play -->
+      <!-- BEGIN undercover-card-whiteGuess -->
+      <div id="whiteGuess" class="hidden under-card">
         <h2>Mister White éliminé</h2>
         <p>Devine le mot des civils :</p>
         <input id="whiteGuessInput" placeholder="Mot" />
         <button id="whiteGuessSubmit">Valider</button>
       </div>
+      <!-- END undercover-card-whiteGuess -->
+      <!-- BEGIN undercover-quit-button-html -->
+      <button id="undercoverQuit" class="under-quit-btn">Quitter la partie</button>
+      <!-- END undercover-quit-button-html -->
   </div>
 
   <div id="killer-screen" class="killer-hidden">
@@ -9440,16 +9462,28 @@ rapidityMode=false;}else showQuestion();}}
       undercoverState.names=undercoverState.names||[];
       playersInputs.innerHTML='';
       for(let i=0;i<n;i++){
+        const wrap=document.createElement('div');wrap.className='under-player-item';
         const inp=document.createElement('input');
         inp.placeholder='Prénom';
         inp.value=undercoverState.names[i]||'';
         inp.addEventListener('input',()=>{undercoverState.names[i]=inp.value;undercoverSave();});
-        playersInputs.appendChild(inp);
+        const rm=document.createElement('button');rm.textContent='❌';rm.className='under-remove-btn';
+        rm.addEventListener('click',()=>removeUndercoverPlayer(i));
+        wrap.appendChild(inp);wrap.appendChild(rm);playersInputs.appendChild(wrap);
       }
       undercoverState.names.length=n;
       undercoverSave();
     }
     // END undercover-render-names
+
+    // BEGIN undercover-remove-player-function
+    function removeUndercoverPlayer(i){
+      undercoverState.names.splice(i,1);
+      playerCountInput.value=undercoverState.names.length;
+      autoRoles();
+      renderPlayerInputs();
+    }
+    // END undercover-remove-player-function
 
     // BEGIN undercover-player-count-render
     playerCountInput.addEventListener('change',()=>{autoRoles();renderPlayerInputs();});
@@ -9464,6 +9498,22 @@ rapidityMode=false;}else showQuestion();}}
     // END undercover-role-inputs-state
 
     document.getElementById('start').addEventListener('click', startUndercover);
+
+    // BEGIN undercover-quit-button
+    const undercoverQuit=document.getElementById('undercoverQuit');
+    if(undercoverQuit){
+      undercoverQuit.addEventListener('click',()=>{
+        localStorage.removeItem('undercover.state');
+        undercoverState={};
+        undercoverScreen.classList.add('hidden');
+        setupScreen.classList.remove('hidden');
+        document.body.style.background='var(--cyan)';
+        playerCountInput.value=4;
+        autoRoles();
+        renderPlayerInputs();
+      });
+    }
+    // END undercover-quit-button
 
     // BEGIN undercover-newgame-reset
     newGame.addEventListener('click',()=>{
