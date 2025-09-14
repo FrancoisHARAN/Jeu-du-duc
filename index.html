@@ -9503,14 +9503,17 @@ rapidityMode=false;}else showQuestion();}}
     const undercoverQuit=document.getElementById('undercoverQuit');
     if(undercoverQuit){
       undercoverQuit.addEventListener('click',()=>{
-        localStorage.removeItem('undercover.state');
-        undercoverState={};
-        undercoverScreen.classList.add('hidden');
-        setupScreen.classList.remove('hidden');
-        document.body.style.background='var(--cyan)';
-        playerCountInput.value=4;
-        autoRoles();
+        // BEGIN undercover-reset-config
+        players.length=0;
+        currentPair=null;
+        revealIndex=0;
+        round=0;
+        document.getElementById('reveal').classList.add('hidden');
+        document.getElementById('play').classList.add('hidden');
+        document.getElementById('whiteGuess').classList.add('hidden');
+        document.getElementById('config').classList.remove('hidden');
         renderPlayerInputs();
+        // END undercover-reset-config
       });
     }
     // END undercover-quit-button
