@@ -140,6 +140,31 @@ color: var(--text-dark);
     }
     /* // END answer-btn-style */
 
+    /* === MCQ (Culture G) === */
+    #mcqBox { margin-top: .5rem; display: none; }
+    .mcq-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(140px,1fr));
+      gap: .75rem;
+    }
+    .mcq-btn {
+      background: var(--yellow);
+      border: 4px solid #000;
+      box-shadow: 4px 4px 0 #000;
+      color: var(--text-dark);
+      font-weight: 900;
+      text-transform: uppercase;
+      padding: .9rem 1rem;
+      border-radius: .8rem;
+      cursor: pointer;
+      transition: transform .15s ease, filter .15s ease, background .15s ease;
+    }
+    .mcq-btn:active { transform: scale(.98); }
+    .mcq-btn[disabled] { cursor: default; filter: grayscale(.1) brightness(.95); }
+
+    .mcq-correct { background: #2ecc71 !important; } /* vert */
+    .mcq-wrong   { background: #ff4d4d !important; } /* rouge */
+
     #startBtn {
       margin-top: 1rem;
       /* // BEGIN start-btn-layout */
@@ -594,6 +619,11 @@ color: var(--text-dark);
       <!-- // BEGIN answer-btn-element -->
       <button id="showAnswerBtn" class="action-btn answer-btn">VOIR LA RÉPONSE</button>
       <!-- // END answer-btn-element -->
+      <!-- // BEGIN culture-mcq -->
+      <div id="mcqBox">
+        <div class="mcq-grid" id="mcqGrid"></div>
+      </div>
+      <!-- // END culture-mcq -->
       <p id="answerText"></p>
     </div>
   </div>
@@ -762,7 +792,52 @@ const sliders={debut:document.getElementById("weight-debut"),hardcore:document.g
 
     function pickCustomMode(){const total=weights.debut+weights.hardcore+weights.alcool+weights.culture;let r=Math.random()*total;if(r<weights.debut)return"debut";r-=weights.debut;if(r<weights.hardcore)return"hardcore";r-=weights.hardcore;if(r<weights.alcool)return"alcool";return"culture";}
 
-    function showQuestion(){currentQuestionEl.textContent="";typeBox.textContent="";answerBox.style.display="none";answerText.textContent="";rapidityMode=false;
+    function hideQA() {
+      // masque réponse texte et QCM
+      const mcqBox = document.getElementById("mcqBox");
+      if (mcqBox) mcqBox.style.display = "none";
+      if (answerBox) { answerBox.style.display = "none"; showAnswerBtn.style.display = "none"; }
+      answerText.textContent = "";
+    }
+
+    function renderMCQ(qObj, playerName) {
+      // Titre/type/texte
+      typeBox.textContent = "CULTURE G.";
+      setBackground("CULTURE G.");
+      currentQuestionEl.textContent = `${playerName}, ${qObj.question}`;
+
+      // Prépare la grille
+      const mcqBox  = document.getElementById("mcqBox");
+      const mcqGrid = document.getElementById("mcqGrid");
+      if (answerBox) answerBox.style.display = "block";
+      mcqGrid.innerHTML = "";
+      mcqBox.style.display = "block";
+
+      // Crée les 4 boutons
+      qObj.choices.forEach((label, idx) => {
+        const btn = document.createElement("button");
+        btn.className = "mcq-btn";
+        btn.textContent = ["A","B","C","D"][idx] + " — " + label;
+        btn.addEventListener("click", () => {
+          // Disable all
+          [...mcqGrid.querySelectorAll("button")].forEach(b => b.disabled = true);
+          // Coloration
+          if (idx === qObj.answerIndex) {
+            btn.classList.add("mcq-correct");
+          } else {
+            btn.classList.add("mcq-wrong");
+            mcqGrid.children[qObj.answerIndex].classList.add("mcq-correct");
+          }
+        }, { once:true });
+        mcqGrid.appendChild(btn);
+      });
+    }
+
+    function showQuestion(){
+      currentQuestionEl.textContent = "";
+      typeBox.textContent = "";
+      hideQA();
+      rapidityMode = false;
       if(cultureToggleContainer)cultureToggleContainer.classList.add("hidden");
       if(gorgeesText)gorgeesText.classList.add("hidden");
       let mode=currentMode;if(mode==="custom")mode=pickCustomMode();
@@ -776,7 +851,46 @@ const sliders={debut:document.getElementById("weight-debut"),hardcore:document.g
       if(rapiditeAudio){rapiditeAudio.currentTime=0;rapiditeAudio.play();}
       // END rapidite-jingle
       return;}
-      if(mode==="culture"){const q=cultureQuestions[Math.floor(Math.random()*cultureQuestions.length)];const player=players[Math.floor(Math.random()*players.length)];typeBox.textContent="CULTURE G.";setBackground("CULTURE G.");currentQuestionEl.textContent=`${player}, ${q.question}`;showAnswerBtn.style.display="inline-block";answerBox.style.display="block";showAnswerBtn.onclick=e=>{e.stopPropagation();answerText.textContent="✅ Réponse : "+q.answer;showAnswerBtn.style.display="none";};if(cultureToggleContainer)cultureToggleContainer.classList.remove("hidden");if(cultureDrinkMode&&gorgeesText){const g=Math.floor(Math.random()*3)+1;gorgeesText.textContent=`${g} gorgée${g>1?'s':''}`;gorgeesText.classList.remove("hidden");}}
+      if(mode==="culture"){
+        // Tirage aléatoire du joueur ciblé
+        const player = players[Math.floor(Math.random() * players.length)];
+
+        // Pile ou face : simple vs QCM (aléatoire, non pondéré)
+        const useMcq = Math.random() < 0.5 && cultureMcq.length > 0;
+
+        if (useMcq) {
+          // QCM
+          const q = cultureMcq[Math.floor(Math.random() * cultureMcq.length)];
+          renderMCQ(q, player);
+          // Affiche le toggle alcool si présent
+          if (cultureToggleContainer) cultureToggleContainer.classList.remove("hidden");
+          if (cultureDrinkMode && gorgeesText) {
+            const g = Math.floor(Math.random() * 3) + 1;
+            gorgeesText.textContent = `${g} gorgée${g>1?'s':''}`;
+            gorgeesText.classList.remove("hidden");
+          }
+        } else {
+          // Question simple existante (comportement d’origine)
+          const q = cultureQuestions[Math.floor(Math.random() * cultureQuestions.length)];
+          typeBox.textContent = "CULTURE G.";
+          setBackground("CULTURE G.");
+          currentQuestionEl.textContent = `${player}, ${q.question}`;
+          showAnswerBtn.style.display = "inline-block";
+          answerBox.style.display = "block";
+          showAnswerBtn.onclick = e => {
+            e.stopPropagation();
+            answerText.textContent = "✅ Réponse : " + q.answer;
+            showAnswerBtn.style.display = "none";
+          };
+          if (cultureToggleContainer) cultureToggleContainer.classList.remove("hidden");
+          if (cultureDrinkMode && gorgeesText) {
+            const g = Math.floor(Math.random() * 3) + 1;
+            gorgeesText.textContent = `${g} gorgée${g>1?'s':''}`;
+            gorgeesText.classList.remove("hidden");
+          }
+        }
+        return;
+      }
       else if(mode==="debut"||mode==="hardcore"||mode==="alcool"){const pool={debut:debutQuestions,hardcore:hardcoreQuestions,alcool:alcoolQuestions}[mode];const [type,text]=pool[Math.floor(Math.random()*pool.length)].split("|");let player=players[Math.floor(Math.random()*players.length)];let qText=text.replace(/\{player\}/g,player);if(qText.includes("{other}")){let other;do{other=players[Math.floor(Math.random()*players.length)];}while(other===player&&players.length>1);qText=qText.replace(/\{other\}/g,other);}typeBox.textContent=type;setBackground(type);currentQuestionEl.textContent=qText;}}
     
     function nextQuestion(e){if(e.target.id==="showAnswerBtn")return;if(e.clientX>window.innerWidth/2){if(rapidityMode&&currentQuestionEl.textContent.includes("⚡")){const q=rapidityQuestions[Math.floor(Math.random()*rapidityQuestions.length)];currentQuestionEl.textContent=q;// BEGIN rapidity-question-fix
@@ -3333,6 +3447,15 @@ rapidityMode=false;}else showQuestion();}}
   "ACTION|Tous ceux qui savent siffler avec une feuille distribuent 5 gorgées."
 
     ];
+      const cultureMcq = [
+        { question: "Quel est l’élément chimique dont le symbole est Na ?",
+          choices: ["Sodium", "Azote", "Nickel", "Néon"], answerIndex: 0 },
+        { question: "Quelle ville est la capitale de l’Australie ?",
+          choices: ["Sydney", "Melbourne", "Canberra", "Perth"], answerIndex: 2 },
+        { question: "Qui a peint « La Nuit étoilée » ?",
+          choices: ["Monet", "Van Gogh", "Picasso", "Matisse"], answerIndex: 1 },
+      ];
+
       const cultureQuestions=[
         {question:"Quelle est la capitale de la Croatie ?",answer:"Zagreb"},
         {question:"Quel compositeur hongrois est connu pour ses Rhapsodies ?",answer:"Franz Liszt"},
