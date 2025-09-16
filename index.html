@@ -817,8 +817,20 @@ const sliders={debut:document.getElementById("weight-debut"),hardcore:document.g
       qObj.choices.forEach((label, idx) => {
         const btn = document.createElement("button");
         btn.className = "mcq-btn";
-        btn.textContent = ["A","B","C","D"][idx] + " — " + label;
-        btn.addEventListener("click", () => {
+ btn.addEventListener("click", event => {
+          // BEGIN mcq-btn-priority-click
+          event.stopPropagation();
+          // END mcq-btn-priority-click
+          // Disable all
+          [...mcqGrid.querySelectorAll("button")].forEach(b => b.disabled = true);
+          // Coloration
+          if (idx === qObj.answerIndex) {
+            btn.classList.add("mcq-correct");
+          } else {
+            btn.classList.add("mcq-wrong");
+            mcqGrid.children[qObj.answerIndex].classList.add("mcq-correct");
+          }
+        }, { once:true });
           // Disable all
           [...mcqGrid.querySelectorAll("button")].forEach(b => b.disabled = true);
           // Coloration
@@ -855,12 +867,15 @@ const sliders={debut:document.getElementById("weight-debut"),hardcore:document.g
         // Tirage aléatoire du joueur ciblé
         const player = players[Math.floor(Math.random() * players.length)];
 
-        // Pile ou face : simple vs QCM (aléatoire, non pondéré)
-        const useMcq = Math.random() < 0.5 && cultureMcq.length > 0;
+// BEGIN culture-random-selection
+        const totalCulturePool = cultureQuestions.length + cultureMcq.length;
+        const drawIndex = totalCulturePool > 0 ? Math.floor(Math.random() * totalCulturePool) : -1;
+        const useMcq = drawIndex > -1 && drawIndex < cultureMcq.length;
+        // END culture-random-selection
 
         if (useMcq) {
           // QCM
-          const q = cultureMcq[Math.floor(Math.random() * cultureMcq.length)];
+          const q = cultureMcq[drawIndex];
           renderMCQ(q, player);
           // Affiche le toggle alcool si présent
           if (cultureToggleContainer) cultureToggleContainer.classList.remove("hidden");
@@ -871,7 +886,12 @@ const sliders={debut:document.getElementById("weight-debut"),hardcore:document.g
           }
         } else {
           // Question simple existante (comportement d’origine)
-          const q = cultureQuestions[Math.floor(Math.random() * cultureQuestions.length)];
+const baseIndex = drawIndex > -1 ? drawIndex - cultureMcq.length : -1;
+          const safeIndex = (baseIndex >= 0 && baseIndex < cultureQuestions.length)
+            ? baseIndex
+            : (cultureQuestions.length ? Math.floor(Math.random() * cultureQuestions.length) : -1);
+          if (safeIndex < 0) { return; }
+          const q = cultureQuestions[safeIndex];
           typeBox.textContent = "CULTURE G.";
           setBackground("CULTURE G.");
           currentQuestionEl.textContent = `${player}, ${q.question}`;
@@ -3454,6 +3474,51 @@ rapidityMode=false;}else showQuestion();}}
           choices: ["Sydney", "Melbourne", "Canberra", "Perth"], answerIndex: 2 },
         { question: "Qui a peint « La Nuit étoilée » ?",
           choices: ["Monet", "Van Gogh", "Picasso", "Matisse"], answerIndex: 1 },
+// BEGIN culture-mcq-extended
+        { question: "Quel est le plus grand océan du monde ?",
+          choices: ["Atlantique", "Pacifique", "Indien", "Arctique"], answerIndex: 1 },
+        { question: "Qui a inventé le vaccin contre la rage ?",
+          choices: ["Pasteur", "Jenner", "Koch", "Lavoisier"], answerIndex: 0 },
+        { question: "En quelle année a débuté la guerre de Cent Ans ?",
+          choices: ["1337", "1492", "1415", "1302"], answerIndex: 0 },
+        { question: "Qui est l’auteur du livre 'Le Nom de la rose' ?",
+          choices: ["Eco", "Calvino", "Baricco", "Manzoni"], answerIndex: 0 },
+        { question: "Quel président français a aboli la peine de mort ?",
+          choices: ["Mitterrand", "Chirac", "Giscard d’Estaing", "De Gaulle"], answerIndex: 0 },
+        { question: "Dans quel pays se trouve la ville de Samarcande ?",
+          choices: ["Kazakhstan", "Ouzbékistan", "Turkménistan", "Tadjikistan"], answerIndex: 1 },
+        { question: "Quelle planète possède le plus grand nombre de satellites naturels ?",
+          choices: ["Jupiter", "Saturne", "Neptune", "Uranus"], answerIndex: 1 },
+        { question: "Qui a formulé l’équation de la relativité générale ?",
+          choices: ["Einstein", "Newton", "Hawking", "Maxwell"], answerIndex: 0 },
+        { question: "Quel peintre flamand est l’auteur de 'La chute des anges rebelles' ?",
+          choices: ["Rubens", "Brueghel l’Ancien", "Van Eyck", "Vermeer"], answerIndex: 1 },
+        { question: "Quel roi de France a signé l’édit de Nantes ?",
+          choices: ["Henri IV", "François Ier", "Louis XIV", "Charles IX"], answerIndex: 0 },
+        { question: "Qui a écrit 'Ainsi parlait Zarathoustra' ?",
+          choices: ["Nietzsche", "Schopenhauer", "Heidegger", "Kant"], answerIndex: 0 },
+        { question: "Quel est le plus profond des océans ?",
+          choices: ["Atlantique", "Indien", "Pacifique", "Arctique"], answerIndex: 2 },
+        { question: "Dans quelle ville se trouve la tour de Pise ?",
+          choices: ["Florence", "Pise", "Venise", "Rome"], answerIndex: 1 },
+        { question: "Qui a fondé Constantinople ?",
+          choices: ["Byzance", "Alexandre le Grand", "Constantin", "César"], answerIndex: 2 },
+        { question: "Quelle est la capitale du Myanmar ?",
+          choices: ["Yangon", "Naypyidaw", "Mandalay", "Rangoon"], answerIndex: 1 },
+        { question: "À quel pays appartient l’île de Pâques ?",
+          choices: ["Chili", "Argentine", "Pérou", "Brésil"], answerIndex: 0 },
+        { question: "Qui fut le premier homme dans l’espace ?",
+          choices: ["Gagarine", "Armstrong", "Glenn", "Shepard"], answerIndex: 0 },
+        { question: "Quelle molécule est considérée comme l’ADN de la vie ?",
+          choices: ["ADN", "ARN", "Protéine", "Lipide"], answerIndex: 0 },
+        { question: "Quel est le plus haut sommet d’Afrique ?",
+          choices: ["Kilimandjaro", "Atlas", "Rwenzori", "Table Mountain"], answerIndex: 0 },
+        { question: "Qui a peint 'Guernica' ?",
+          choices: ["Dalí", "Picasso", "Miró", "Velázquez"], answerIndex: 1 },
+        // … (toutes les autres questions du bloc)
+        { question: "Qui a écrit 'Du côté de chez Swann' ?",
+          choices: ["Proust", "Balzac", "Zola", "Flaubert"], answerIndex: 0 },
+        // END culture-mcq-extended
       ];
 
       const cultureQuestions=[
