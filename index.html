@@ -817,13 +817,13 @@ const sliders={debut:document.getElementById("weight-debut"),hardcore:document.g
       qObj.choices.forEach((label, idx) => {
         const btn = document.createElement("button");
         btn.className = "mcq-btn";
- btn.addEventListener("click", event => {
+        // BEGIN mcq-btn-setup-fix
+        btn.textContent = label;
+        btn.addEventListener("click", event => {
           // BEGIN mcq-btn-priority-click
           event.stopPropagation();
           // END mcq-btn-priority-click
-          // Disable all
           [...mcqGrid.querySelectorAll("button")].forEach(b => b.disabled = true);
-          // Coloration
           if (idx === qObj.answerIndex) {
             btn.classList.add("mcq-correct");
           } else {
@@ -831,16 +831,7 @@ const sliders={debut:document.getElementById("weight-debut"),hardcore:document.g
             mcqGrid.children[qObj.answerIndex].classList.add("mcq-correct");
           }
         }, { once:true });
-          // Disable all
-          [...mcqGrid.querySelectorAll("button")].forEach(b => b.disabled = true);
-          // Coloration
-          if (idx === qObj.answerIndex) {
-            btn.classList.add("mcq-correct");
-          } else {
-            btn.classList.add("mcq-wrong");
-            mcqGrid.children[qObj.answerIndex].classList.add("mcq-correct");
-          }
-        }, { once:true });
+        // END mcq-btn-setup-fix
         mcqGrid.appendChild(btn);
       });
     }
