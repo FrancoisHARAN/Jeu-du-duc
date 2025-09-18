@@ -735,6 +735,19 @@ color: var(--text-dark);
   <audio id="rapidite-audio" src="rapidite.mp3"></audio>
   <!-- END rapidite-audio-element -->
   <script>
+    // --- Tirage "fair" des joueurs ---
+    const recentPicks = [];                   // file d'attente des derniers tirés
+    const MAX_RECENT_CAP = 15;                // plafond global (à 30 joueurs => on exclut 15)
+    function canPlayDefault(_name){ return true; } // hook "droits" si tu veux filtrer
+
+    function pickPlayerSmart(list, canPlay = canPlayDefault) {
+      // fenêtre d'exclusion = min(15, moitié des joueurs)
+      let windowSize = Math.min(MAX_RECENT_CAP, Math.floor(list.length / 2));
+      ...
+    }
+
+    const players = [];
+    let currentMode = "debut";
     const players=[];
     let currentMode="debut";
     let rapidityMode=false;
@@ -844,7 +857,7 @@ const sliders={debut:document.getElementById("weight-debut"),hardcore:document.g
       if(cultureToggleContainer)cultureToggleContainer.classList.add("hidden");
       if(gorgeesText)gorgeesText.classList.add("hidden");
       let mode=currentMode;if(mode==="custom")mode=pickCustomMode();
-      const rapidityMap={debut:0.08,hardcore:0.04,alcool:0.08,culture:0.02};
+      const rapidityMap={debut:0.08,hardcore:0.04,alcool:0.05,culture:0.01};
       // BEGIN reduce-rapidity-chance
       if(rapidityMap){Object.assign(rapidityMap,{debut:0.02,hardcore:0.02,alcool:0.02,culture:0.02});}
       // END reduce-rapidity-chance
@@ -856,7 +869,7 @@ const sliders={debut:document.getElementById("weight-debut"),hardcore:document.g
       return;}
       if(mode==="culture"){
         // Tirage aléatoire du joueur ciblé
-        const player = players[Math.floor(Math.random() * players.length)];
+        const player = pickPlayerSmart(players);
 
 // BEGIN culture-random-selection
         const totalCulturePool = cultureQuestions.length + cultureMcq.length;
