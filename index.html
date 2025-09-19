@@ -5,511 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Le Jeu du Duc 👑</title>
   <link rel="icon" type="image/png" href="image/icon.png">
-  <style>
-    :root {
-      --orange: #ff7a18;
-      --orange-dark: #ff5714;
-      --yellow: #ffcc00;
-      /* // BEGIN da-yellow-update */
-      --yellow: #ffe600;
-      /* // END da-yellow-update */
-      --text-dark: #222;
-      --text-light: #fff;
-      /* // BEGIN da-color-scheme */
-      --pink: #ff4db8;
-      --pink-dark: #d9007a;
-      --cyan: #00d4ff;
-      /* // END da-color-scheme */
-    }
-
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      color: var(--text-light);
-      text-align: center;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      /* // BEGIN no-bg-transition */
-      /* transition: background 0.6s; */
-      /* // END no-bg-transition */
-/* // BEGIN da-body-white */
-background: var(--text-light);
-color: var(--text-dark);
-/* // END da-body-white */
-    }
-
-    .logo {
-      width: 80px;
-      cursor: pointer;
-      margin: 0 auto 1rem auto;
-      display: block;
-      transition: transform 0.2s;
-      /* // BEGIN logo-size-update */
-      width: 160px;
-      /* // END logo-size-update */
-    }
-    .logo:hover { transform: scale(1.1); }
-
-    h1 {
-      margin: 0.5rem 0;
-      text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
-      /* // BEGIN h1-style-update */
-      color: var(--text-dark);
-      text-transform: uppercase;
-      font-weight: 900;
-      /* // END h1-style-update */
-    }
-
-    .card {
-      background: rgba(0,0,0,0.5);
-      padding: 1.5rem;
-      border-radius: 1.5rem;
-      width: 90%;
-      max-width: 600px;
-      min-height: 350px;
-      margin: auto;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.5);
-      backdrop-filter: blur(6px);
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      /* // BEGIN card-style-update */
-      background: var(--text-light);
-      border: 4px solid #000;
-      box-shadow: 6px 6px 0 #000;
-      color: var(--text-dark);
-      /* // END card-style-update */
-    }
-
-    .player-input-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 1rem;
-      margin: 1.2rem 0;
-    }
-
-    input {
-      padding: 0.7rem 1rem;
-      border-radius: 1rem;
-      border: 2px solid var(--cyan);
-      flex: 1;
-      max-width: 250px;
-      font-size: 1rem;
-      text-align: center;
-      color: var(--text-dark);
-      background: var(--text-light);
-    }
-
-    button {
-      padding: 0.7rem 1.4rem;
-      border: none;
-      border-radius: 2rem;
-      font-size: 1rem;
-      /* // BEGIN button-style-update */
-      background: none;
-      border: none;
-      /* // END button-style-update */
-      color: var(--text-dark);
-      font-weight: bold;
-      cursor: pointer;
-      transition: transform 0.2s, filter 0.2s;
-    }
-    button:hover {
-      transform: scale(1.05);
-      filter: brightness(1.1);
-    }
-
-    /* // BEGIN action-btn-style */
-    .action-btn {
-      background: var(--pink);
-      border: 4px solid #000;
-      color: var(--text-dark);
-      text-transform: uppercase;
-      box-shadow: 4px 4px 0 #000;
-    }
-    /* // END action-btn-style */
-
-    /* // BEGIN answer-btn-style */
-    .answer-btn {
-      background: var(--yellow);
-      border-radius: 0;
-    }
-    /* // END answer-btn-style */
-
-    /* === MCQ (Culture G) === */
-    #mcqBox { margin-top: .5rem; display: none; }
-    .mcq-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(140px,1fr));
-      gap: .75rem;
-    }
-    .mcq-btn {
-      background: var(--yellow);
-      border: 4px solid #000;
-      box-shadow: 4px 4px 0 #000;
-      color: var(--text-dark);
-      font-weight: 900;
-      text-transform: uppercase;
-      padding: .9rem 1rem;
-      border-radius: .8rem;
-      cursor: pointer;
-      transition: transform .15s ease, filter .15s ease, background .15s ease;
-    }
-    .mcq-btn:active { transform: scale(.98); }
-    .mcq-btn[disabled] { cursor: default; filter: grayscale(.1) brightness(.95); }
-
-    .mcq-correct { background: #2ecc71 !important; } /* vert */
-    .mcq-wrong   { background: #ff4d4d !important; } /* rouge */
-
-    #startBtn {
-      margin-top: 1rem;
-      /* // BEGIN start-btn-layout */
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      background: var(--pink);
-      /* // END start-btn-layout */
-    }
-    /* // BEGIN start-btn-img */
-    #startBtn img {
-      width: 24px;
-      height: 24px;
-      /* // BEGIN start-btn-img-size-update */
-      width: 60px;
-      height: 60px;
-      /* // END start-btn-img-size-update */
-    }
-    /* // END start-btn-img */
-
-  .other-games {
-    margin-top: 1rem;
-  }
-  .other-games h2 {
-    margin: 0.5rem 0;
-    /* // BEGIN other-games-title-style */
-    text-transform: uppercase;
-    color: var(--text-dark);
-    font-weight: 900;
-    text-align: center;
-    /* // END other-games-title-style */
-}
-
-/* // BEGIN other-games-button-style */
-#otherGames button {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-#otherGames button img {
-  width: 24px;
-  height: 24px;
-}
-/* // END other-games-button-style */
-
-/* // BEGIN other-games-card-update */
-#otherGames button.mode-card {
-  width: 100%;
-  justify-content: flex-start;
-  gap: 1rem;
-}
-#otherGames button.mode-card img {
-  width: 60px;
-  height: 60px;
-}
-#otherGames button.mode-card span {
-  font-weight: bold;
-  text-transform: uppercase;
-}
-#otherGames {
-  width: 100%;
-}
-/* // END other-games-card-update */
-.hidden {
-  display: none !important;
-}
-
-/* // BEGIN mode-header-style */
-.mode-header {
-  font-weight: 900;
-  color: var(--text-dark);
-  text-transform: uppercase;
-  text-align: center;
-}
-/* // END mode-header-style */
-
-.result-screen {
-  margin-top: 1rem;
-  padding: 1rem;
-  border-radius: 1rem;
-  background: rgba(0,0,0,0.6);
-  font-size: 1.2rem;
-  text-align: center;
-}
-
-.result-screen .victory {
-  color: #4caf50;
-  font-weight: bold;
-}
-
-.result-screen .defeat {
-  color: #f44336;
-  font-weight: bold;
-}
-
-.question-type {
-  font-size: 1.6rem;
-}
-    .question-type {
-      font-size: 1.6rem;
-      font-weight: bold;
-      margin: 0.5rem auto;
-      text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
-    }
-
-    .question {
-      font-size: 1.3rem;
-      font-weight: bold;
-      margin: 0.5rem 0;
-      min-height: 120px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
-    }
-
-    #playerList {
-      margin-top: 0.5rem;
-      font-size: 1.1rem;
-      line-height: 1.6;
-    }
-    .player-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: rgba(255,255,255,0.2);
-      padding: 0.5rem 0.8rem;
-      border-radius: 0.8rem;
-      margin: 0.4rem auto;
-      max-width: 250px;
-      /* // BEGIN player-item-style */
-      background: var(--text-light);
-      border: 4px solid #000;
-      box-shadow: 4px 4px 0 #000;
-      color: var(--text-dark);
-      /* // END player-item-style */
-    }
-    .remove-btn {
-      background: none;
-      border: none;
-      color: #ff1744;
-      font-weight: bold;
-      cursor: pointer;
-      font-size: 0.9rem;
-      /* // BEGIN remove-btn-reset */
-      padding: 0;
-      box-shadow: none;
-      /* // END remove-btn-reset */
-    }
-
-    #answerBox { margin-top: 0.5rem; display: none; }
-
-    .modes {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1rem;
-      margin-top: 1rem;
-      /* // BEGIN modes-layout-update */
-      display: flex;
-      flex-direction: column;
-      width: 100%;
-      /* // END modes-layout-update */
-    }
-    .mode-card {
-      background: rgba(255,255,255,0.1);
-      border-radius: 1rem;
-      padding: 1rem;
-      cursor: pointer;
-      font-weight: bold;
-      transition: transform 0.2s, background 0.3s;
-      border: 2px solid transparent;
-      color: var(--text-light);
-      /* // BEGIN mode-card-style-update */
-      background: var(--text-light);
-      border: 4px solid #000;
-      color: var(--text-dark);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.5rem;
-      box-shadow: 4px 4px 0 #000;
-      box-sizing: border-box;
-      margin: 0.5rem 0;
-/* // BEGIN mode-card-horizontal */
-      flex-direction: row;
-      justify-content: flex-start;
-      width: 100%;
-      text-align: left;
-      gap: 1rem;
-      /* // END mode-card-horizontal */
-      /* // END mode-card-style-update */
-    }
-    /* // BEGIN mode-card-text */
-    .mode-card div {
-      text-transform: uppercase;
-      font-weight: 900;
-    }
-    /* // END mode-card-text */
-    .mode-card:hover {
-      transform: scale(1.05);
-      background: rgba(255,255,255,0.25);
-      /* // BEGIN mode-card-hover-yellow */
-      background: var(--yellow);
-      /* // END mode-card-hover-yellow */
-    }
-    .mode-card.active {
-      background: var(--pink);
-      color: var(--text-dark);
-      border-color: #000;
-      /* // BEGIN mode-card-active-cyan */
-      background: var(--cyan);
-      border-color: #000;
-      /* // END mode-card-active-cyan */
-    }
-    .mode-card.fullwidth { grid-column: span 2; }
-
-    /* // BEGIN mode-card-image-style */
-    .mode-card img {
-      width: 80px;
-      height: 80px;
-      /* // BEGIN mode-card-image-resize */
-      width: 60px;
-      height: 60px;
-      /* // END mode-card-image-resize */
-    }
-    /* // END mode-card-image-style */
-
-    #customWeights {
-      margin-top: 1rem;
-      background: rgba(255,255,255,0.12);
-      padding: 1rem;
-      border-radius: 1rem;
-    }
-    .slider-container {
-      margin: 0.5rem 0;
-      text-align: left;
-    }
-    .slider-container label {
-      display: block;
-      font-size: 0.9rem;
-      margin-bottom: 0.3rem;
-    }
-    /* // BEGIN slider-fullwidth */
-    .slider-container input {
-      width: 100%;
-      max-width: 100%;
-    }
-    /* // END slider-fullwidth */
-
-    @media (max-width: 600px) {
-      .question { font-size: 1.1rem; min-height: 100px; }
-      .modes { grid-template-columns: 1fr; }
-      .mode-card.fullwidth { grid-column: auto; }
-    }
-  
-    #setup{animation:introZoom 0.5s ease-out forwards;}
-    @keyframes introZoom{from{transform:scale(1.5);}to{transform:scale(1);}}
-    #effect-container{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:999;}
-    .effect{position:absolute;top:50%;left:50%;width:20px;height:20px;border-radius:50%;opacity:0.8;transform:translate(-50%,-50%);animation:moveEffect 3s linear forwards;}
-    .flame{background:radial-gradient(circle,var(--yellow),var(--orange-dark));}
-    .spray{background:radial-gradient(circle,#a8e,#58f);}
-    @keyframes moveEffect{to{transform:translate(calc(-50% + var(--x)),calc(-50% + var(--y))) scale(0);opacity:0;}}
-
-    /* Styles spécifiques pour le jeu Undercover */
-    #undercover{font-family:Arial,sans-serif;padding:1rem;text-align:center;background:#222;color:#fff;}
-    #undercover input,#undercover button{padding:0.5rem;margin:0.2rem;border-radius:0.5rem;border:none;}
-    #undercover button{cursor:pointer;background:#ffcc00;color:#222;font-weight:bold;}
-    /* // BEGIN undercover-button-style */
-    #undercover button{background:var(--cyan);border:3px solid #000;}
-    /* // END undercover-button-style */
-    /* BEGIN undercover-player-input-style */
-    #undercover #playersInputs input{display:block;width:100%;text-align:center;}
-    /* END undercover-player-input-style */
-    #undercover h1{cursor:pointer;}
-    #secretWord{font-size:2.5rem;font-weight:bold;margin-top:1rem;}
-    /* BEGIN undercover-form-layout */
-    #undercover #config{display:flex;flex-direction:column;align-items:center;}
-    #undercover .form-group{display:flex;flex-direction:column;margin:0.5rem 0;}
-    #undercover #roleConfig{margin-top:1rem;}
-    /* END undercover-form-layout */
-    /* BEGIN undercover-role-summary-style */
-    #undercover .role-summary div{margin:0.2rem 0;}
-    /* END undercover-role-summary-style */
-
-    /* BEGIN undercover-da-update */
-    #undercover .under-card{background:#111;border:4px solid #000;box-shadow:6px 6px 0 #000;border-radius:1.5rem;padding:1.5rem;margin:1rem auto;width:90%;max-width:400px;color:#fff;}
-    #undercover #playersInputs{width:100%;max-width:260px;margin:auto;}
-    #undercover .under-player-item{display:flex;align-items:center;justify-content:center;gap:0.5rem;margin:0.3rem 0;}
-    #undercover .under-player-item input{flex:1;margin:0;}
-    #undercover .under-remove-btn{background:none;color:#ff1744;border:none;padding:0.3rem 0.5rem;font-weight:bold;cursor:pointer;}
-    #undercover .under-quit-btn{background:#ff1744;color:#fff;border:3px solid #000;border-radius:2rem;padding:0.6rem 1.2rem;font-weight:bold;position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);}
-    /* END undercover-da-update */
-
-    /* Mise en forme de la zone de vote */
-    #voteList {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 0.5rem;
-      margin-top: 0.5rem;
-    }
-
-    #voteList button {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 0.3rem;
-    }
-
-    #voteList button::before {
-      content: "🃏";
-      font-size: 1.5rem;
-      display: block;
-    }
-
-    /* Killer game styles */
-    #killer-screen{padding:1rem;text-align:center;background:#222;color:#fff;}
-    .killer-hidden{display:none;}
-    .killer-card{background:rgba(0,0,0,0.5);padding:1.5rem;border-radius:1.5rem;width:90%;max-width:600px;margin:auto;box-shadow:0 8px 20px rgba(0,0,0,0.5);backdrop-filter:blur(6px);}
-    .killer-logo{width:80px;cursor:pointer;margin:0 auto 1rem auto;display:block;transition:transform 0.2s;/* // BEGIN killer-logo-size */width:160px;/* // END killer-logo-size */}
-    .killer-logo:hover{transform:scale(1.1);}
-    .killer-player-input-container{display:flex;justify-content:center;align-items:center;gap:1rem;margin:1.2rem 0;}
-    .killer-player-list{margin-top:0.5rem;}
-    .killer-player-item{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.2);padding:0.5rem 0.8rem;border-radius:0.8rem;margin:0.4rem auto;max-width:250px;}
-    .killer-dead{text-decoration:line-through;opacity:0.5;}
-    #killer-secret{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;justify-content:center;align-items:center;}
-    /* BEGIN killer-secret-hide */
-    #killer-secret.killer-hidden{display:none;}
-    /* END killer-secret-hide */
-
-    /* // BEGIN culture-alcool-style */
-    .toggle-container{display:flex;align-items:center;justify-content:center;gap:0.5rem;margin-bottom:0.5rem;}
-    .switch{position:relative;display:inline-block;width:50px;height:24px;}
-    .switch input{opacity:0;width:0;height:0;}
-    .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#ccc;transition:.4s;border-radius:24px;}
-    .slider:before{position:absolute;content:"";height:20px;width:20px;left:2px;bottom:2px;background:white;transition:.4s;border-radius:50%;}
-    .switch input:checked+.slider{background:var(--yellow);}
-    .switch input:checked+.slider:before{transform:translateX(26px);}
-    .toggle-label{font-size:0.9rem;}
-    #gorgeesText{font-weight:bold;}
-    /* // END culture-alcool-style */
-
-  </style>
+  <link rel="stylesheet" href="styles/main.css">
 </head>
 <body>
   <div id="setup" class="card">
@@ -517,6 +13,7 @@ color: var(--text-dark);
     <!-- // BEGIN title-uppercase -->
     <h1>LE JEU DU DUC</h1>
     <!-- // END title-uppercase -->
+
     <div class="player-input-container">
       <input type="text" id="playerInput" placeholder="Entre un prénom">
       <button id="addBtn" class="action-btn">Ajouter</button>
@@ -584,9 +81,10 @@ color: var(--text-dark);
       <span>Lancer la partie</span>
       <!-- // END start-btn-content -->
     </button>
+
     <div id="otherGames" class="other-games">
       <h2 class="mode-header">Autres jeux</h2>
-<button id="undercoverBtn" class="mode-card">
+      <button id="undercoverBtn" class="mode-card">
         <!-- // BEGIN other-games-undercover-image -->
         <img src="image/undercover.png" alt="Undercover">
         <span>Undercover</span>
@@ -631,80 +129,88 @@ color: var(--text-dark);
   <div id="undercover" class="hidden">
     <img src="image/icon.png" alt="Retour" id="backUndercover" class="logo">
     <h1 id="undercoverTitle">Undercover</h1>
-      <!-- BEGIN undercover-card-config -->
-      <div id="config" class="under-card">
-        <!-- // BEGIN undercover-player-count -->
-        <div class="form-group">
-          <label for="playerCount">Nombre de joueurs :</label>
-          <input type="number" id="playerCount" min="4" value="4" />
-        </div>
-        <!-- // END undercover-player-count -->
-        <div id="roleConfig">
-          <p>Répartition des rôles :</p>
-          <!-- // BEGIN undercover-role-inputs -->
-          <div class="form-group">
-            <label for="civilCount">Civils</label>
-            <input type="number" id="civilCount" min="0" />
-          </div>
-          <div class="form-group">
-            <label for="underCount">Undercover</label>
-            <input type="number" id="underCount" min="0" />
-          </div>
-          <div class="form-group">
-            <label for="whiteCount">Mister White</label>
-            <input type="number" id="whiteCount" min="0" />
-          </div>
-          <!-- // END undercover-role-inputs -->
-        </div>
-        <!-- // BEGIN undercover-player-list -->
-        <div id="playersInputs"></div>
-        <!-- // END undercover-player-list -->
-        <button id="start">Démarrer</button>
-      </div>
-      <!-- END undercover-card-config -->
 
-      <!-- BEGIN undercover-card-reveal -->
-      <div id="reveal" class="hidden under-card">
-        <h2 id="askName">Entre ton prénom</h2>
-        <input id="nameInput" placeholder="Prénom" />
-        <button id="validateName">Valider</button>
-        <h2 id="revealName" class="hidden"></h2>
-        <!-- // BEGIN undercover-reveal-button -->
-        <button id="revealWord" class="hidden">Révéler le mot</button>
-        <!-- // END undercover-reveal-button -->
-        <p id="secretWord" class="hidden"></p>
-        <button id="nextPlayer" class="hidden"></button>
+    <!-- BEGIN undercover-card-config -->
+    <div id="config" class="under-card">
+      <!-- // BEGIN undercover-player-count -->
+      <div class="form-group">
+        <label for="playerCount">Nombre de joueurs :</label>
+        <input type="number" id="playerCount" min="4" value="4">
       </div>
-      <!-- END undercover-card-reveal -->
-      <!-- BEGIN undercover-card-play -->
-      <div id="play" class="hidden under-card">
-        <h2 id="starter"></h2>
-        <button id="voteBtn">Vote</button>
-        <div id="voteArea" class="hidden">
-          <h3>Choisis un joueur</h3>
-          <div id="voteList"></div>
+      <!-- // END undercover-player-count -->
+
+      <div id="roleConfig">
+        <p>Répartition des rôles :</p>
+        <!-- // BEGIN undercover-role-inputs -->
+        <div class="form-group">
+          <label for="civilCount">Civils</label>
+          <input type="number" id="civilCount" min="0">
         </div>
-        <div id="eliminationResult" class="result-screen hidden"></div>
-        <button id="nextRound" class="hidden">➡️</button>
-        <button id="newGame" class="hidden">Nouvelle partie</button>
+        <div class="form-group">
+          <label for="underCount">Undercover</label>
+          <input type="number" id="underCount" min="0">
+        </div>
+        <div class="form-group">
+          <label for="whiteCount">Mister White</label>
+          <input type="number" id="whiteCount" min="0">
+        </div>
+        <!-- // END undercover-role-inputs -->
       </div>
-      <!-- END undercover-card-play -->
-      <!-- BEGIN undercover-card-whiteGuess -->
-      <div id="whiteGuess" class="hidden under-card">
-        <h2>Mister White éliminé</h2>
-        <p>Devine le mot des civils :</p>
-        <input id="whiteGuessInput" placeholder="Mot" />
-        <button id="whiteGuessSubmit">Valider</button>
+
+      <!-- // BEGIN undercover-player-list -->
+      <div id="playersInputs"></div>
+      <!-- // END undercover-player-list -->
+
+      <button id="start">Démarrer</button>
+    </div>
+    <!-- END undercover-card-config -->
+
+    <!-- BEGIN undercover-card-reveal -->
+    <div id="reveal" class="hidden under-card">
+      <h2 id="askName">Entre ton prénom</h2>
+      <input id="nameInput" placeholder="Prénom">
+      <button id="validateName">Valider</button>
+      <h2 id="revealName" class="hidden"></h2>
+      <!-- // BEGIN undercover-reveal-button -->
+      <button id="revealWord" class="hidden">Révéler le mot</button>
+      <!-- // END undercover-reveal-button -->
+      <p id="secretWord" class="hidden"></p>
+      <button id="nextPlayer" class="hidden"></button>
+    </div>
+    <!-- END undercover-card-reveal -->
+
+    <!-- BEGIN undercover-card-play -->
+    <div id="play" class="hidden under-card">
+      <h2 id="starter"></h2>
+      <button id="voteBtn">Vote</button>
+      <div id="voteArea" class="hidden">
+        <h3>Choisis un joueur</h3>
+        <div id="voteList"></div>
       </div>
-      <!-- END undercover-card-whiteGuess -->
-      <!-- BEGIN undercover-quit-button-html -->
-      <button id="undercoverQuit" class="under-quit-btn">Quitter la partie</button>
-      <!-- END undercover-quit-button-html -->
+      <div id="eliminationResult" class="result-screen hidden"></div>
+      <button id="nextRound" class="hidden">➡️</button>
+      <button id="newGame" class="hidden">Nouvelle partie</button>
+    </div>
+    <!-- END undercover-card-play -->
+
+    <!-- BEGIN undercover-card-whiteGuess -->
+    <div id="whiteGuess" class="hidden under-card">
+      <h2>Mister White éliminé</h2>
+      <p>Devine le mot des civils :</p>
+      <input id="whiteGuessInput" placeholder="Mot">
+      <button id="whiteGuessSubmit">Valider</button>
+    </div>
+    <!-- END undercover-card-whiteGuess -->
+
+    <!-- BEGIN undercover-quit-button-html -->
+    <button id="undercoverQuit" class="under-quit-btn">Quitter la partie</button>
+    <!-- END undercover-quit-button-html -->
   </div>
 
   <div id="killer-screen" class="killer-hidden">
     <img src="image/icon.png" alt="Retour" id="killer-back" class="killer-logo">
     <h1>Killer</h1>
+
     <div id="killer-setup" class="killer-card">
       <div class="killer-player-input-container">
         <input id="killer-player-input" placeholder="Pseudo">
@@ -713,17 +219,21 @@ color: var(--text-dark);
       <div id="killer-player-list" class="killer-player-list"></div>
       <button id="killer-start-btn">Nouvelle Partie</button>
     </div>
+
     <div id="killer-distribution" class="killer-card killer-hidden">
       <div id="killer-reveal-list" class="killer-player-list"></div>
       <button id="killer-distribute-done">Commencer</button>
     </div>
+
     <div id="killer-game" class="killer-card killer-hidden">
       <div id="killer-alive-list" class="killer-player-list"></div>
     </div>
+
     <div id="killer-end" class="killer-card killer-hidden">
       <h2 id="killer-winner"></h2>
       <button id="killer-new-btn">Nouvelle Partie</button>
     </div>
+
     <div id="killer-secret" class="killer-hidden">
       <div class="killer-card">
         <h2 id="killer-secret-title"></h2>
@@ -731,775 +241,32 @@ color: var(--text-dark);
       </div>
     </div>
   </div>
+
   <!-- BEGIN rapidite-audio-element -->
   <audio id="rapidite-audio" src="song/rapidite.mp3"></audio>
   <!-- END rapidite-audio-element -->
-  <script>
-    const players=[];
-    // BEGIN jdd-players-sync
-    if (window.JDD) { window.JDD.players = players; }
-    // END jdd-players-sync
 
-    let currentMode="debut";
-    let rapidityMode=false;
-    const getRapidityQuestions=()=>{
-      if(window.JDD && Array.isArray(window.JDD.RAPIDITY) && window.JDD.RAPIDITY.length){
-        return window.JDD.RAPIDITY;
-      }
-      return [];
-    };
-    let weights={debut:25,hardcore:25,alcool:25,culture:25};
-
-    // -------------------------
-    // MOTEUR DU JEU
-    // -------------------------
-const setupScreen=document.getElementById("setup"),gameScreen=document.getElementById("game"),playerInput=document.getElementById("playerInput"),playerList=document.getElementById("playerList"),currentQuestionEl=document.getElementById("currentQuestion"),typeBox=document.getElementById("typeBox"),answerBox=document.getElementById("answerBox"),showAnswerBtn=document.getElementById("showAnswerBtn"),answerText=document.getElementById("answerText"),backLogo=document.getElementById("backLogo"),customWeightsBox=document.getElementById("customWeights"),undercoverScreen=document.getElementById("undercover"),backUndercover=document.getElementById("backUndercover"),undercoverTitle=document.getElementById("undercoverTitle");
-const sliders={debut:document.getElementById("weight-debut"),hardcore:document.getElementById("weight-hardcore"),alcool:document.getElementById("weight-alcool"),culture:document.getElementById("weight-culture")};
-    // BEGIN rapidite-audio-var
-    const rapiditeAudio=document.getElementById("rapidite-audio");
-    // END rapidite-audio-var
-    // BEGIN culture-toggle-setup
-    const cultureToggleContainer=document.getElementById("cultureToggleContainer"),cultureToggle=document.getElementById("cultureToggle"),gorgeesText=document.getElementById("gorgeesText");
-    let cultureDrinkMode=false;
-    if(cultureToggle){cultureToggle.addEventListener("change",()=>{cultureDrinkMode=cultureToggle.checked;});}
-    // END culture-toggle-setup
-
-    function addPlayer(){const name=playerInput.value.trim();if(name&&players.length<30){players.push(name);renderPlayerList();playerInput.value="";playerInput.focus();}}
-    function removePlayer(i){players.splice(i,1);renderPlayerList();}
-    function renderPlayerList(){
-      playerList.innerHTML="";
-      players.forEach((p,i)=>{
-        const div=document.createElement("div");
-        div.classList.add("player-item");
-        div.innerHTML=`${p} <button class="remove-btn" onclick="removePlayer(${i}); event.stopPropagation()">❌</button>`;
-        playerList.appendChild(div);
-      });
-      if(window.JDD)window.JDD.players=players;
-    }
-
-    function setBackground(type){
-      const bg={
-        "VÉRITÉ":"var(--yellow)",
-        "ACTION":"var(--pink)",
-        "CULTURE G.":"var(--cyan)",
-        "RAPIDITÉ":"var(--orange)",
-        "CUSTOM":"var(--orange)"
-      };
-      // BEGIN da-default-bg
-      document.body.style.background=bg[type]||"var(--cyan)";
-      // END da-default-bg
-    }
-
-    async function startGame(){
-        // BEGIN start-game-player-check
-        if(players.length<1){alert("Ajoute au moins 1 joueur !");return;}
-        // END start-game-player-check
-        if(currentMode!=="culture"&&players.length<2&&currentMode!=="custom"){alert("Ajoute au moins 2 joueurs !");return;}
-        if(currentMode==="hardcore"||currentMode==="alcool"){
-          await playIntroAnimation(currentMode);
-        }
-        setupScreen.classList.add("hidden");
-        gameScreen.classList.remove("hidden");
-        showQuestion();
-      }
-      
-      function playIntroAnimation(mode){
-        // BEGIN skip-intro-animation
-        return Promise.resolve();
-        // END skip-intro-animation
-      }
-
-    function pickCustomMode(){const total=weights.debut+weights.hardcore+weights.alcool+weights.culture;let r=Math.random()*total;if(r<weights.debut)return"debut";r-=weights.debut;if(r<weights.hardcore)return"hardcore";r-=weights.hardcore;if(r<weights.alcool)return"alcool";return"culture";}
-
-    function hideQA() {
-      // masque réponse texte et QCM
-      const mcqBox = document.getElementById("mcqBox");
-      if (mcqBox) mcqBox.style.display = "none";
-      if (answerBox) { answerBox.style.display = "none"; showAnswerBtn.style.display = "none"; }
-      answerText.textContent = "";
-    }
-
-    function renderMCQ(qObj, playerName) {
-      // Titre/type/texte
-      typeBox.textContent = "CULTURE G.";
-      setBackground("CULTURE G.");
-      currentQuestionEl.textContent = `${playerName}, ${qObj.question}`;
-
-      // Prépare la grille
-      const mcqBox  = document.getElementById("mcqBox");
-      const mcqGrid = document.getElementById("mcqGrid");
-      if (answerBox) answerBox.style.display = "block";
-      mcqGrid.innerHTML = "";
-      mcqBox.style.display = "block";
-
-      // Crée les 4 boutons
-      qObj.choices.forEach((label, idx) => {
-        const btn = document.createElement("button");
-        btn.className = "mcq-btn";
-        // BEGIN mcq-btn-setup-fix
-        btn.textContent = label;
-        btn.addEventListener("click", event => {
-          // BEGIN mcq-btn-priority-click
-          event.stopPropagation();
-          // END mcq-btn-priority-click
-          [...mcqGrid.querySelectorAll("button")].forEach(b => b.disabled = true);
-          if (idx === qObj.answerIndex) {
-            btn.classList.add("mcq-correct");
-          } else {
-            btn.classList.add("mcq-wrong");
-            mcqGrid.children[qObj.answerIndex].classList.add("mcq-correct");
-          }
-        }, { once:true });
-        // END mcq-btn-setup-fix
-        mcqGrid.appendChild(btn);
-      });
-    }
-
-    function showQuestion(){
-      currentQuestionEl.textContent = "";
-      typeBox.textContent = "";
-      hideQA();
-      rapidityMode = false;
-      if(cultureToggleContainer)cultureToggleContainer.classList.add("hidden");
-      if(gorgeesText)gorgeesText.classList.add("hidden");
-
-      let mode=currentMode;
-      if(mode==="custom")mode=pickCustomMode();
-
-      const dataRef=(window.JDD&&window.JDD.DATA)?window.JDD.DATA:{};
-      const cultureQuestions=Array.isArray(dataRef.culture)?dataRef.culture:[];
-      const cultureMcq=Array.isArray(dataRef.cultureMcq)?dataRef.cultureMcq:[];
-      const poolMap={
-        debut:Array.isArray(dataRef.debut)?dataRef.debut:[],
-        hardcore:Array.isArray(dataRef.hardcore)?dataRef.hardcore:[],
-        alcool:Array.isArray(dataRef.alcool)?dataRef.alcool:[]
-      };
-
-      const rapidityMap={debut:0.08,hardcore:0.04,alcool:0.08,culture:0.02};
-      // BEGIN reduce-rapidity-chance
-      if(rapidityMap){Object.assign(rapidityMap,{debut:0.02,hardcore:0.02,alcool:0.02,culture:0.02});}
-      // END reduce-rapidity-chance
-      const rapidityChance=rapidityMap[mode]||0;
-      if(Math.random()<rapidityChance){rapidityMode=true;typeBox.textContent="RAPIDITÉ";setBackground("RAPIDITÉ");currentQuestionEl.textContent="⚡ Question de rapidité pour tout le monde ! (Cliquez pour révéler)";
-      // BEGIN rapidite-jingle
-      if(rapiditeAudio){rapiditeAudio.currentTime=0;rapiditeAudio.play();}
-      // END rapidite-jingle
-      return;}
-      if(mode==="culture"){
-        // Tirage aléatoire du joueur ciblé
-        const player = players[Math.floor(Math.random() * players.length)];
-
-// BEGIN culture-random-selection
-        const totalCulturePool = cultureQuestions.length + cultureMcq.length;
-        const drawIndex = totalCulturePool > 0 ? Math.floor(Math.random() * totalCulturePool) : -1;
-        const useMcq = drawIndex > -1 && drawIndex < cultureMcq.length;
-// END culture-random-selection
-
-        if (useMcq) {
-          // QCM
-          const q = cultureMcq[drawIndex];
-          renderMCQ(q, player);
-          // Affiche le toggle alcool si présent
-          if (cultureToggleContainer) cultureToggleContainer.classList.remove("hidden");
-          if (cultureDrinkMode && gorgeesText) {
-            const g = Math.floor(Math.random() * 3) + 1;
-            gorgeesText.textContent = `${g} gorgée${g>1?'s':''}`;
-            gorgeesText.classList.remove("hidden");
-          }
-        } else {
-          // Question simple existante (comportement d’origine)
-          const baseIndex = drawIndex > -1 ? drawIndex - cultureMcq.length : -1;
-          const safeIndex = (baseIndex >= 0 && baseIndex < cultureQuestions.length)
-            ? baseIndex
-            : (cultureQuestions.length ? Math.floor(Math.random() * cultureQuestions.length) : -1);
-          if (safeIndex < 0) { return; }
-          const q = cultureQuestions[safeIndex];
-          typeBox.textContent = "CULTURE G.";
-          setBackground("CULTURE G.");
-          currentQuestionEl.textContent = `${player}, ${q.question}`;
-          showAnswerBtn.style.display = "inline-block";
-          answerBox.style.display = "block";
-          showAnswerBtn.onclick = e => {
-            e.stopPropagation();
-            answerText.textContent = "✅ Réponse : " + q.answer;
-            showAnswerBtn.style.display = "none";
-          };
-          if (cultureToggleContainer) cultureToggleContainer.classList.remove("hidden");
-          if (cultureDrinkMode && gorgeesText) {
-            const g = Math.floor(Math.random() * 3) + 1;
-            gorgeesText.textContent = `${g} gorgée${g>1?'s':''}`;
-            gorgeesText.classList.remove("hidden");
-          }
-        }
-        return;
-      }
-      else if(mode==="debut"||mode==="hardcore"||mode==="alcool"){
-        const pool=poolMap[mode]||[];
-        const picker=window.JDD&&typeof window.JDD._pickText==="function"
-          ? window.JDD._pickText
-          : list=>{
-              if(!Array.isArray(list)||!list.length)return["VÉRITÉ","{player}, raconte un truc marrant."];
-              const raw=list[Math.floor(Math.random()*list.length)];
-              return typeof raw==="string"?raw.split("|"):["VÉRITÉ","{player}, raconte un truc marrant."];
-            };
-        const [type,text]=picker(pool);
-        let player=players[Math.floor(Math.random()*players.length)];
-        if(!player||!text){return;}
-        let qText=text.replace(/\{player\}/g,player);
-        if(qText.includes("{other}")){
-          let other=null;
-          if(players.length>1){
-            let attempts=0;
-            do{
-              other=players[Math.floor(Math.random()*players.length)];
-              attempts++;
-            }while(other===player&&attempts<20);
-            if(!other||other===player){
-              other=players.find(p=>p!==player)||other;
-            }
-          }
-          qText=qText.replace(/\{other\}/g,other||player);
-        }
-        typeBox.textContent=type;
-        setBackground(type);
-        currentQuestionEl.textContent=qText;
-      }
-    }
-    
-    function nextQuestion(e){
-      if(e.target.id==="showAnswerBtn")return;
-      if(e.clientX>window.innerWidth/2){
-        if(rapidityMode&&currentQuestionEl.textContent.includes("⚡")){
-          const pool=getRapidityQuestions();
-          const q=pool.length?pool[Math.floor(Math.random()*pool.length)]:null;
-          if(q){
-            let rapidityText=q;
-            // BEGIN rapidity-question-fix
-            if(typeof q==="object"&&q?.question)rapidityText=q.question;
-            // END rapidity-question-fix
-            currentQuestionEl.textContent=rapidityText;
-          }else{
-            currentQuestionEl.textContent="⚡ Pas de question de rapidité disponible.";
-          }
-          rapidityMode=false;
-        }else{
-          showQuestion();
-        }
-      }
-    }
-
-    document.querySelectorAll(".mode-card").forEach(card=>{card.addEventListener("click",()=>{document.querySelectorAll(".mode-card").forEach(c=>c.classList.remove("active"));card.classList.add("active");currentMode=card.dataset.mode;customWeightsBox.classList.toggle("hidden",currentMode!=="custom");});});
-    backLogo.addEventListener("click",()=>{gameScreen.classList.add("hidden");setupScreen.classList.remove("hidden");
-    // BEGIN da-backlogo-bg
-    document.body.style.background="var(--cyan)";
-    // END da-backlogo-bg
-    });
-
-    Object.keys(sliders).forEach(key=>{sliders[key].addEventListener("input",()=>{let total=0;Object.keys(sliders).forEach(k=>total+=+sliders[k].value);Object.keys(sliders).forEach(k=>weights[k]=+sliders[k].value/total*100);});});
-
-    document.getElementById("addBtn").addEventListener("click",addPlayer);
-    document.getElementById("startBtn").addEventListener("click",startGame);
-    document.getElementById("undercoverBtn").addEventListener("click",()=>{
-      setupScreen.classList.add("hidden");
-      gameScreen.classList.add("hidden");
-      undercoverScreen.classList.remove("hidden");
-      document.body.style.background="#222";
-      // BEGIN undercover-open-render
-      renderPlayerInputs();
-      // END undercover-open-render
-    });
-    backUndercover.addEventListener("click",()=>{undercoverScreen.classList.add("hidden");setupScreen.classList.remove("hidden");
-    // BEGIN da-backundercover-bg
-    document.body.style.background="var(--cyan)";
-    // END da-backundercover-bg
-    });
-    undercoverTitle.addEventListener("click",()=>{document.getElementById("config").classList.remove("hidden");document.getElementById("reveal").classList.add("hidden");document.getElementById("play").classList.add("hidden");});
-    gameScreen.addEventListener("click",nextQuestion);
-    playerInput.addEventListener("keyup",e=>{if(e.key==="Enter")addPlayer();});
-    document.querySelector('.mode-card[data-mode="debut"]').classList.add("active");
-    window.removePlayer=removePlayer;
-
-  </script>
-  <script>
-    (()=>{
-    let currentMode='undercover';
-    const getUndercoverPairs=()=>{
-      if(window.JDD && Array.isArray(window.JDD.UNDERCOVER_PAIRS) && window.JDD.UNDERCOVER_PAIRS.length){
-        return window.JDD.UNDERCOVER_PAIRS;
-      }
-      return [];
-    };
-    const players=[];
-    const playerCountInput=document.getElementById('playerCount');
-    const civilInput=document.getElementById('civilCount');
-    const underInput=document.getElementById('underCount');
-    const whiteInput=document.getElementById('whiteCount');
-    // BEGIN undercover-elements
-    const playersInputs=document.getElementById('playersInputs');
-    const revealWord=document.getElementById('revealWord');
-    // END undercover-elements
-    const askName=document.getElementById('askName');
-    const nameInput=document.getElementById('nameInput');
-    const validateName=document.getElementById('validateName');
-    const revealName=document.getElementById('revealName');
-    const secretWord=document.getElementById('secretWord');
-    const nextPlayer=document.getElementById('nextPlayer');
-    const starter=document.getElementById('starter');
-    const voteBtn=document.getElementById('voteBtn');
-    const voteArea=document.getElementById('voteArea');
-    const voteList=document.getElementById('voteList');
-    const eliminationResult=document.getElementById('eliminationResult');
-    const nextRound=document.getElementById('nextRound');
-    const playArea=document.getElementById('play');
-    const whiteGuess=document.getElementById('whiteGuess');
-    const whiteGuessInput=document.getElementById('whiteGuessInput');
-    const whiteGuessSubmit=document.getElementById('whiteGuessSubmit');
-    const newGame=document.getElementById('newGame');
-    const roleDisplay={civil:'Civil',undercover:'Undercover',misterwhite:'Mister White'};
-    let eliminationMessage='';
-
-    // BEGIN undercover-state
-    let undercoverState=JSON.parse(localStorage.getItem('undercover.state')||'{}');
-    function undercoverSave(){localStorage.setItem('undercover.state',JSON.stringify(undercoverState));}
-    if(undercoverState.playerCount){
-      playerCountInput.value=undercoverState.playerCount;
-      civilInput.value=undercoverState.civilCount;
-      underInput.value=undercoverState.underCount;
-      whiteInput.value=undercoverState.whiteCount;
-    }
-    // END undercover-state
-
-    function autoRoles(){
-      const n=Number(playerCountInput.value);
-      whiteInput.value=n>=4?1:0;
-      underInput.value=n>=7?2:1;
-      civilInput.value=n-Number(whiteInput.value)-Number(underInput.value);
-      // BEGIN undercover-autoRoles-state
-      undercoverState={...undercoverState,playerCount:n,civilCount:Number(civilInput.value),underCount:Number(underInput.value),whiteCount:Number(whiteInput.value)};
-      undercoverSave();
-      // END undercover-autoRoles-state
-    }
-
-    // BEGIN undercover-render-names
-    function renderPlayerInputs(){
-      const n=Number(playerCountInput.value);
-      undercoverState.names=undercoverState.names||[];
-      playersInputs.innerHTML='';
-      for(let i=0;i<n;i++){
-        const wrap=document.createElement('div');wrap.className='under-player-item';
-        const inp=document.createElement('input');
-        inp.placeholder='Prénom';
-        inp.value=undercoverState.names[i]||'';
-        inp.addEventListener('input',()=>{undercoverState.names[i]=inp.value;undercoverSave();});
-        const rm=document.createElement('button');rm.textContent='❌';rm.className='under-remove-btn';
-        rm.addEventListener('click',()=>removeUndercoverPlayer(i));
-        wrap.appendChild(inp);wrap.appendChild(rm);playersInputs.appendChild(wrap);
-      }
-      undercoverState.names.length=n;
-      undercoverSave();
-    }
-    // END undercover-render-names
-
-    // BEGIN undercover-remove-player-function
-    function removeUndercoverPlayer(i){
-      undercoverState.names.splice(i,1);
-      playerCountInput.value=undercoverState.names.length;
-      autoRoles();
-      renderPlayerInputs();
-    }
-    // END undercover-remove-player-function
-
-    // BEGIN undercover-player-count-render
-    playerCountInput.addEventListener('change',()=>{autoRoles();renderPlayerInputs();});
-    if(!undercoverState.playerCount)autoRoles();
-    renderPlayerInputs();
-    // END undercover-player-count-render
-
-    // BEGIN undercover-role-inputs-state
-    civilInput.addEventListener('change',()=>{undercoverState={...undercoverState,civilCount:Number(civilInput.value)};undercoverSave();});
-    underInput.addEventListener('change',()=>{undercoverState={...undercoverState,underCount:Number(underInput.value)};undercoverSave();});
-    whiteInput.addEventListener('change',()=>{undercoverState={...undercoverState,whiteCount:Number(whiteInput.value)};undercoverSave();});
-    // END undercover-role-inputs-state
-
-    document.getElementById('start').addEventListener('click', startUndercover);
-
-    // BEGIN undercover-quit-button
-    const undercoverQuit=document.getElementById('undercoverQuit');
-    if(undercoverQuit){
-      undercoverQuit.addEventListener('click',()=>{
-        // BEGIN undercover-reset-config
-        players.length=0;
-        currentPair=null;
-        revealIndex=0;
-        round=0;
-        document.getElementById('reveal').classList.add('hidden');
-        document.getElementById('play').classList.add('hidden');
-        document.getElementById('whiteGuess').classList.add('hidden');
-        document.getElementById('config').classList.remove('hidden');
-        renderPlayerInputs();
-        // END undercover-reset-config
-      });
-    }
-    // END undercover-quit-button
-
-    // BEGIN undercover-newgame-reset
-    newGame.addEventListener('click',()=>{
-      document.getElementById('play').classList.add('hidden');
-      document.getElementById('reveal').classList.add('hidden');
-      document.getElementById('config').classList.remove('hidden');
-      renderPlayerInputs();
-    });
-    // END undercover-newgame-reset
-    whiteGuessSubmit.addEventListener('click',handleWhiteGuess);
-
-    let currentPair=null;
-    let revealIndex=0;
-    let round=0;
-
-    function startUndercover(){
-      // BEGIN undercover-start-names
-      players.length=0;
-      const n=Number(playerCountInput.value);
-      undercoverState.names=undercoverState.names||[];
-      for(let i=0;i<n;i++){
-        const name=(undercoverState.names[i]&&undercoverState.names[i].trim())||('Joueur'+(i+1));
-        players.push({name,role:'',word:'',alive:true});
-        undercoverState.names[i]=name;
-      }
-      undercoverSave();
-      assignRoles(players);
-      assignWords();
-      revealIndex=0;
-      document.getElementById('config').classList.add('hidden');
-      document.getElementById('reveal').classList.remove('hidden');
-      showReveal();
-      // END undercover-start-names
-    }
-
-    function showNameEntry(){
-      askName.classList.remove('hidden');
-      nameInput.classList.remove('hidden');
-      validateName.classList.remove('hidden');
-      revealName.classList.add('hidden');
-      secretWord.classList.add('hidden');
-      nextPlayer.classList.add('hidden');
-      // BEGIN undercover-prefill-name
-      nameInput.value=(undercoverState.names&&undercoverState.names[revealIndex])||'';
-      // END undercover-prefill-name
-      nameInput.focus();
-    }
-
-    // BEGIN undercover-showReveal
-    function showReveal(){
-      const p=players[revealIndex];
-      askName.classList.add('hidden');
-      nameInput.classList.add('hidden');
-      validateName.classList.add('hidden');
-      revealName.textContent='Passez le téléphone à '+p.name;
-      revealName.classList.remove('hidden');
-      secretWord.classList.add('hidden');
-      nextPlayer.classList.add('hidden');
-      revealWord.classList.remove('hidden');
-    }
-    // END undercover-showReveal
-
-    // BEGIN undercover-reveal-action
-    revealWord.addEventListener('click',()=>{
-      const p=players[revealIndex];
-      revealWord.classList.add('hidden');
-      if(p.role==='misterwhite'){
-        revealName.classList.add('hidden');
-        secretWord.textContent='🖕tu es Mister White 🖕';
-      }else{
-        revealName.textContent='ton mot est 👇';
-        secretWord.textContent=p.word;
-      }
-      secretWord.classList.remove('hidden');
-      nextPlayer.textContent=revealIndex===players.length-1?'Lancer la partie':'Joueur suivant';
-      nextPlayer.classList.remove('hidden');
-    });
-    // END undercover-reveal-action
-
-    validateName.addEventListener('click',()=>{
-      const name=nameInput.value.trim()||('Joueur'+(revealIndex+1));
-      const p=players[revealIndex];
-      p.name=name;
-      // BEGIN undercover-save-name
-      undercoverState.names=undercoverState.names||[];
-      undercoverState.names[revealIndex]=name;
-      undercoverSave();
-      // END undercover-save-name
-      askName.classList.add('hidden');
-      nameInput.classList.add('hidden');
-      validateName.classList.add('hidden');
-      if(p.role==='misterwhite'){
-        revealName.classList.add('hidden');
-        secretWord.textContent='🖕tu es Mister White 🖕';
-        secretWord.classList.remove('hidden');
-      }else{
-        revealName.textContent='ton mot est 👇';
-        revealName.classList.remove('hidden');
-        secretWord.textContent=p.word;
-        secretWord.classList.remove('hidden');
-      }
-      nextPlayer.textContent=revealIndex===players.length-1?'Lancer la partie':'Joueur suivant';
-      nextPlayer.classList.remove('hidden');
-    });
-
-    nextPlayer.addEventListener('click',()=>{
-      revealIndex++;
-      if(revealIndex>=players.length){
-        document.getElementById('reveal').classList.add('hidden');
-        document.getElementById('play').classList.remove('hidden');
-        round=0;
-        startRound();
-      }else{
-        // BEGIN undercover-nextplayer
-        showReveal();
-        // END undercover-nextplayer
-      }
-    });
-
-    function startRound(){
-      eliminationResult.classList.add('hidden');
-      voteArea.classList.add('hidden');
-      nextRound.classList.add('hidden');
-      newGame.classList.add('hidden');
-      voteBtn.classList.remove('hidden');
-      const alive=players.filter(p=>p.alive);
-      let first;
-      do{
-        first=alive[Math.floor(Math.random()*alive.length)];
-      }while(round===0 && first.role==='misterwhite' && alive.length>1);
-      starter.textContent=first.name+' commence';
-    }
-
-    voteBtn.addEventListener('click',()=>{
-      voteList.innerHTML='';
-      players.filter(p=>p.alive).forEach(p=>{
-        const btn=document.createElement('button');
-        btn.textContent=p.name;
-        btn.addEventListener('click',()=>eliminatePlayer(p));
-        voteList.appendChild(btn);
-      });
-      voteArea.classList.remove('hidden');
-      voteBtn.classList.add('hidden');
-    });
-
-    function eliminatePlayer(p){
-      p.alive=false;
-      voteArea.classList.add('hidden');
-      const counts=countRoles();
-      // BEGIN undercover-elimination-message
-      eliminationMessage=`${p.name} était ${roleDisplay[p.role]}.<div class="role-summary"><div>🙂 Civils: ${counts.civil}</div><div>🕵️ Undercover: ${counts.undercover}</div><div>👻 Mister White: ${counts.misterwhite}</div></div>`;
-      // END undercover-elimination-message
-      if(p.role==='misterwhite'){
-        whiteGuessInput.value='';
-        playArea.classList.add('hidden');
-        whiteGuess.classList.remove('hidden');
-        eliminationResult.classList.add('hidden');
-        return;
-      }
-      eliminationResult.innerHTML=eliminationMessage;
-      const winner=checkVictory();
-      if(winner){
-        const resultClass=winner==='civils'?'victory':'defeat';
-        const resultText=winner==='civils'?'Les civils gagnent !':'Les traitres gagnent !';
-        eliminationResult.innerHTML+=`<br><span class="${resultClass}">${resultText}</span>`;
-        newGame.classList.remove('hidden');
-      }else{
-        nextRound.classList.remove('hidden');
-      }
-      eliminationResult.classList.remove('hidden');
-    }
-
-    function handleWhiteGuess(){
-      const guess=whiteGuessInput.value.trim();
-      if(guess && guess.toLowerCase()===currentPair.civil.toLowerCase()){
-        eliminationResult.innerHTML=eliminationMessage+'<br><span class="victory">Mister White a trouvé le mot, il gagne !</span>';
-        newGame.classList.remove('hidden');
-      }else{
-        eliminationResult.innerHTML=eliminationMessage+'<br><span class="defeat">Mauvaise réponse.</span>';
-        const winner=checkVictory();
-        if(winner){
-          const resultClass=winner==='civils'?'victory':'defeat';
-          const resultText=winner==='civils'?'Les civils gagnent !':'Les traitres gagnent !';
-          eliminationResult.innerHTML+=`<br><span class="${resultClass}">${resultText}</span>`;
-          newGame.classList.remove('hidden');
-        }else{
-          nextRound.classList.remove('hidden');
-        }
-      }
-      whiteGuess.classList.add('hidden');
-      playArea.classList.remove('hidden');
-      eliminationResult.classList.remove('hidden');
-    }
-
-    nextRound.addEventListener('click',()=>{
-      round++;
-      startRound();
-    });
-
-    function assignRoles(list){
-      let civ=Number(civilInput.value);
-      let und=Number(underInput.value);
-      let white=Number(whiteInput.value);
-      const shuffled=[...list].sort(()=>Math.random()-0.5);
-      shuffled.forEach(p=>{
-        if(white>0){p.role='misterwhite';white--;}
-        else if(und>0){p.role='undercover';und--;}
-        else if(civ>0){p.role='civil';civ--;}
-        else p.role='civil';
-      });
-    }
-
-    function assignWords(){
-      const pairs=getUndercoverPairs();
-      if(pairs.length){
-        currentPair=pairs[Math.floor(Math.random()*pairs.length)];
-      }else{
-        currentPair={civil:'Civil',under:'Traître'};
-      }
-      players.forEach(p=>{
-        if(p.role==='civil')p.word=currentPair.civil;
-        else if(p.role==='undercover')p.word=currentPair.under;
-        else p.word='';
-      });
-    }
-
-    function countRoles(){
-      const res={civil:0,undercover:0,misterwhite:0};
-      players.forEach(p=>{if(p.alive)res[p.role]++;});
-      return res;
-    }
-
-    function checkVictory(){
-      const counts=countRoles();
-      if(counts.undercover===0 && counts.misterwhite===0)return 'civils';
-      if(counts.civil<=counts.undercover+counts.misterwhite)return 'traitres';
-      return null;
-    }
-
-    // ----- Killer game -----
-    const killerScreen=document.getElementById('killer-screen');
-    const getKillerGestures=()=>{
-      if(window.JDD && Array.isArray(window.JDD.KILLER_GESTURES) && window.JDD.KILLER_GESTURES.length){
-        return window.JDD.KILLER_GESTURES;
-      }
-      return [];
-    };
-    const killerBack=document.getElementById('killer-back');
-    const killerSetup=document.getElementById('killer-setup');
-    const killerDistribution=document.getElementById('killer-distribution');
-    const killerGame=document.getElementById('killer-game');
-    const killerEnd=document.getElementById('killer-end');
-    const killerPlayerInput=document.getElementById('killer-player-input');
-    const killerAddBtn=document.getElementById('killer-add-btn');
-    const killerPlayerList=document.getElementById('killer-player-list');
-    const killerStartBtn=document.getElementById('killer-start-btn');
-    const killerRevealList=document.getElementById('killer-reveal-list');
-    const killerDistributeDone=document.getElementById('killer-distribute-done');
-    const killerAliveList=document.getElementById('killer-alive-list');
-    const killerWinner=document.getElementById('killer-winner');
-    const killerNewBtn=document.getElementById('killer-new-btn');
-    const killerSecret=document.getElementById('killer-secret');
-    const killerSecretTitle=document.getElementById('killer-secret-title');
-    const killerSecretText=document.getElementById('killer-secret-text');
-
-    let killerState=JSON.parse(localStorage.getItem('killer.state')||'{"stage":"setup","players":[]}');
-
-    function killerSave(){localStorage.setItem('killer.state',JSON.stringify(killerState));}
-
-    function killerRenderStage(){
-      killerSetup.classList.add('killer-hidden');
-      killerDistribution.classList.add('killer-hidden');
-      killerGame.classList.add('killer-hidden');
-      killerEnd.classList.add('killer-hidden');
-      if(killerState.stage==='setup'){killerSetup.classList.remove('killer-hidden');killerRenderPlayerList();}
-      else if(killerState.stage==='distribution'){killerDistribution.classList.remove('killer-hidden');killerRenderRevealList();}
-      else if(killerState.stage==='game'){killerGame.classList.remove('killer-hidden');killerRenderGame();}
-      else if(killerState.stage==='end'){killerEnd.classList.remove('killer-hidden');killerRenderEnd();}
-    }
-
-    function killerRenderPlayerList(){
-      killerPlayerList.innerHTML=killerState.players.map((p,i)=>`<div class="killer-player-item">${p.name}<button class="killer-remove-btn" data-i="${i}">❌</button></div>`).join('');
-      killerPlayerList.querySelectorAll('.killer-remove-btn').forEach(btn=>{btn.addEventListener('click',()=>{killerState.players.splice(btn.dataset.i,1);killerSave();killerRenderPlayerList();});});
-    }
-
-    function killerAddPlayer(){const name=killerPlayerInput.value.trim();if(!name)return;killerState.players.push({name});killerPlayerInput.value='';killerSave();killerRenderPlayerList();}
-    killerAddBtn.addEventListener('click',killerAddPlayer);
-    killerPlayerInput.addEventListener('keyup',e=>{if(e.key==='Enter')killerAddPlayer();});
-
-    function killerStart(){
-      if(killerState.players.length<2)return;
-      killerState.stage='distribution';
-      const shuffled=[...killerState.players].sort(()=>Math.random()-0.5);
-      const gesturesPool=getKillerGestures();
-      const fallbackGesture='fait un clin d\'œil 😉';
-      shuffled.forEach((p,i)=>{
-        const target=shuffled[(i+1)%shuffled.length];
-        p.target=target.name;
-        const gestures=gesturesPool.length?gesturesPool:[fallbackGesture];
-        p.gesture=gestures[Math.floor(Math.random()*gestures.length)];
-        p.alive=true;
-        p.kills=0;
-      });
-      killerSave();
-      killerRenderStage();
-    }
-    killerStartBtn.addEventListener('click',killerStart);
-
-    function killerRenderRevealList(){killerRevealList.innerHTML=killerState.players.map((p,i)=>`<button class="killer-reveal-btn" data-i="${i}">${p.name}</button>`).join('');killerRevealList.querySelectorAll('.killer-reveal-btn').forEach(btn=>{btn.addEventListener('click',()=>{killerShowCard(killerState.players[btn.dataset.i]);});});}
-
-    function killerShowCard(p){killerSecretTitle.textContent=p.name;killerSecretText.innerHTML=`Ta victime est ${p.target}<br>Geste : ${p.gesture}`;killerSecret.classList.remove('killer-hidden');setTimeout(()=>killerSecret.classList.add('killer-hidden'),3000);}
-
-    killerDistributeDone.addEventListener('click',()=>{killerState.stage='game';killerSave();killerRenderStage();});
-
-    function killerRenderGame(){killerAliveList.innerHTML=killerState.players.map((p,i)=>`<div class="killer-player-item ${p.alive?'':'killer-dead'}">${p.name} (${p.kills}) ${p.alive?'<button class="killer-kill-btn" data-i="'+i+'">☠️</button>':''}</div>`).join('');killerAliveList.querySelectorAll('.killer-kill-btn').forEach(btn=>{btn.addEventListener('click',()=>{killerEliminate(btn.dataset.i);});});}
-
-    function killerEliminate(idx){const victim=killerState.players[idx];if(!victim.alive)return;victim.alive=false;const assassin=killerState.players.find(p=>p.target===victim.name&&p.alive);if(assassin){assassin.kills++;assassin.target=victim.target;assassin.gesture=victim.gesture;}killerSave();const alive=killerState.players.filter(p=>p.alive);if(alive.length<=1){killerState.stage='end';killerSave();killerRenderStage();}else killerRenderGame();}
-
-    function killerRenderEnd(){const alive=killerState.players.filter(p=>p.alive);if(alive.length===1){const winner=alive[0];killerWinner.innerHTML=`${winner.name} gagne avec ${winner.kills} élimination(s)!`;}else{const sorted=[...killerState.players].sort((a,b)=>b.kills-a.kills);killerWinner.innerHTML=sorted.map(p=>`${p.name}: ${p.kills}`).join('<br>');}}
-
-    killerNewBtn.addEventListener('click',()=>{killerState={stage:'setup',players:[]};killerSave();killerRenderStage();});
-
-    // BEGIN killer-button-guard
-    const killerBtn=document.getElementById('killer-btn');
-    if(killerBtn){
-      killerBtn.addEventListener('click',()=>{
-        setupScreen.classList.add('hidden');
-        gameScreen.classList.add('hidden');
-        killerScreen.classList.remove('killer-hidden');
-        document.body.style.background='#222';
-        killerRenderStage();
-      });
-    }
-    // END killer-button-guard
-
-    killerBack.addEventListener('click',()=>{killerScreen.classList.add('killer-hidden');setupScreen.classList.remove('hidden');
-    // BEGIN da-killerback-bg
-    document.body.style.background='var(--cyan)';
-    // END da-killerback-bg
-    });
-    })();
-  </script>
   <!-- CORE -->
-<script src="scripts/core/init.js" defer></script>
-<script src="scripts/core/history.js" defer></script>
-<script src="scripts/core/showQuestion.js" defer></script>
+  <script src="scripts/core/init.js" defer></script>
+  <script src="scripts/core/history.js" defer></script>
+  <script src="scripts/core/showQuestion.js" defer></script>
 
-<!-- DATA -->
-<script src="data/debut.text.js" defer></script>
-<script src="data/hardcore.text.js" defer></script>
-<script src="data/alcool.text.js" defer></script>
-<script src="data/culture.text.js" defer></script>
-<script src="data/culture.mcq.js" defer></script>
-<script src="data/rapidite.questions.js" defer></script>
-<script src="data/killer.gestures.js" defer></script>
-<script src="data/undercover.pairs.js" defer></script>
+  <!-- FEATURE MODULES -->
+  <script src="scripts/app/undercover.js" defer></script>
+  <script src="scripts/app/killer.js" defer></script>
+  <script src="scripts/app/main-game.js" defer></script>
 
-<!-- PATCHES -->
-<script src="patches/apero-fixes.js" defer></script>
+  <!-- DATA -->
+  <script src="data/debut.text.js" defer></script>
+  <script src="data/hardcore.text.js" defer></script>
+  <script src="data/alcool.text.js" defer></script>
+  <script src="data/culture.text.js" defer></script>
+  <script src="data/culture.mcq.js" defer></script>
+  <script src="data/rapidite.questions.js" defer></script>
+  <script src="data/killer.gestures.js" defer></script>
+  <script src="data/undercover.pairs.js" defer></script>
 
+  <!-- PATCHES -->
+  <script src="patches/apero-fixes.js" defer></script>
 </body>
 </html>
