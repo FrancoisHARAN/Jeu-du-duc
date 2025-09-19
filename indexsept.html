@@ -46,3 +46,29 @@
       // END player-history-random-placeholder
       }
       typeBox.textContent=type;setBackground(type);currentQuestionEl.textContent=qText;}}
+    // BEGIN question-pool-helper
+    function pickGamePoolEntry(pool){
+      if(!Array.isArray(pool)||!pool.length){return null;}
+      const entry=pool[Math.floor(Math.random()*pool.length)];
+      if(typeof entry==="string"){
+        const parts=entry.split("|");
+        if(parts.length>1){return [parts[0]||"ACTION",parts[1]||""];}
+        return ["ACTION",parts[0]||""];
+      }else if(entry&&typeof entry==="object"){
+        const type=typeof entry.type==="string"?entry.type:typeof entry.category==="string"?entry.category:"ACTION";
+        const text=typeof entry.text==="string"?entry.text:typeof entry.question==="string"?entry.question:"";
+        return [type,text];
+      }
+      return null;
+    }
+    // END question-pool-helper
+
+      else if(mode==="debut"||mode==="hardcore"||mode==="alcool"){const pool={debut:debutQuestions,hardcore:hardcoreQuestions,alcool:alcoolQuestions}[mode];
+      // BEGIN question-pool-draw
+      const pickedEntry=pickGamePoolEntry(pool);
+      if(!pickedEntry){currentQuestionEl.textContent="";return;}
+      let [type,text]=pickedEntry;
+      if(typeof type!=="string"||!type){type="ACTION";}
+      if(typeof text!=="string"){text=text==null?"":String(text);}
+      // END question-pool-draw
+      if(typeof window.renderPlayerInputs==="function"){window.renderPlayerInputs();}
