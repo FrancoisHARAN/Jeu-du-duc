@@ -5,7 +5,14 @@ JDD.DATA = JDD.DATA || { debut: [], hardcore: [], alcool: [], culture: [], cultu
 JDD.registerQuestions = function(mode, list){
   if (!Array.isArray(list)) return;
   if (!Array.isArray(JDD.DATA[mode])) JDD.DATA[mode] = [];
-  JDD.DATA[mode].push(...list.filter(x => typeof x === 'string'));
+  JDD.DATA[mode].push(
+    ...list.filter(item => {
+      if (typeof item === 'string') return true;
+      if (!item || typeof item !== 'object') return false;
+      if (typeof item.question === 'string') return true;
+      return typeof item.text === 'string';
+    })
+  );
 };
 
 JDD.registerMcq = function(list){
