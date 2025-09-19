@@ -760,7 +760,16 @@ const sliders={debut:document.getElementById("weight-debut"),hardcore:document.g
 
     function addPlayer(){const name=playerInput.value.trim();if(name&&players.length<30){players.push(name);renderPlayerList();playerInput.value="";playerInput.focus();}}
     function removePlayer(i){players.splice(i,1);renderPlayerList();}
-    function renderPlayerList(){playerList.innerHTML="";players.forEach((p,i)=>{const div=document.createElement("div");div.classList.add("player-item");div.innerHTML=`${p} <button class="remove-btn" onclick="removePlayer(${i}); event.stopPropagation()">❌</button>`;playerList.appendChild(div);});}
+    function renderPlayerList(){
+      playerList.innerHTML="";
+      players.forEach((p,i)=>{
+        const div=document.createElement("div");
+        div.classList.add("player-item");
+        div.innerHTML=`${p} <button class="remove-btn" onclick="removePlayer(${i}); event.stopPropagation()">❌</button>`;
+        playerList.appendChild(div);
+      });
+      if(window.JDD)window.JDD.players=players;
+    }
 
     function setBackground(type){
       const bg={
@@ -847,7 +856,19 @@ const sliders={debut:document.getElementById("weight-debut"),hardcore:document.g
       rapidityMode = false;
       if(cultureToggleContainer)cultureToggleContainer.classList.add("hidden");
       if(gorgeesText)gorgeesText.classList.add("hidden");
-      let mode=currentMode;if(mode==="custom")mode=pickCustomMode();
+
+      let mode=currentMode;
+      if(mode==="custom")mode=pickCustomMode();
+
+      const dataRef=(window.JDD&&window.JDD.DATA)?window.JDD.DATA:{};
+      const cultureQuestions=Array.isArray(dataRef.culture)?dataRef.culture:[];
+      const cultureMcq=Array.isArray(dataRef.cultureMcq)?dataRef.cultureMcq:[];
+      const poolMap={
+        debut:Array.isArray(dataRef.debut)?dataRef.debut:[],
+        hardcore:Array.isArray(dataRef.hardcore)?dataRef.hardcore:[],
+        alcool:Array.isArray(dataRef.alcool)?dataRef.alcool:[]
+      };
+
       const rapidityMap={debut:0.08,hardcore:0.04,alcool:0.08,culture:0.02};
       // BEGIN reduce-rapidity-chance
       if(rapidityMap){Object.assign(rapidityMap,{debut:0.02,hardcore:0.02,alcool:0.02,culture:0.02});}
@@ -866,7 +887,7 @@ const sliders={debut:document.getElementById("weight-debut"),hardcore:document.g
         const totalCulturePool = cultureQuestions.length + cultureMcq.length;
         const drawIndex = totalCulturePool > 0 ? Math.floor(Math.random() * totalCulturePool) : -1;
         const useMcq = drawIndex > -1 && drawIndex < cultureMcq.length;
-        // END culture-random-selection
+// END culture-random-selection
 
         if (useMcq) {
           // QCM
@@ -881,7 +902,7 @@ const sliders={debut:document.getElementById("weight-debut"),hardcore:document.g
           }
         } else {
           // Question simple existante (comportement d’origine)
-const baseIndex = drawIndex > -1 ? drawIndex - cultureMcq.length : -1;
+          const baseIndex = drawIndex > -1 ? drawIndex - cultureMcq.length : -1;
           const safeIndex = (baseIndex >= 0 && baseIndex < cultureQuestions.length)
             ? baseIndex
             : (cultureQuestions.length ? Math.floor(Math.random() * cultureQuestions.length) : -1);
@@ -906,7 +927,38 @@ const baseIndex = drawIndex > -1 ? drawIndex - cultureMcq.length : -1;
         }
         return;
       }
-      else if(mode==="debut"||mode==="hardcore"||mode==="alcool"){const pool={debut:debutQuestions,hardcore:hardcoreQuestions,alcool:alcoolQuestions}[mode];const [type,text]=pool[Math.floor(Math.random()*pool.length)].split("|");let player=players[Math.floor(Math.random()*players.length)];let qText=text.replace(/\{player\}/g,player);if(qText.includes("{other}")){let other;do{other=players[Math.floor(Math.random()*players.length)];}while(other===player&&players.length>1);qText=qText.replace(/\{other\}/g,other);}typeBox.textContent=type;setBackground(type);currentQuestionEl.textContent=qText;}}
+      else if(mode==="debut"||mode==="hardcore"||mode==="alcool"){
+        const pool=poolMap[mode]||[];
+        const picker=window.JDD&&typeof window.JDD._pickText==="function"
+          ? window.JDD._pickText
+          : list=>{
+              if(!Array.isArray(list)||!list.length)return["VÉRITÉ","{player}, raconte un truc marrant."];
+              const raw=list[Math.floor(Math.random()*list.length)];
+              return typeof raw==="string"?raw.split("|"):["VÉRITÉ","{player}, raconte un truc marrant."];
+            };
+        const [type,text]=picker(pool);
+        let player=players[Math.floor(Math.random()*players.length)];
+        if(!player||!text){return;}
+        let qText=text.replace(/\{player\}/g,player);
+        if(qText.includes("{other}")){
+          let other=null;
+          if(players.length>1){
+            let attempts=0;
+            do{
+              other=players[Math.floor(Math.random()*players.length)];
+              attempts++;
+            }while(other===player&&attempts<20);
+            if(!other||other===player){
+              other=players.find(p=>p!==player)||other;
+            }
+          }
+          qText=qText.replace(/\{other\}/g,other||player);
+        }
+        typeBox.textContent=type;
+        setBackground(type);
+        currentQuestionEl.textContent=qText;
+      }
+    }
     
     function nextQuestion(e){if(e.target.id==="showAnswerBtn")return;if(e.clientX>window.innerWidth/2){if(rapidityMode&&currentQuestionEl.textContent.includes("⚡")){const q=rapidityQuestions[Math.floor(Math.random()*rapidityQuestions.length)];currentQuestionEl.textContent=q;// BEGIN rapidity-question-fix
 if(typeof q==="object"&&q?.question)currentQuestionEl.textContent=q.question;
