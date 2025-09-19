@@ -217,7 +217,7 @@
       debut: 0.02,
       hardcore: 0.02,
       alcool: 0.02,
-      culture: 0.02,
+      culture: 0,
     };
 
     const rapidityChance = rapidityChanceMap[mode] || 0;
