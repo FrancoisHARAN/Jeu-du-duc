@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Le Jeu du Duc 👑</title>
-  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="icon" type="image/png" href="image/icon.png">
   <style>
     :root {
       --orange: #ff7a18;
@@ -513,7 +513,7 @@ color: var(--text-dark);
 </head>
 <body>
   <div id="setup" class="card">
-    <img src="icon.png" alt="Logo Jeu du Duc" class="logo">
+    <img src="image/icon.png" alt="Logo Jeu du Duc" class="logo">
     <!-- // BEGIN title-uppercase -->
     <h1>LE JEU DU DUC</h1>
     <!-- // END title-uppercase -->
@@ -529,31 +529,31 @@ color: var(--text-dark);
     <div class="modes">
       <div class="mode-card" data-mode="debut">
         <!-- // BEGIN mode-card-apero-image -->
-        <img src="apero.png" alt="Apéro chiantos">
+        <img src="image/apero.png" alt="Apéro chiantos">
         <div>Apéro chiantos</div>
         <!-- // END mode-card-apero-image -->
       </div>
       <div class="mode-card" data-mode="hardcore">
         <!-- // BEGIN mode-card-hardcore-image -->
-        <img src="hardcore.png" alt="Sexy pas raffiné">
+        <img src="image/hardcore.png" alt="Sexy pas raffiné">
         <div>Sexy pas raffiné</div>
         <!-- // END mode-card-hardcore-image -->
       </div>
       <div class="mode-card" data-mode="alcool">
         <!-- // BEGIN mode-card-alcool-image -->
-        <img src="torgnole.png" alt="Torgnole express">
+        <img src="image/torgnole.png" alt="Torgnole express">
         <div>Torgnole express</div>
         <!-- // END mode-card-alcool-image -->
       </div>
       <div class="mode-card" data-mode="culture">
         <!-- // BEGIN mode-card-culture-image -->
-        <img src="cultureg.png" alt="Culture G.">
+        <img src="image/cultureg.png" alt="Culture G.">
         <div>Culture G.</div>
         <!-- // END mode-card-culture-image -->
       </div>
       <div class="mode-card fullwidth" data-mode="custom">
         <!-- // BEGIN mode-card-custom-image -->
-        <img src="personnalisé.png" alt="Personnalisé">
+        <img src="image/personnalisé.png" alt="Personnalisé">
         <div>Personnalisé</div>
         <!-- // END mode-card-custom-image -->
       </div>
@@ -580,7 +580,7 @@ color: var(--text-dark);
 
     <button id="startBtn" class="action-btn">
       <!-- // BEGIN start-btn-content -->
-      <img src="lancer.png" alt="Lancer la partie">
+      <img src="image/lancer.png" alt="Lancer la partie">
       <span>Lancer la partie</span>
       <!-- // END start-btn-content -->
     </button>
@@ -588,19 +588,19 @@ color: var(--text-dark);
       <h2 class="mode-header">Autres jeux</h2>
 <button id="undercoverBtn" class="mode-card">
         <!-- // BEGIN other-games-undercover-image -->
-        <img src="undercover.png" alt="Undercover">
+        <img src="image/undercover.png" alt="Undercover">
         <span>Undercover</span>
         <!-- // END other-games-undercover-image -->
       </button>
       <button id="killer-btn" class="mode-card">
-        <img src="killer.png" alt="Killer">
+        <img src="image/killer.png" alt="Killer">
         <span>Killer</span>
       </button>
     </div>
   </div>
 
   <div id="game" class="card hidden">
-    <img src="icon.png" alt="Logo Jeu du Duc" id="backLogo" class="logo">
+    <img src="image/icon.png" alt="Logo Jeu du Duc" id="backLogo" class="logo">
     <!-- // BEGIN culture-alcool-toggle -->
     <div id="cultureToggleContainer" class="toggle-container hidden">
       <label class="switch">
@@ -629,7 +629,7 @@ color: var(--text-dark);
   </div>
 
   <div id="undercover" class="hidden">
-    <img src="icon.png" alt="Retour" id="backUndercover" class="logo">
+    <img src="image/icon.png" alt="Retour" id="backUndercover" class="logo">
     <h1 id="undercoverTitle">Undercover</h1>
       <!-- BEGIN undercover-card-config -->
       <div id="config" class="under-card">
@@ -703,7 +703,7 @@ color: var(--text-dark);
   </div>
 
   <div id="killer-screen" class="killer-hidden">
-    <img src="icon.png" alt="Retour" id="killer-back" class="killer-logo">
+    <img src="image/icon.png" alt="Retour" id="killer-back" class="killer-logo">
     <h1>Killer</h1>
     <div id="killer-setup" class="killer-card">
       <div class="killer-player-input-container">
@@ -732,7 +732,7 @@ color: var(--text-dark);
     </div>
   </div>
   <!-- BEGIN rapidite-audio-element -->
-  <audio id="rapidite-audio" src="rapidite.mp3"></audio>
+  <audio id="rapidite-audio" src="song/rapidite.mp3"></audio>
   <!-- END rapidite-audio-element -->
   <script>
     const players=[];
