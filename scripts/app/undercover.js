@@ -118,15 +118,18 @@
     save();
   }
 
-  function changeRole(role, delta) {
+  function canChangeRole(role, delta) {
     const s = store.settings;
-    const max = maxInfiltrators(s.count);
     const next = s[role] + delta;
     const total = s.undercover + s.white + delta;
-    if (next < 0 || (delta > 0 && total > max) || (delta < 0 && total < 1)) {
+    return next >= 0 && total >= 1 && total <= maxInfiltrators(s.count);
+  }
+
+  function changeRole(role, delta) {
+    if (!canChangeRole(role, delta)) {
       return false;
     }
-    s[role] = next;
+    store.settings[role] += delta;
     save();
     return true;
   }
@@ -337,16 +340,18 @@
     slider.style.setProperty('--pct', `${((s.count - MIN_PLAYERS) / (MAX_PLAYERS - MIN_PLAYERS)) * 100}%`);
 
     const plural = (n, word, pluralWord) => `${n} ${n > 1 ? pluralWord : word}`;
+    const full = s.undercover + s.white >= max;
+    const roleRow = (role, label, tone) => `
+      <div class="uc-role-row">
+        <button class="uc-minus uc-minus--${tone}" data-act="role" data-role="${role}" data-delta="-1" ${canChangeRole(role, -1) ? '' : 'disabled'} aria-label="Retirer un ${label}">−</button>
+        <span class="uc-pill uc-pill--${role === 'white' ? 'white' : 'under'} ${s[role] === 0 ? 'uc-pill--off' : ''}">${label === 'Undercover' ? plural(s.undercover, 'Undercover', 'Undercovers') : `${s.white} Mr. White`}</span>
+        <button class="uc-minus uc-minus--${tone}" data-act="role" data-role="${role}" data-delta="1" ${canChangeRole(role, 1) ? '' : 'disabled'} aria-label="Ajouter un ${label}">+</button>
+      </div>`;
     root.querySelector('#uc-roles').innerHTML = `
       <div class="uc-role-row"><span class="uc-pill uc-pill--civil">${plural(civils, 'Civil', 'Civils')}</span></div>
-      <div class="uc-role-row">
-        <button class="uc-minus uc-minus--dark" data-act="role" data-role="undercover" data-delta="-1" ${s.undercover === 0 || s.undercover + s.white <= 1 ? 'disabled' : ''} aria-label="Retirer un Undercover">−</button>
-        <button class="uc-pill uc-pill--under ${s.undercover === 0 ? 'uc-pill--off' : ''}" data-act="role" data-role="undercover" data-delta="1">${plural(s.undercover, 'Undercover', 'Undercovers')}</button>
-      </div>
-      <div class="uc-role-row">
-        <button class="uc-minus uc-minus--light" data-act="role" data-role="white" data-delta="-1" ${s.white === 0 || s.undercover + s.white <= 1 ? 'disabled' : ''} aria-label="Retirer un Mr. White">−</button>
-        <button class="uc-pill uc-pill--white ${s.white === 0 ? 'uc-pill--off' : ''}" data-act="role" data-role="white" data-delta="1">${s.white} Mr. White</button>
-      </div>`;
+      ${roleRow('undercover', 'Undercover', 'dark')}
+      ${roleRow('white', 'Mr. White', 'light')}
+      <div class="uc-roles-hint">${full ? `Maximum ${max} infiltré${max > 1 ? 's' : ''} pour ${s.count} joueurs` : 'Ajuste les rôles avec − et +'}</div>`;
 
     root.querySelector('#uc-words-label').textContent = s.hard ? 'Standards + Hard' : 'Standards';
     root.querySelector('.uc-screen').classList.toggle('uc-setup--compact', store.players.length > 0);
