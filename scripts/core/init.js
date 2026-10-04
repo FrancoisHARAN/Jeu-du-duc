@@ -34,23 +34,22 @@ JDD.registerRapidity = function(list){
   JDD.RAPIDITY.push(...entries);
 };
 
-JDD.KILLER_GESTURES = JDD.KILLER_GESTURES || [];
-JDD.registerKillerGestures = function(list){
-  if (!Array.isArray(list)) return;
-  JDD.KILLER_GESTURES.push(
-    ...list
-      .filter(item => typeof item === 'string' && item.trim())
-      .map(item => item.trim())
-  );
-};
-
 JDD.UNDERCOVER_PAIRS = JDD.UNDERCOVER_PAIRS || [];
 JDD.registerUndercoverPairs = function(list){
   if (!Array.isArray(list)) return;
   const entries = list
     .filter(item => item && typeof item.civil === 'string' && typeof item.under === 'string')
-    .map(item => ({ civil: item.civil.trim(), under: item.under.trim() }))
+    .map(item => ({ civil: item.civil.trim(), under: item.under.trim(), hard: item.hard === true }))
     .filter(item => item.civil && item.under);
   JDD.UNDERCOVER_PAIRS.push(...entries);
 };
 // END registry
+
+// Mélange de Fisher-Yates (uniforme, contrairement à sort(() => Math.random() - 0.5))
+JDD.shuffle = function(list){
+  for (let i = list.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+  return list;
+};

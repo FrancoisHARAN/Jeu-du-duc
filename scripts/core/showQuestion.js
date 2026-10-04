@@ -1,20 +1,22 @@
-// BEGIN safe-pick-and-show
+// Paquets de cartes : chaque carte sort une fois avant que le paquet ne soit remélangé.
+// L'ordre restant est mémorisé pour ne pas revoir les mêmes cartes après un rechargement.
 (function(){
-  const DATA = JDD.DATA;
+  const STORAGE_KEY = 'jdd.decks';
+  let decks = {};
+  try { decks = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}; } catch (e) { decks = {}; }
 
-  function pickText(pool){
-    if (!Array.isArray(pool) || !pool.length) return ["VÉRITÉ", "{player}, raconte un truc marrant."];
-    let picked, tries = 0;
-    do {
-      picked = pool[Math.floor(Math.random() * pool.length)];
-      tries++;
-    } while (typeof picked !== 'string' && tries < 50);
-    if (typeof picked !== 'string') picked = pool.find(x => typeof x==='string') || "VÉRITÉ|{player}, raconte un truc marrant.";
-    if (typeof picked === 'string') return picked.split("|");
-    return ["VÉRITÉ", "{player}, raconte un truc marrant."];
+  function save(){
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(decks)); } catch (e) { /* stockage indisponible */ }
   }
 
-  JDD._pickText = pickText;
-  JDD._DATA_REF = DATA;
+  JDD.drawCard = function(key, pool){
+    if (!Array.isArray(pool) || !pool.length) return null;
+    let deck = decks[key];
+    if (!deck || deck.size !== pool.length || !Array.isArray(deck.order) || !deck.order.length) {
+      deck = decks[key] = { size: pool.length, order: JDD.shuffle(pool.map((_, i) => i)) };
+    }
+    const card = pool[deck.order.pop()];
+    save();
+    return card;
+  };
 })();
- // END safe-pick-and-show

@@ -1,5 +1,8 @@
 (function () {
-  const players = [];
+  const PLAYERS_KEY = 'jdd.players';
+  const MAX_PLAYERS = 30;
+
+  const players = loadPlayers();
   if (window.JDD) {
     window.JDD.players = players;
   }
@@ -11,7 +14,6 @@
     setupScreen: document.getElementById('setup'),
     gameScreen: document.getElementById('game'),
     undercoverScreen: document.getElementById('undercover'),
-    killerScreen: document.getElementById('killer-screen'),
     playerInput: document.getElementById('playerInput'),
     playerList: document.getElementById('playerList'),
     typeBox: document.getElementById('typeBox'),
@@ -26,11 +28,7 @@
     gorgeesText: document.getElementById('gorgeesText'),
     mcqBox: document.getElementById('mcqBox'),
     mcqGrid: document.getElementById('mcqGrid'),
-    undercoverTitle: document.getElementById('undercoverTitle'),
-    backUndercover: document.getElementById('backUndercover'),
     undercoverButton: document.getElementById('undercoverBtn'),
-    killerButton: document.getElementById('killer-btn'),
-    killerBack: document.getElementById('killer-back'),
     rapiditeAudio: document.getElementById('rapidite-audio'),
   };
 
@@ -56,20 +54,50 @@
   const MODE_BACKGROUNDS = {
     'VÉRITÉ': 'var(--yellow)',
     ACTION: 'var(--pink)',
+    TOUS: 'var(--green)',
     'CULTURE G.': 'var(--cyan)',
     'RAPIDITÉ': 'var(--orange)',
-    CUSTOM: 'var(--orange)',
   };
 
-  function syncPlayers() {
-    if (window.JDD) {
-      window.JDD.players = players;
+  const TYPE_LABELS = {
+    TOUS: 'TOUT LE MONDE',
+  };
+
+  // Mots en tête de question qu'on peut passer en minuscule après « Prénom, »
+  const LOWERCASE_STARTERS = new Set([
+    'quel', 'quelle', 'quels', 'quelles', 'qui', 'que', "qu'est-ce", 'quoi', 'combien', 'comment', 'où', 'pourquoi',
+    'quand', 'lequel', 'laquelle', 'lesquels', 'lesquelles', 'dans', 'en', 'de', 'du', 'des', 'sur', 'pour', 'avec',
+    'chez', 'complète', 'parmi', 'à', 'au', 'aux', 'le', 'la', 'les', 'un', 'une', 'ce', 'cette', 'ces', 'cet', 'son',
+    'sa', 'ses', 'il', 'elle', 'on', 'est-ce', 'si', 'depuis', 'avant', 'après', 'par', 'cite', 'donne', 'trouve',
+    'devine', 'selon', 'entre', 'sans', 'contre', 'vrai', 'quelqu’un', "quelqu'un", 'traduis', 'termine',
+  ]);
+
+  function loadPlayers() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(PLAYERS_KEY) || '[]');
+      return Array.isArray(stored) ? stored.filter((name) => typeof name === 'string' && name.trim()).slice(0, MAX_PLAYERS) : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function savePlayers() {
+    try {
+      localStorage.setItem(PLAYERS_KEY, JSON.stringify(players));
+    } catch (error) {
+      // stockage indisponible (navigation privée) : la liste reste en mémoire
     }
   }
 
   function addPlayer() {
     const name = elements.playerInput.value.trim();
-    if (!name || players.length >= 30) {
+    if (!name || players.length >= MAX_PLAYERS) {
+      return;
+    }
+    if (players.some((existing) => existing.toLowerCase() === name.toLowerCase())) {
+      elements.playerInput.classList.add('input-error');
+      elements.playerInput.select();
+      setTimeout(() => elements.playerInput.classList.remove('input-error'), 900);
       return;
     }
     players.push(name);
@@ -104,75 +132,97 @@
       item.append(label, removeButton);
       elements.playerList.appendChild(item);
     });
-    syncPlayers();
+    savePlayers();
   }
 
   function setBackground(type) {
-    const color = MODE_BACKGROUNDS[type] || 'var(--cyan)';
-    elements.body.style.background = color;
+    elements.body.style.background = MODE_BACKGROUNDS[type] || 'var(--cyan)';
   }
 
-  function playIntroAnimation() {
-    return Promise.resolve();
+  function normalizeType(rawType) {
+    const type = String(rawType || '').trim().toUpperCase();
+    if (type === 'QUESTION') return 'TOUS';
+    if (type === 'VERITE') return 'VÉRITÉ';
+    return type || 'ACTION';
   }
 
-  function getRapidityQuestions() {
-    if (window.JDD && Array.isArray(window.JDD.RAPIDITY) && window.JDD.RAPIDITY.length) {
-      return window.JDD.RAPIDITY;
-    }
-    return [];
+  function addressPlayer(playerName, sentence) {
+    const text = String(sentence || '').trim();
+    const firstWord = text.split(/[\s,:;!?«»"]/)[0].toLowerCase();
+    const body = LOWERCASE_STARTERS.has(firstWord) || firstWord.startsWith("l'") || firstWord.startsWith('l’')
+      ? text.charAt(0).toLowerCase() + text.slice(1)
+      : text;
+    return playerName ? `${playerName}, ${body}` : text;
   }
 
   function hideQuestionArea() {
-    if (elements.mcqBox) {
-      elements.mcqBox.style.display = 'none';
-    }
-    if (elements.answerBox) {
-      elements.answerBox.style.display = 'none';
-    }
-    if (elements.showAnswerButton) {
-      elements.showAnswerButton.style.display = 'none';
-    }
-    if (elements.answerText) {
-      elements.answerText.textContent = '';
+    elements.mcqBox.style.display = 'none';
+    elements.answerBox.style.display = 'none';
+    elements.showAnswerButton.style.display = 'none';
+    elements.answerText.textContent = '';
+  }
+
+  function showCultureExtras() {
+    elements.cultureToggleContainer.classList.remove('hidden');
+    if (state.cultureDrinkMode) {
+      const amount = Math.floor(Math.random() * 3) + 1;
+      elements.gorgeesText.textContent = `${amount} gorgée${amount > 1 ? 's' : ''}`;
+      elements.gorgeesText.classList.remove('hidden');
     }
   }
 
   function renderMcq(question, playerName) {
+    const isTrueFalse = question.vf === true;
     elements.typeBox.textContent = 'CULTURE G.';
     setBackground('CULTURE G.');
-    elements.currentQuestion.textContent = `${playerName}, ${question.question}`;
+    elements.currentQuestion.textContent = isTrueFalse
+      ? `${playerName ? `${playerName}, v` : 'V'}rai ou faux : ${question.question}`
+      : addressPlayer(playerName, question.question);
 
     elements.answerBox.style.display = 'block';
     elements.mcqBox.style.display = 'block';
     elements.mcqGrid.innerHTML = '';
+    elements.mcqGrid.classList.toggle('mcq-grid--vf', isTrueFalse);
 
-    question.choices.forEach((choiceLabel, choiceIndex) => {
+    const options = question.choices.map((label, index) => ({ label, correct: index === question.answerIndex }));
+    if (!isTrueFalse) {
+      window.JDD.shuffle(options);
+    }
+
+    const buttons = options.map((option) => {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'mcq-btn';
-      button.textContent = choiceLabel;
+      button.textContent = option.label;
       button.addEventListener(
         'click',
         (event) => {
           event.stopPropagation();
-          [...elements.mcqGrid.querySelectorAll('button')].forEach((btn) => {
+          buttons.forEach((btn, index) => {
             btn.disabled = true;
+            if (options[index].correct) btn.classList.add('mcq-correct');
           });
-          if (choiceIndex === question.answerIndex) {
-            button.classList.add('mcq-correct');
-          } else {
-            button.classList.add('mcq-wrong');
-            const correctButton = elements.mcqGrid.children[question.answerIndex];
-            if (correctButton) {
-              correctButton.classList.add('mcq-correct');
-            }
-          }
+          if (!option.correct) button.classList.add('mcq-wrong');
+          if (question.note) elements.answerText.textContent = `💡 ${question.note}`;
         },
         { once: true }
       );
       elements.mcqGrid.appendChild(button);
+      return button;
     });
+  }
+
+  function renderOpenQuestion(question, playerName) {
+    elements.typeBox.textContent = 'CULTURE G.';
+    setBackground('CULTURE G.');
+    elements.currentQuestion.textContent = addressPlayer(playerName, question.question);
+    elements.showAnswerButton.style.display = 'inline-block';
+    elements.answerBox.style.display = 'block';
+    elements.showAnswerButton.onclick = (event) => {
+      event.stopPropagation();
+      elements.answerText.textContent = `✅ Réponse : ${question.answer}${question.note ? ` — ${question.note}` : ''}`;
+      elements.showAnswerButton.style.display = 'none';
+    };
   }
 
   function pickCustomMode() {
@@ -186,180 +236,102 @@
     return 'culture';
   }
 
+  function showRapidity() {
+    state.rapidityMode = true;
+    elements.typeBox.textContent = 'RAPIDITÉ';
+    setBackground('RAPIDITÉ');
+    elements.currentQuestion.textContent = '⚡ Question de rapidité pour tout le monde ! (Touchez pour révéler)';
+    if (elements.rapiditeAudio) {
+      elements.rapiditeAudio.currentTime = 0;
+      const playing = elements.rapiditeAudio.play();
+      if (playing && typeof playing.catch === 'function') playing.catch(() => {});
+    }
+  }
+
+  function showCulture(data) {
+    const open = Array.isArray(data.culture) ? data.culture : [];
+    const mcq = Array.isArray(data.cultureMcq) ? data.cultureMcq : [];
+    if (!open.length && !mcq.length) return;
+
+    const player = window.JDD.nextPlayer(players);
+    const useMcq = Math.random() * (open.length + mcq.length) < mcq.length;
+    showCultureExtras();
+    if (useMcq) {
+      renderMcq(window.JDD.drawCard('culture-mcq', mcq), player);
+    } else {
+      renderOpenQuestion(window.JDD.drawCard('culture-open', open), player);
+    }
+  }
+
+  function showPartyCard(mode, pool) {
+    const raw = window.JDD.drawCard(mode, pool);
+    if (typeof raw !== 'string') return;
+    const separator = raw.indexOf('|');
+    const type = normalizeType(separator > -1 ? raw.slice(0, separator) : 'ACTION');
+    const text = separator > -1 ? raw.slice(separator + 1) : raw;
+
+    let questionText = text;
+    if (questionText.includes('{player}')) {
+      const player = window.JDD.nextPlayer(players);
+      questionText = questionText.replace(/\{player\}/g, player);
+      if (questionText.includes('{other}')) {
+        questionText = questionText.replace(/\{other\}/g, window.JDD.pickOther(players, player));
+      }
+    } else if (questionText.includes('{other}')) {
+      questionText = questionText.replace(/\{other\}/g, window.JDD.pickOther(players, null));
+    }
+
+    elements.typeBox.textContent = TYPE_LABELS[type] || type;
+    setBackground(type);
+    elements.currentQuestion.textContent = questionText;
+  }
+
   function showQuestion() {
     elements.currentQuestion.textContent = '';
     elements.typeBox.textContent = '';
     hideQuestionArea();
     state.rapidityMode = false;
+    elements.cultureToggleContainer.classList.add('hidden');
+    elements.gorgeesText.classList.add('hidden');
 
-    if (elements.cultureToggleContainer) {
-      elements.cultureToggleContainer.classList.add('hidden');
-    }
-    if (elements.gorgeesText) {
-      elements.gorgeesText.classList.add('hidden');
-    }
-
-    let mode = state.currentMode;
-    if (mode === 'custom') {
-      mode = pickCustomMode();
-    }
-
+    const mode = state.currentMode === 'custom' ? pickCustomMode() : state.currentMode;
     const data = (window.JDD && window.JDD.DATA) || {};
-    const cultureQuestions = Array.isArray(data.culture) ? data.culture : [];
-    const cultureMcq = Array.isArray(data.cultureMcq) ? data.cultureMcq : [];
-    const poolMap = {
-      debut: Array.isArray(data.debut) ? data.debut : [],
-      hardcore: Array.isArray(data.hardcore) ? data.hardcore : [],
-      alcool: Array.isArray(data.alcool) ? data.alcool : [],
-    };
 
-    const rapidityChanceMap = {
-      debut: 0.02,
-      hardcore: 0.02,
-      alcool: 0.02,
-      culture: 0,
-    };
-
-    const rapidityChance = rapidityChanceMap[mode] || 0;
-    if (Math.random() < rapidityChance) {
-      state.rapidityMode = true;
-      elements.typeBox.textContent = 'RAPIDITÉ';
-      setBackground('RAPIDITÉ');
-      elements.currentQuestion.textContent = '⚡ Question de rapidité pour tout le monde ! (Cliquez pour révéler)';
-      if (elements.rapiditeAudio) {
-        elements.rapiditeAudio.currentTime = 0;
-        elements.rapiditeAudio.play();
-      }
+    if (mode !== 'culture' && Math.random() < 0.02) {
+      showRapidity();
       return;
     }
 
     if (mode === 'culture') {
-      const targetPlayer = players[Math.floor(Math.random() * players.length)];
-      const totalPoolSize = cultureQuestions.length + cultureMcq.length;
-      const drawIndex = totalPoolSize > 0 ? Math.floor(Math.random() * totalPoolSize) : -1;
-      const useMcq = drawIndex > -1 && drawIndex < cultureMcq.length;
-
-      if (useMcq) {
-        const question = cultureMcq[drawIndex];
-        renderMcq(question, targetPlayer);
-        if (elements.cultureToggleContainer) {
-          elements.cultureToggleContainer.classList.remove('hidden');
-        }
-        if (state.cultureDrinkMode && elements.gorgeesText) {
-          const amount = Math.floor(Math.random() * 3) + 1;
-          elements.gorgeesText.textContent = `${amount} gorgée${amount > 1 ? 's' : ''}`;
-          elements.gorgeesText.classList.remove('hidden');
-        }
-        return;
-      }
-
-      const baseIndex = drawIndex > -1 ? drawIndex - cultureMcq.length : -1;
-      const safeIndex = baseIndex >= 0 && baseIndex < cultureQuestions.length
-        ? baseIndex
-        : cultureQuestions.length
-          ? Math.floor(Math.random() * cultureQuestions.length)
-          : -1;
-      if (safeIndex < 0) {
-        return;
-      }
-
-      const question = cultureQuestions[safeIndex];
-      elements.typeBox.textContent = 'CULTURE G.';
-      setBackground('CULTURE G.');
-      elements.currentQuestion.textContent = `${targetPlayer}, ${question.question}`;
-      elements.showAnswerButton.style.display = 'inline-block';
-      elements.answerBox.style.display = 'block';
-      elements.showAnswerButton.onclick = (event) => {
-        event.stopPropagation();
-        elements.answerText.textContent = `✅ Réponse : ${question.answer}`;
-        elements.showAnswerButton.style.display = 'none';
-      };
-      if (elements.cultureToggleContainer) {
-        elements.cultureToggleContainer.classList.remove('hidden');
-      }
-      if (state.cultureDrinkMode && elements.gorgeesText) {
-        const amount = Math.floor(Math.random() * 3) + 1;
-        elements.gorgeesText.textContent = `${amount} gorgée${amount > 1 ? 's' : ''}`;
-        elements.gorgeesText.classList.remove('hidden');
-      }
+      showCulture(data);
       return;
     }
 
-    if (mode === 'debut' || mode === 'hardcore' || mode === 'alcool') {
-      const pool = poolMap[mode] || [];
-      const picker = window.JDD && typeof window.JDD._pickText === 'function'
-        ? window.JDD._pickText
-        : (list) => {
-            if (!Array.isArray(list) || !list.length) {
-              return ['VÉRITÉ', '{player}, raconte un truc marrant.'];
-            }
-            const raw = list[Math.floor(Math.random() * list.length)];
-            if (typeof raw === 'string') {
-              return raw.split('|');
-            }
-            return ['VÉRITÉ', '{player}, raconte un truc marrant.'];
-          };
-
-      const [type, text] = picker(pool);
-      const player = players[Math.floor(Math.random() * players.length)];
-      if (!player || !text) {
-        return;
-      }
-
-      let questionText = text.replace(/\{player\}/g, player);
-      if (questionText.includes('{other}')) {
-        let otherPlayer = null;
-        if (players.length > 1) {
-          let attempts = 0;
-          do {
-            otherPlayer = players[Math.floor(Math.random() * players.length)];
-            attempts += 1;
-          } while (otherPlayer === player && attempts < 20);
-          if (!otherPlayer || otherPlayer === player) {
-            otherPlayer = players.find((candidate) => candidate !== player) || otherPlayer;
-          }
-        }
-        questionText = questionText.replace(/\{other\}/g, otherPlayer || player);
-      }
-
-      elements.typeBox.textContent = type;
-      setBackground(type);
-      elements.currentQuestion.textContent = questionText;
-    }
+    showPartyCard(mode, Array.isArray(data[mode]) ? data[mode] : []);
   }
 
   function nextQuestion(event) {
-    if (event.target === elements.showAnswerButton) {
+    if (event.target === elements.showAnswerButton || event.target.closest('.toggle-container')) {
       return;
     }
-    if (event.clientX > window.innerWidth / 2) {
-      if (state.rapidityMode && elements.currentQuestion.textContent.includes('⚡')) {
-        const pool = getRapidityQuestions();
-        const draw = pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
-        if (draw) {
-          const text = typeof draw === 'object' && draw?.question ? draw.question : draw;
-          elements.currentQuestion.textContent = text;
-        } else {
-          elements.currentQuestion.textContent = '⚡ Pas de question de rapidité disponible.';
-        }
-        state.rapidityMode = false;
-      } else {
-        showQuestion();
-      }
+    if (event.clientX <= window.innerWidth / 2) {
+      return;
     }
+    if (state.rapidityMode) {
+      const pool = (window.JDD && window.JDD.RAPIDITY) || [];
+      const draw = window.JDD.drawCard('rapidite', pool);
+      elements.currentQuestion.textContent = draw || '⚡ Pas de question de rapidité disponible.';
+      state.rapidityMode = false;
+      return;
+    }
+    showQuestion();
   }
 
   function startGame() {
-    if (players.length < 1) {
-      alert('Ajoute au moins 1 joueur !');
+    const minimum = state.currentMode === 'culture' ? 1 : 2;
+    if (players.length < minimum) {
+      alert(minimum === 1 ? 'Ajoute au moins 1 joueur !' : 'Ajoute au moins 2 joueurs !');
       return;
-    }
-    if (state.currentMode !== 'culture' && players.length < 2 && state.currentMode !== 'custom') {
-      alert('Ajoute au moins 2 joueurs !');
-      return;
-    }
-    if (state.currentMode === 'hardcore' || state.currentMode === 'alcool') {
-      playIntroAnimation(state.currentMode);
     }
     elements.setupScreen.classList.add('hidden');
     elements.gameScreen.classList.remove('hidden');
@@ -377,7 +349,7 @@
   }
 
   function activateModeCard(selectedCard) {
-    document.querySelectorAll('.mode-card').forEach((card) => {
+    document.querySelectorAll('.mode-card[data-mode]').forEach((card) => {
       card.classList.remove('active');
     });
     selectedCard.classList.add('active');
@@ -388,9 +360,8 @@
   function openUndercover() {
     elements.setupScreen.classList.add('hidden');
     elements.gameScreen.classList.add('hidden');
-    elements.killerScreen.classList.add('killer-hidden');
     elements.undercoverScreen.classList.remove('hidden');
-    elements.body.style.background = '#222';
+    elements.body.classList.add('uc-open');
     if (modules.undercover && typeof modules.undercover.onOpen === 'function') {
       modules.undercover.onOpen();
     }
@@ -399,30 +370,8 @@
   function closeUndercover() {
     elements.undercoverScreen.classList.add('hidden');
     elements.setupScreen.classList.remove('hidden');
+    elements.body.classList.remove('uc-open');
     elements.body.style.background = 'var(--cyan)';
-    if (modules.undercover && typeof modules.undercover.onClose === 'function') {
-      modules.undercover.onClose();
-    }
-  }
-
-  function openKiller() {
-    elements.setupScreen.classList.add('hidden');
-    elements.gameScreen.classList.add('hidden');
-    elements.undercoverScreen.classList.add('hidden');
-    elements.killerScreen.classList.remove('killer-hidden');
-    elements.body.style.background = '#222';
-    if (modules.killer && typeof modules.killer.onOpen === 'function') {
-      modules.killer.onOpen();
-    }
-  }
-
-  function closeKiller() {
-    elements.killerScreen.classList.add('killer-hidden');
-    elements.setupScreen.classList.remove('hidden');
-    elements.body.style.background = 'var(--cyan)';
-    if (modules.killer && typeof modules.killer.onClose === 'function') {
-      modules.killer.onClose();
-    }
   }
 
   function attachEvents() {
@@ -435,59 +384,35 @@
     });
 
     elements.gameScreen.addEventListener('click', nextQuestion);
-    elements.backLogo.addEventListener('click', () => {
+    elements.backLogo.addEventListener('click', (event) => {
+      event.stopPropagation();
       elements.gameScreen.classList.add('hidden');
       elements.setupScreen.classList.remove('hidden');
       elements.body.style.background = 'var(--cyan)';
     });
 
-    if (elements.cultureToggle) {
-      elements.cultureToggle.addEventListener('change', () => {
-        state.cultureDrinkMode = elements.cultureToggle.checked;
-      });
-    }
+    elements.cultureToggle.addEventListener('change', () => {
+      state.cultureDrinkMode = elements.cultureToggle.checked;
+    });
 
     Object.values(sliderElements).forEach((input) => {
       input.addEventListener('input', updateWeights);
     });
 
-    document.querySelectorAll('.mode-card').forEach((card) => {
+    document.querySelectorAll('.mode-card[data-mode]').forEach((card) => {
       card.addEventListener('click', () => activateModeCard(card));
     });
 
-    if (elements.undercoverButton) {
-      elements.undercoverButton.addEventListener('click', openUndercover);
-    }
-    if (elements.backUndercover) {
-      elements.backUndercover.addEventListener('click', closeUndercover);
-    }
-    if (elements.undercoverTitle) {
-      elements.undercoverTitle.addEventListener('click', () => {
-        document.getElementById('config').classList.remove('hidden');
-        document.getElementById('reveal').classList.add('hidden');
-        document.getElementById('play').classList.add('hidden');
-      });
-    }
-
-    if (elements.killerButton) {
-      elements.killerButton.addEventListener('click', openKiller);
-    }
-    if (elements.killerBack) {
-      elements.killerBack.addEventListener('click', closeKiller);
-    }
-  }
-
-  function initialiseModules() {
-    if (modules.undercover && typeof modules.undercover.init === 'function') {
-      modules.undercover.init();
-    }
-    if (modules.killer && typeof modules.killer.init === 'function') {
-      modules.killer.init();
-    }
+    elements.undercoverButton.addEventListener('click', openUndercover);
   }
 
   function init() {
-    initialiseModules();
+    if (modules.undercover && typeof modules.undercover.init === 'function') {
+      modules.undercover.init({
+        onExit: closeUndercover,
+        getSuggestedNames: () => players.slice(),
+      });
+    }
     attachEvents();
     const defaultCard = document.querySelector('.mode-card[data-mode="debut"]');
     if (defaultCard) {
