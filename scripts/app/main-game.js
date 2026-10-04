@@ -69,7 +69,10 @@
     'quand', 'lequel', 'laquelle', 'lesquels', 'lesquelles', 'dans', 'en', 'de', 'du', 'des', 'sur', 'pour', 'avec',
     'chez', 'complète', 'parmi', 'à', 'au', 'aux', 'le', 'la', 'les', 'un', 'une', 'ce', 'cette', 'ces', 'cet', 'son',
     'sa', 'ses', 'il', 'elle', 'on', 'est-ce', 'si', 'depuis', 'avant', 'après', 'par', 'cite', 'donne', 'trouve',
-    'devine', 'selon', 'entre', 'sans', 'contre', 'vrai', 'quelqu’un', "quelqu'un", 'traduis', 'termine',
+    'devine', 'selon', 'entre', 'sans', 'contre', 'vrai', 'quelqu', 'traduis', 'termine', 'l', 'd', 'qu', 'jusqu',
+    'environ', 'lors', 'pendant', 'sous', 'hors', 'juste', 'ton', 'ta', 'tes', 'génétiquement', 'techniquement',
+    'officiellement', 'historiquement', 'morte', 'mort', 'capturé', 'recalé', 'déroulé', 'partie', 'champions',
+    'allemand', 'français', 'française', 'né', 'née', 'âgé', 'âgée', 'surnommé', 'surnommée', 'parmi', 'voici',
   ]);
 
   function loadPlayers() {
@@ -148,15 +151,14 @@
 
   function addressPlayer(playerName, sentence) {
     const text = String(sentence || '').trim();
-    const firstWord = text.split(/[\s,:;!?«»"]/)[0].toLowerCase();
-    const body = LOWERCASE_STARTERS.has(firstWord) || firstWord.startsWith("l'") || firstWord.startsWith('l’')
-      ? text.charAt(0).toLowerCase() + text.slice(1)
-      : text;
+    const firstWord = text.split(/[\s,:;!?«»"'’]/)[0].toLowerCase();
+    const body = LOWERCASE_STARTERS.has(firstWord) ? text.charAt(0).toLowerCase() + text.slice(1) : text;
     return playerName ? `${playerName}, ${body}` : text;
   }
 
   function hideQuestionArea() {
     elements.mcqBox.style.display = 'none';
+    elements.mcqGrid.innerHTML = '';
     elements.answerBox.style.display = 'none';
     elements.showAnswerButton.style.display = 'none';
     elements.answerText.textContent = '';
