@@ -16,6 +16,7 @@ body.uc-open {
   --uc-yellow: #ffd23f;
   --uc-panel: rgba(232, 234, 240, 0.92);
   --uc-dark-panel: rgba(78, 78, 88, 0.82);
+  --uc-thumb: url("../image/duc-head.png");
   position: fixed;
   inset: 0;
   z-index: 50;
@@ -123,7 +124,7 @@ body.uc-open {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 46px;
+  height: 80px;
   margin: 0;
   background: transparent;
   --pct: 0%;
@@ -139,19 +140,19 @@ body.uc-open {
 .uc-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 48px;
-  height: 48px;
-  margin-top: -20px;
+  width: 76px;
+  height: 76px;
+  margin-top: -34px;
   border: none;
-  border-radius: 50%;
+  border-radius: 0;
   box-shadow: none;
   background: transparent var(--uc-thumb) center / contain no-repeat;
 }
 .uc-slider::-moz-range-thumb {
-  width: 48px;
-  height: 48px;
+  width: 76px;
+  height: 76px;
   border: none;
-  border-radius: 50%;
+  border-radius: 0;
   background: transparent var(--uc-thumb) center / contain no-repeat;
 }
 

@@ -31,8 +31,6 @@
     return `<svg viewBox="0 0 64 64"><g fill="${fill}"${stroke} stroke-linejoin="round"><path d="M21 21c0-9 4-14 11-14s11 5 11 14z"/><path d="M12 22c0-2 2-3 4-3h32c2 0 4 1 4 3s-2 3-4 3H16c-2 0-4-1-4-3z"/><path d="M22 27h20c0 9-4 15-10 15s-10-6-10-15z"/><path d="M14 62l2-11c1-6 7-9 16-9s15 3 16 9l2 11z"/></g></svg>`;
   }
 
-  // Tête de bonhomme qui sert de curseur pour le nombre de joueurs
-  const THUMB_SVG = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='14' cy='38' r='5' fill='#f6c7a1' stroke='#2b1608' stroke-width='2'/><path d='M15 30c0 16 7 27 19 27s19-10 19-25c0-9-7-13-19-13S15 23 15 30z' fill='#f6c7a1' stroke='#2b1608' stroke-width='2'/><path d='M13 33l3-15 6 5 4-13 7 9 7-12 4 11 9-4-2 13c-9-6-24-8-38 6z' fill='#6b3d1d' stroke='#2b1608' stroke-width='2' stroke-linejoin='round'/><circle cx='28' cy='38' r='5' fill='#fff' stroke='#2b1608' stroke-width='1.5'/><circle cx='42' cy='38' r='5' fill='#fff' stroke='#2b1608' stroke-width='1.5'/><circle cx='29' cy='39' r='2' fill='#2b1608'/><circle cx='43' cy='39' r='2' fill='#2b1608'/><path d='M28 47c4 6 12 6 16 0-4 2-12 2-16 0z' fill='#c0392b' stroke='#2b1608' stroke-width='1.5'/></svg>";
 
   // ---------------------------------------------------------------- état
   let root = null;
@@ -908,7 +906,6 @@
     options = Object.assign(options, config || {});
     store = load();
     clampSettings();
-    root.style.setProperty('--uc-thumb', `url("data:image/svg+xml;utf8,${encodeURIComponent(THUMB_SVG)}")`);
     root.addEventListener('click', onClick);
     root.addEventListener('input', onInput);
     root.addEventListener('change', onChange);
