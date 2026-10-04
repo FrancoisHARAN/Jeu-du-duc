@@ -40,7 +40,7 @@
   let toastTimer = null;
 
   function freshStore() {
-    return { players: [], settings: { count: 5, undercover: 1, white: 1, hard: false }, game: null, usedPairs: [] };
+    return { players: [], settings: Object.assign({ count: 5, hard: false }, defaultRoles(5)), game: null, usedPairs: [] };
   }
 
   function load() {
@@ -93,8 +93,18 @@
   }
 
   // ---------------------------------------------------------------- réglages
+  // Règles officielles (yanstarstudio.com) : 3 à 20 joueurs, au moins 1 infiltré
+  // (Undercover ou Mr. White) et les civils toujours majoritaires.
   function maxInfiltrators(count) {
     return Math.max(1, Math.floor((count - 1) / 2));
+  }
+
+  // Répartition proposée par défaut, comme l'appli : civils = moitié + 1
+  // (5 joueurs → 3 / 1 / 1, 9 joueurs → 5 / 3 / 1), Mr. White à partir de 5 joueurs.
+  function defaultRoles(count) {
+    const civils = Math.floor(count / 2) + 1;
+    const white = count < 5 ? 0 : count < 11 ? 1 : count < 17 ? 2 : 3;
+    return { undercover: count - civils - white, white };
   }
 
   function clampSettings() {
@@ -108,26 +118,37 @@
   }
 
   function setCount(count) {
+    if (count === store.settings.count) return;
     store.settings.count = count;
     if (store.players.length > count) {
       store.players.length = count;
     }
+    Object.assign(store.settings, defaultRoles(count));
     clampSettings();
     save();
   }
 
+  function otherRole(role) {
+    return role === 'white' ? 'undercover' : 'white';
+  }
+
   function canChangeRole(role, delta) {
     const s = store.settings;
-    const next = s[role] + delta;
-    const total = s.undercover + s.white + delta;
-    return next >= 0 && total >= 1 && total <= maxInfiltrators(s.count);
+    if (s[role] + delta < 0) return false;
+    if (delta < 0) return s.undercover + s.white - 1 >= 1;
+    // au plafond, « + » transforme un infiltré de l'autre rôle (ex. 1 Undercover + 1 Mr. White → 2 Undercovers)
+    return s.undercover + s.white < maxInfiltrators(s.count) || s[otherRole(role)] > 0;
   }
 
   function changeRole(role, delta) {
     if (!canChangeRole(role, delta)) {
       return false;
     }
-    store.settings[role] += delta;
+    const s = store.settings;
+    if (delta > 0 && s.undercover + s.white >= maxInfiltrators(s.count)) {
+      s[otherRole(role)] -= 1;
+    }
+    s[role] += delta;
     save();
     return true;
   }
@@ -251,8 +272,9 @@
     const deltas = g.slots.map(() => 0);
     g.slots.forEach((slot, index) => {
       if (result === 'civils' && slot.role === 'civil') deltas[index] = POINTS.civil;
+      // victoire des infiltrés : tout le camp marque, comme les civils (« les Civils marquent tous 2 points »)
       if (result === 'infiltres' && slot.role === 'undercover') deltas[index] = POINTS.undercover;
-      if (result === 'infiltres' && slot.role === 'white' && slot.alive) deltas[index] = POINTS.white;
+      if (result === 'infiltres' && slot.role === 'white') deltas[index] = POINTS.white;
       if (result === 'white' && index === whiteSlotIndex) deltas[index] = POINTS.white;
     });
     deltas.forEach((delta, index) => {
@@ -760,8 +782,7 @@
       }
       case 'remove-player': {
         store.players = store.players.filter((p) => p.id !== target.dataset.id);
-        store.settings.count = Math.max(MIN_PLAYERS, store.settings.count - 1);
-        clampSettings();
+        setCount(Math.max(MIN_PLAYERS, store.settings.count - 1));
         save();
         syncSetup();
         break;
