@@ -1,456 +1,946 @@
+/* =========================================================
+   Undercover — reprise du jeu de l'appli Undercover
+   Réglages → choix des cartes → description → élimination → fin
+   Les joueurs, leurs positions et leurs points sont gardés d'une partie à l'autre.
+   ========================================================= */
 (function (global) {
-  const STORAGE_KEY = 'undercover.state';
-  const ROLE_LABELS = {
-    civil: 'Civil',
-    undercover: 'Undercover',
-    misterwhite: 'Mister White',
+  const STORE_KEY = 'jdd.undercover.v2';
+  const MIN_PLAYERS = 3;
+  const MAX_PLAYERS = 20;
+  const AVATAR_COLORS = ['#69ee9a', '#3fdfdf', '#06aef7'];
+  const POINTS = { civil: 2, white: 6, undercover: 10 };
+
+  // ---------------------------------------------------------------- icônes
+  const SVG = {
+    back: '<svg viewBox="0 0 32 32" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M26 16H7"/><path d="M14 8l-8 8 8 8"/></svg>',
+    exit: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 6h13v20H13"/><path d="M3 16h15"/><path d="M8 11l-5 5 5 5"/></svg>',
+    home: '<svg viewBox="0 0 32 32" fill="#fff"><path d="M16 4 3 15h4v12h7v-8h4v8h7V15h4z"/></svg>',
+    next: '<svg viewBox="0 0 32 32" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16h19"/><path d="M18 8l8 8-8 8"/></svg>',
+    // silhouettes des cartes (garçon / fille) avec le point d'interrogation
+    cardBoy: '<svg viewBox="0 0 100 120"><path fill="#fff" d="M22 118c0-18 10-27 22-29v-8c-11-4-19-14-19-28 0-8 2-14 6-19l-10-3 10-4-5-10 13 4c6-6 14-8 22-7 14 2 22 13 22 27l-1 9 6 10c1 2 0 4-2 4h-4v8c0 5-4 8-9 8h-9v8c12 2 22 11 22 29z"/><text x="57" y="66" text-anchor="middle" font-family="Montserrat,Arial,sans-serif" font-weight="900" font-size="36" fill="#f6b400">?</text></svg>',
+    cardGirl: '<svg viewBox="0 0 100 120"><path fill="#fff" d="M20 118c0-18 11-27 24-29v-6c-14-3-24-13-24-31 0-22 16-38 36-38 18 0 30 14 30 30l-1 8 6 9c1 2 0 4-2 4h-4v8c0 5-4 8-9 8h-10v8c12 2 22 11 22 29z"/><text x="57" y="66" text-anchor="middle" font-family="Montserrat,Arial,sans-serif" font-weight="900" font-size="36" fill="#f6b400">?</text></svg>',
+    silhouette: '<svg class="uc-sil" viewBox="0 0 100 120"><path fill="rgba(255,255,255,.95)" d="M22 118c0-18 10-27 22-29v-8c-11-4-19-14-19-28 0-8 2-14 6-19l-10-3 10-4-5-10 13 4c6-6 14-8 22-7 14 2 22 13 22 27l-1 9 6 10c1 2 0 4-2 4h-4v8c0 5-4 8-9 8h-9v8c12 2 22 11 22 29z"/></svg>',
   };
 
-  const module = {
-    init,
-    onOpen,
-    onClose,
-  };
-
-  const state = {
-    players: [],
-    eliminationMessage: '',
-    currentPair: null,
-    revealIndex: 0,
-    round: 0,
-    persisted: {},
-  };
-
-  const elements = {};
-
-  function init() {
-    if (elements.root) {
-      return;
+  function roleIcon(role) {
+    if (role === 'civil') {
+      return '<svg viewBox="0 0 64 64"><path fill="#2f9ff5" d="M19 27c0-10 6-17 15-17l-4-5 10 3-1-5 8 7c4 4 5 9 4 15-1 11-7 18-16 18s-16-7-16-16zM12 64c0-12 9-19 22-19s21 7 21 19z"/></svg>';
     }
-
-    elements.root = document.getElementById('undercover');
-    if (!elements.root) {
-      return;
-    }
-
-    elements.config = document.getElementById('config');
-    elements.reveal = document.getElementById('reveal');
-    elements.play = document.getElementById('play');
-    elements.whiteGuess = document.getElementById('whiteGuess');
-    elements.playerCount = document.getElementById('playerCount');
-    elements.civilCount = document.getElementById('civilCount');
-    elements.underCount = document.getElementById('underCount');
-    elements.whiteCount = document.getElementById('whiteCount');
-    elements.playersInputs = document.getElementById('playersInputs');
-    elements.startButton = document.getElementById('start');
-    elements.askName = document.getElementById('askName');
-    elements.nameInput = document.getElementById('nameInput');
-    elements.validateName = document.getElementById('validateName');
-    elements.revealName = document.getElementById('revealName');
-    elements.revealWord = document.getElementById('revealWord');
-    elements.secretWord = document.getElementById('secretWord');
-    elements.nextPlayer = document.getElementById('nextPlayer');
-    elements.starter = document.getElementById('starter');
-    elements.voteButton = document.getElementById('voteBtn');
-    elements.voteArea = document.getElementById('voteArea');
-    elements.voteList = document.getElementById('voteList');
-    elements.eliminationResult = document.getElementById('eliminationResult');
-    elements.nextRound = document.getElementById('nextRound');
-    elements.newGame = document.getElementById('newGame');
-    elements.whiteGuessInput = document.getElementById('whiteGuessInput');
-    elements.whiteGuessSubmit = document.getElementById('whiteGuessSubmit');
-    elements.undercoverQuit = document.getElementById('undercoverQuit');
-
-    loadPersistedState();
-    bindEvents();
-    renderPlayerInputs();
+    const fill = role === 'white' ? '#fff' : '#0a0a0a';
+    const stroke = role === 'white' ? ' stroke="#9aa0ad" stroke-width="2.5"' : '';
+    return `<svg viewBox="0 0 64 64"><g fill="${fill}"${stroke} stroke-linejoin="round"><path d="M21 21c0-9 4-14 11-14s11 5 11 14z"/><path d="M12 22c0-2 2-3 4-3h32c2 0 4 1 4 3s-2 3-4 3H16c-2 0-4-1-4-3z"/><path d="M22 27h20c0 9-4 15-10 15s-10-6-10-15z"/><path d="M14 62l2-11c1-6 7-9 16-9s15 3 16 9l2 11z"/></g></svg>`;
   }
 
-  function onOpen() {
-    renderPlayerInputs();
+
+  // ---------------------------------------------------------------- état
+  let root = null;
+  let options = { onExit: function () {}, getSuggestedNames: function () { return []; } };
+  let store = null;
+  let modal = null;
+  let toastTimer = null;
+
+  function freshStore() {
+    return { players: [], settings: Object.assign({ count: 5, hard: false }, defaultRoles(5)), game: null, usedPairs: [] };
   }
 
-  function onClose() {
-    // no specific cleanup required
-  }
-
-  function loadPersistedState() {
+  function load() {
     try {
-      state.persisted = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      const data = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+      if (!data || !Array.isArray(data.players) || !data.settings) return freshStore();
+      const base = freshStore();
+      return {
+        players: data.players.filter((p) => p && p.id && typeof p.name === 'string').map((p) => ({ id: p.id, name: p.name, score: Number(p.score) || 0 })),
+        settings: Object.assign(base.settings, data.settings),
+        game: data.game && Array.isArray(data.game.slots) ? data.game : null,
+        usedPairs: Array.isArray(data.usedPairs) ? data.usedPairs : [],
+      };
     } catch (error) {
-      state.persisted = {};
-    }
-
-    if (state.persisted.playerCount) {
-      elements.playerCount.value = state.persisted.playerCount;
-      elements.civilCount.value = state.persisted.civilCount;
-      elements.underCount.value = state.persisted.underCount;
-      elements.whiteCount.value = state.persisted.whiteCount;
-    } else {
-      autoRoles();
+      return freshStore();
     }
   }
 
-  function savePersistedState() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.persisted));
-  }
-
-  function autoRoles() {
-    const playerTotal = Number(elements.playerCount.value);
-    const white = playerTotal >= 4 ? 1 : 0;
-    const undercover = playerTotal >= 7 ? 2 : 1;
-    const civil = playerTotal - white - undercover;
-
-    elements.whiteCount.value = white;
-    elements.underCount.value = undercover;
-    elements.civilCount.value = Math.max(civil, 0);
-
-    state.persisted = {
-      ...state.persisted,
-      playerCount: playerTotal,
-      civilCount: Number(elements.civilCount.value),
-      underCount: Number(elements.underCount.value),
-      whiteCount: Number(elements.whiteCount.value),
-    };
-    savePersistedState();
-  }
-
-  function renderPlayerInputs() {
-    const playerTotal = Number(elements.playerCount.value);
-    const names = (state.persisted.names = state.persisted.names || []);
-
-    elements.playersInputs.innerHTML = '';
-    for (let index = 0; index < playerTotal; index += 1) {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'under-player-item';
-
-      const input = document.createElement('input');
-      input.placeholder = 'Prénom';
-      input.value = names[index] || '';
-      input.addEventListener('input', () => {
-        names[index] = input.value;
-        savePersistedState();
-      });
-
-      const removeButton = document.createElement('button');
-      removeButton.type = 'button';
-      removeButton.className = 'under-remove-btn';
-      removeButton.textContent = '❌';
-      removeButton.addEventListener('click', () => removePlayer(index));
-
-      wrapper.append(input, removeButton);
-      elements.playersInputs.appendChild(wrapper);
+  function save() {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(store));
+    } catch (error) {
+      // stockage indisponible : la partie reste en mémoire
     }
-
-    names.length = playerTotal;
-    savePersistedState();
   }
 
-  function removePlayer(index) {
-    state.persisted.names.splice(index, 1);
-    elements.playerCount.value = state.persisted.names.length;
-    autoRoles();
-    renderPlayerInputs();
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
-  function bindEvents() {
-    elements.playerCount.addEventListener('change', () => {
-      autoRoles();
-      renderPlayerInputs();
-    });
+  function uid() {
+    return `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+  }
 
-    elements.civilCount.addEventListener('change', () => {
-      state.persisted.civilCount = Number(elements.civilCount.value);
-      savePersistedState();
-    });
+  function shuffle(list) {
+    return global.JDD && global.JDD.shuffle ? global.JDD.shuffle(list) : list.sort(() => Math.random() - 0.5);
+  }
 
-    elements.underCount.addEventListener('change', () => {
-      state.persisted.underCount = Number(elements.underCount.value);
-      savePersistedState();
-    });
+  function playerById(id) {
+    return store.players.find((p) => p.id === id) || null;
+  }
 
-    elements.whiteCount.addEventListener('change', () => {
-      state.persisted.whiteCount = Number(elements.whiteCount.value);
-      savePersistedState();
-    });
+  // Comme dans l'appli, la couleur de la pastille dépend de la place dans la grille
+  function slotColor(index) {
+    return AVATAR_COLORS[index % AVATAR_COLORS.length];
+  }
 
-    elements.startButton.addEventListener('click', startGame);
+  function initial(name) {
+    return escapeHtml((name || '?').trim().charAt(0).toUpperCase() || '?');
+  }
 
-    if (elements.undercoverQuit) {
-      elements.undercoverQuit.addEventListener('click', resetToConfig);
+  // ---------------------------------------------------------------- réglages
+  // Règles officielles (yanstarstudio.com) : 3 à 20 joueurs, au moins 1 infiltré
+  // (Undercover ou Mr. White) et les civils toujours majoritaires.
+  function maxInfiltrators(count) {
+    return Math.max(1, Math.floor((count - 1) / 2));
+  }
+
+  // Répartition proposée par défaut, comme l'appli : civils = moitié + 1
+  // (5 joueurs → 3 / 1 / 1, 9 joueurs → 5 / 3 / 1), Mr. White à partir de 5 joueurs.
+  function defaultRoles(count) {
+    const civils = Math.floor(count / 2) + 1;
+    const white = count < 5 ? 0 : count < 11 ? 1 : count < 17 ? 2 : 3;
+    return { undercover: count - civils - white, white };
+  }
+
+  function clampSettings() {
+    const s = store.settings;
+    s.count = Math.min(MAX_PLAYERS, Math.max(MIN_PLAYERS, Number(s.count) || 5, store.players.length));
+    if (store.players.length > s.count) store.players.length = s.count;
+    const max = maxInfiltrators(s.count);
+    s.undercover = Math.max(0, Math.min(Number(s.undercover) || 0, max));
+    s.white = Math.max(0, Math.min(Number(s.white) || 0, max - s.undercover));
+    if (s.undercover + s.white === 0) s.undercover = 1;
+  }
+
+  function setCount(count) {
+    if (count === store.settings.count) return;
+    store.settings.count = count;
+    if (store.players.length > count) {
+      store.players.length = count;
     }
-
-    elements.newGame.addEventListener('click', () => {
-      elements.play.classList.add('hidden');
-      elements.reveal.classList.add('hidden');
-      elements.config.classList.remove('hidden');
-      renderPlayerInputs();
-    });
-
-    elements.whiteGuessSubmit.addEventListener('click', handleWhiteGuess);
-    elements.revealWord.addEventListener('click', revealSecret);
-    elements.validateName.addEventListener('click', validatePlayerName);
-    elements.nextPlayer.addEventListener('click', advanceReveal);
-    elements.voteButton.addEventListener('click', openVote);
-    elements.nextRound.addEventListener('click', () => {
-      state.round += 1;
-      startRound();
-    });
+    Object.assign(store.settings, defaultRoles(count));
+    clampSettings();
+    save();
   }
 
-  function resetToConfig() {
-    state.players = [];
-    state.currentPair = null;
-    state.revealIndex = 0;
-    state.round = 0;
-    elements.reveal.classList.add('hidden');
-    elements.play.classList.add('hidden');
-    elements.whiteGuess.classList.add('hidden');
-    elements.config.classList.remove('hidden');
-    renderPlayerInputs();
+  function otherRole(role) {
+    return role === 'white' ? 'undercover' : 'white';
+  }
+
+  function canChangeRole(role, delta) {
+    const s = store.settings;
+    if (s[role] + delta < 0) return false;
+    if (delta < 0) return s.undercover + s.white - 1 >= 1;
+    // au plafond, « + » transforme un infiltré de l'autre rôle (ex. 1 Undercover + 1 Mr. White → 2 Undercovers)
+    return s.undercover + s.white < maxInfiltrators(s.count) || s[otherRole(role)] > 0;
+  }
+
+  function changeRole(role, delta) {
+    if (!canChangeRole(role, delta)) {
+      return false;
+    }
+    const s = store.settings;
+    if (delta > 0 && s.undercover + s.white >= maxInfiltrators(s.count)) {
+      s[otherRole(role)] -= 1;
+    }
+    s[role] += delta;
+    save();
+    return true;
+  }
+
+  // ---------------------------------------------------------------- mots
+  function pairKey(pair) {
+    return `${pair.civil}|${pair.under}`.toLowerCase();
+  }
+
+  function pickPair() {
+    const all = (global.JDD && Array.isArray(global.JDD.UNDERCOVER_PAIRS)) ? global.JDD.UNDERCOVER_PAIRS : [];
+    const pool = all.filter((pair) => store.settings.hard || !pair.hard);
+    if (!pool.length) return { civil: 'Chat', under: 'Chien' };
+    const used = new Set(store.usedPairs);
+    let candidates = pool.filter((pair) => !used.has(pairKey(pair)));
+    if (!candidates.length) {
+      const poolKeys = new Set(pool.map(pairKey));
+      store.usedPairs = store.usedPairs.filter((key) => !poolKeys.has(key));
+      candidates = pool;
+    }
+    const pair = candidates[Math.floor(Math.random() * candidates.length)];
+    store.usedPairs.push(pairKey(pair));
+    return pair;
+  }
+
+  function normalizeWord(value) {
+    return String(value || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/^(le|la|les|un|une|des|du|de la|l')\s*/, '')
+      .replace(/[^a-z0-9]+/g, '')
+      .replace(/(s|x)$/, '');
+  }
+
+  // ---------------------------------------------------------------- partie
+  function game() {
+    return store.game;
   }
 
   function startGame() {
-    state.players = [];
-    const playerTotal = Number(elements.playerCount.value);
-    state.persisted.names = state.persisted.names || [];
+    clampSettings();
+    const s = store.settings;
+    const roles = [];
+    for (let i = 0; i < s.undercover; i += 1) roles.push('undercover');
+    for (let i = 0; i < s.white; i += 1) roles.push('white');
+    while (roles.length < s.count) roles.push('civil');
+    shuffle(roles);
 
-    for (let index = 0; index < playerTotal; index += 1) {
-      const defaultName = `Joueur${index + 1}`;
-      const storedName = state.persisted.names[index];
-      const name = storedName && storedName.trim() ? storedName.trim() : defaultName;
-      state.players.push({ name, role: '', word: '', alive: true });
-      state.persisted.names[index] = name;
-    }
-    savePersistedState();
-
-    assignRoles(state.players);
-    assignWords();
-
-    state.revealIndex = 0;
-    elements.config.classList.add('hidden');
-    elements.reveal.classList.remove('hidden');
-    showReveal();
+    const pair = pickPair();
+    const swap = Math.random() < 0.5;
+    store.game = {
+      phase: 'distribute',
+      words: swap ? { civil: pair.under, under: pair.civil } : { civil: pair.civil, under: pair.under },
+      slots: roles.map((role, index) => ({
+        pid: store.players[index] ? store.players[index].id : null,
+        role,
+        seen: false,
+        alive: true,
+      })),
+      round: 1,
+      starter: null,
+      result: null,
+      deltas: null,
+    };
+    save();
+    modal = hasBlankSlot() ? { type: 'handoff' } : { type: 'distributeInfo' };
+    render();
   }
 
-  function showReveal() {
-    const player = state.players[state.revealIndex];
-    elements.askName.classList.add('hidden');
-    elements.nameInput.classList.add('hidden');
-    elements.validateName.classList.add('hidden');
-    elements.revealName.textContent = `Passez le téléphone à ${player.name}`;
-    elements.revealName.classList.remove('hidden');
-    elements.secretWord.classList.add('hidden');
-    elements.nextPlayer.classList.add('hidden');
-    elements.revealWord.classList.remove('hidden');
+  function hasBlankSlot() {
+    return game().slots.some((slot) => !slot.pid);
   }
 
-  function revealSecret() {
-    const player = state.players[state.revealIndex];
-    elements.revealWord.classList.add('hidden');
-    if (player.role === 'misterwhite') {
-      elements.revealName.classList.add('hidden');
-      elements.secretWord.textContent = '🖕tu es Mister White 🖕';
-    } else {
-      elements.revealName.textContent = 'ton mot est 👇';
-      elements.secretWord.textContent = player.word;
-    }
-    elements.secretWord.classList.remove('hidden');
-    elements.nextPlayer.textContent = state.revealIndex === state.players.length - 1
-      ? 'Lancer la partie'
-      : 'Joueur suivant';
-    elements.nextPlayer.classList.remove('hidden');
+  function nextNewPlayerNumber() {
+    return game().slots.filter((slot) => slot.pid).length + 1;
   }
 
-  function validatePlayerName() {
-    const player = state.players[state.revealIndex];
-    const name = elements.nameInput.value.trim() || `Joueur${state.revealIndex + 1}`;
-    player.name = name;
-    state.persisted.names[state.revealIndex] = name;
-    savePersistedState();
-
-    elements.askName.classList.add('hidden');
-    elements.nameInput.classList.add('hidden');
-    elements.validateName.classList.add('hidden');
-    if (player.role === 'misterwhite') {
-      elements.revealName.classList.add('hidden');
-      elements.secretWord.textContent = '🖕tu es Mister White 🖕';
-      elements.secretWord.classList.remove('hidden');
-    } else {
-      elements.revealName.textContent = 'ton mot est 👇';
-      elements.revealName.classList.remove('hidden');
-      elements.secretWord.textContent = player.word;
-      elements.secretWord.classList.remove('hidden');
-    }
-    elements.nextPlayer.textContent = state.revealIndex === state.players.length - 1
-      ? 'Lancer la partie'
-      : 'Joueur suivant';
-    elements.nextPlayer.classList.remove('hidden');
+  function aliveSlots() {
+    return game().slots.map((slot, index) => ({ slot, index })).filter((entry) => entry.slot.alive);
   }
 
-  function advanceReveal() {
-    state.revealIndex += 1;
-    if (state.revealIndex >= state.players.length) {
-      elements.reveal.classList.add('hidden');
-      elements.play.classList.remove('hidden');
-      state.round = 0;
-      startRound();
-    } else {
-      showReveal();
-    }
+  function startDescribe() {
+    const g = game();
+    const alive = aliveSlots();
+    const candidates = alive.filter((entry) => entry.slot.role !== 'white');
+    const pool = candidates.length ? candidates : alive;
+    g.starter = pool[Math.floor(Math.random() * pool.length)].index;
+    g.phase = 'describe';
+    save();
   }
 
-  function startRound() {
-    elements.eliminationResult.classList.add('hidden');
-    elements.voteArea.classList.add('hidden');
-    elements.nextRound.classList.add('hidden');
-    elements.newGame.classList.add('hidden');
-    elements.voteButton.classList.remove('hidden');
-
-    const alive = state.players.filter((player) => player.alive);
-    let starter;
-    do {
-      starter = alive[Math.floor(Math.random() * alive.length)];
-    } while (state.round === 0 && starter.role === 'misterwhite' && alive.length > 1);
-    elements.starter.textContent = `${starter.name} commence`;
-  }
-
-  function openVote() {
-    elements.voteList.innerHTML = '';
-    state.players
-      .filter((player) => player.alive)
-      .forEach((player) => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.textContent = player.name;
-        button.addEventListener('click', () => eliminatePlayer(player));
-        elements.voteList.appendChild(button);
-      });
-    elements.voteArea.classList.remove('hidden');
-    elements.voteButton.classList.add('hidden');
-  }
-
-  function eliminatePlayer(player) {
-    player.alive = false;
-    elements.voteArea.classList.add('hidden');
-
-    const counts = countRoles();
-    state.eliminationMessage = `${player.name} était ${ROLE_LABELS[player.role]}.
-<div class="role-summary"><div>🙂 Civils: ${counts.civil}</div><div>🕵️ Undercover: ${counts.undercover}</div><div>👻 Mister White: ${counts.misterwhite}</div></div>`;
-
-    if (player.role === 'misterwhite') {
-      elements.whiteGuessInput.value = '';
-      elements.play.classList.add('hidden');
-      elements.whiteGuess.classList.remove('hidden');
-      elements.eliminationResult.classList.add('hidden');
-      return;
-    }
-
-    elements.eliminationResult.innerHTML = state.eliminationMessage;
-    const winner = checkVictory();
-    if (winner) {
-      const resultClass = winner === 'civils' ? 'victory' : 'defeat';
-      const resultText = winner === 'civils' ? 'Les civils gagnent !' : 'Les traitres gagnent !';
-      elements.eliminationResult.innerHTML += `<br><span class="${resultClass}">${resultText}</span>`;
-      elements.newGame.classList.remove('hidden');
-    } else {
-      elements.nextRound.classList.remove('hidden');
-    }
-    elements.eliminationResult.classList.remove('hidden');
-  }
-
-  function handleWhiteGuess() {
-    const guess = elements.whiteGuessInput.value.trim();
-    if (guess && state.currentPair && guess.toLowerCase() === state.currentPair.civil.toLowerCase()) {
-      elements.eliminationResult.innerHTML = `${state.eliminationMessage}<br><span class="victory">Mister White a trouvé le mot, il gagne !</span>`;
-      elements.newGame.classList.remove('hidden');
-    } else {
-      elements.eliminationResult.innerHTML = `${state.eliminationMessage}<br><span class="defeat">Mauvaise réponse.</span>`;
-      const winner = checkVictory();
-      if (winner) {
-        const resultClass = winner === 'civils' ? 'victory' : 'defeat';
-        const resultText = winner === 'civils' ? 'Les civils gagnent !' : 'Les traitres gagnent !';
-        elements.eliminationResult.innerHTML += `<br><span class="${resultClass}">${resultText}</span>`;
-        elements.newGame.classList.remove('hidden');
-      } else {
-        elements.nextRound.classList.remove('hidden');
-      }
-    }
-    elements.whiteGuess.classList.add('hidden');
-    elements.play.classList.remove('hidden');
-    elements.eliminationResult.classList.remove('hidden');
-  }
-
-  function assignRoles(players) {
-    let civil = Number(elements.civilCount.value);
-    let undercover = Number(elements.underCount.value);
-    let white = Number(elements.whiteCount.value);
-
-    const shuffled = [...players].sort(() => Math.random() - 0.5);
-    shuffled.forEach((player) => {
-      if (white > 0) {
-        player.role = 'misterwhite';
-        white -= 1;
-      } else if (undercover > 0) {
-        player.role = 'undercover';
-        undercover -= 1;
-      } else if (civil > 0) {
-        player.role = 'civil';
-        civil -= 1;
-      } else {
-        player.role = 'civil';
-      }
+  function speakingOrder() {
+    const g = game();
+    const alive = aliveSlots().map((entry) => entry.index);
+    const start = alive.indexOf(g.starter);
+    const order = {};
+    alive.forEach((slotIndex, i) => {
+      order[slotIndex] = ((i - (start < 0 ? 0 : start) + alive.length) % alive.length) + 1;
     });
+    return order;
   }
 
-  function assignWords() {
-    const pairs = getUndercoverPairs();
-    if (pairs.length) {
-      state.currentPair = pairs[Math.floor(Math.random() * pairs.length)];
-    } else {
-      state.currentPair = { civil: 'Civil', under: 'Traître' };
-    }
-    state.players.forEach((player) => {
-      if (player.role === 'civil') {
-        player.word = state.currentPair.civil;
-      } else if (player.role === 'undercover') {
-        player.word = state.currentPair.under;
-      } else {
-        player.word = '';
-      }
+  function remaining() {
+    const counts = { civil: 0, undercover: 0, white: 0 };
+    game().slots.forEach((slot) => {
+      if (slot.alive) counts[slot.role] += 1;
     });
-  }
-
-  function getUndercoverPairs() {
-    if (global.JDD && Array.isArray(global.JDD.UNDERCOVER_PAIRS) && global.JDD.UNDERCOVER_PAIRS.length) {
-      return global.JDD.UNDERCOVER_PAIRS;
-    }
-    return [];
-  }
-
-  function countRoles() {
-    return state.players.reduce(
-      (accumulator, player) => {
-        if (player.alive) {
-          accumulator[player.role] += 1;
-        }
-        return accumulator;
-      },
-      { civil: 0, undercover: 0, misterwhite: 0 }
-    );
+    return counts;
   }
 
   function checkVictory() {
-    const counts = countRoles();
-    if (counts.undercover === 0 && counts.misterwhite === 0) {
-      return 'civils';
-    }
-    if (counts.civil <= counts.undercover + counts.misterwhite) {
-      return 'traitres';
-    }
+    const counts = remaining();
+    if (counts.undercover === 0 && counts.white === 0) return 'civils';
+    if (counts.civil <= 1) return 'infiltres';
     return null;
   }
 
+  function finish(result, whiteSlotIndex) {
+    const g = game();
+    const deltas = g.slots.map(() => 0);
+    g.slots.forEach((slot, index) => {
+      if (result === 'civils' && slot.role === 'civil') deltas[index] = POINTS.civil;
+      // victoire des infiltrés : tout le camp marque, comme les civils (« les Civils marquent tous 2 points »)
+      if (result === 'infiltres' && slot.role === 'undercover') deltas[index] = POINTS.undercover;
+      if (result === 'infiltres' && slot.role === 'white') deltas[index] = POINTS.white;
+      if (result === 'white' && index === whiteSlotIndex) deltas[index] = POINTS.white;
+    });
+    deltas.forEach((delta, index) => {
+      const player = playerById(g.slots[index].pid);
+      if (player) player.score += delta;
+    });
+    g.result = result;
+    g.winnerSlot = whiteSlotIndex == null ? null : whiteSlotIndex;
+    g.deltas = deltas;
+    g.phase = 'end';
+    save();
+    modal = { type: 'end' };
+  }
+
+  function afterElimination() {
+    const result = checkVictory();
+    if (result) {
+      finish(result);
+    } else {
+      game().round += 1;
+      startDescribe();
+      modal = null;
+    }
+    render();
+  }
+
+  // ---------------------------------------------------------------- rendu
+  function render() {
+    if (!root) return;
+    const g = game();
+    let screen;
+    if (!g) {
+      screen = renderSetup();
+    } else {
+      screen = renderGame();
+    }
+    root.innerHTML = `<div class="uc-bg"></div>${screen}${renderModal()}`;
+    if (g) {
+      g.modal = modal;
+      save();
+    }
+    if (!g) syncSetup();
+    const focus = root.querySelector('[data-autofocus]');
+    if (focus) {
+      setTimeout(() => focus.focus(), 60);
+    }
+  }
+
+  function renderSetup() {
+    const s = store.settings;
+    return `
+      <div class="uc-screen">
+        <button class="uc-back" data-act="exit-app" aria-label="Retour">${SVG.back}</button>
+        <div class="uc-setup-title" id="uc-count-title"></div>
+        <div class="uc-slider-wrap">
+          <input class="uc-slider" id="uc-slider" type="range" min="${MIN_PLAYERS}" max="${MAX_PLAYERS}" step="1" value="${s.count}" aria-label="Nombre de joueurs">
+        </div>
+        <div class="uc-roles" id="uc-roles"></div>
+        <div class="uc-panel">
+          <label class="uc-words-toggle">
+            <span class="uc-words-text"><span class="uc-panel-label">Mots</span><strong id="uc-words-label"></strong></span>
+            <span class="uc-hard-box">
+              <span class="uc-hard-label">+18 hard</span>
+              <span class="uc-switch"><input type="checkbox" id="uc-hard" ${s.hard ? 'checked' : ''}><span></span></span>
+            </span>
+          </label>
+        </div>
+        <div id="uc-players"></div>
+      </div>
+      <div class="uc-bottom"><button class="uc-btn uc-btn--green" data-act="start">Commencer</button></div>`;
+  }
+
+  // Met à jour les parties dynamiques des réglages sans reconstruire le curseur (sinon le glisser est coupé)
+  function syncSetup() {
+    const s = store.settings;
+    const civils = s.count - s.undercover - s.white;
+    const max = maxInfiltrators(s.count);
+    const title = root.querySelector('#uc-count-title');
+    const slider = root.querySelector('#uc-slider');
+    if (!title || !slider) return;
+    title.textContent = `Joueurs : ${s.count}`;
+    slider.value = s.count;
+    slider.style.setProperty('--pct', `${((s.count - MIN_PLAYERS) / (MAX_PLAYERS - MIN_PLAYERS)) * 100}%`);
+
+    const plural = (n, word, pluralWord) => `${n} ${n > 1 ? pluralWord : word}`;
+    const full = s.undercover + s.white >= max;
+    const roleRow = (role, label, tone) => `
+      <div class="uc-role-row">
+        <button class="uc-minus uc-minus--${tone}" data-act="role" data-role="${role}" data-delta="-1" ${canChangeRole(role, -1) ? '' : 'disabled'} aria-label="Retirer un ${label}">−</button>
+        <span class="uc-pill uc-pill--${role === 'white' ? 'white' : 'under'} ${s[role] === 0 ? 'uc-pill--off' : ''}">${label === 'Undercover' ? plural(s.undercover, 'Undercover', 'Undercovers') : `${s.white} Mr. White`}</span>
+        <button class="uc-minus uc-minus--${tone}" data-act="role" data-role="${role}" data-delta="1" ${canChangeRole(role, 1) ? '' : 'disabled'} aria-label="Ajouter un ${label}">+</button>
+      </div>`;
+    root.querySelector('#uc-roles').innerHTML = `
+      <div class="uc-role-row"><span class="uc-pill uc-pill--civil">${plural(civils, 'Civil', 'Civils')}</span></div>
+      ${roleRow('undercover', 'Undercover', 'dark')}
+      ${roleRow('white', 'Mr. White', 'light')}
+      <div class="uc-roles-hint">${full ? `Maximum ${max} infiltré${max > 1 ? 's' : ''} pour ${s.count} joueurs` : 'Ajuste les rôles avec − et +'}</div>`;
+
+    root.querySelector('#uc-words-label').textContent = s.hard ? 'Standards + Hard' : 'Standards';
+    root.querySelector('.uc-screen').classList.toggle('uc-setup--compact', store.players.length > 0);
+
+    const players = store.players;
+    const playersBox = root.querySelector('#uc-players');
+    if (!players.length) {
+      playersBox.innerHTML = '';
+      return;
+    }
+    const hasScores = players.some((p) => p.score > 0);
+    const newcomers = s.count - players.length;
+    playersBox.innerHTML = `
+      <div class="uc-panel">
+        <div class="uc-panel-label">Joueurs de la partie${newcomers > 0 ? ` · ${newcomers} nouveau${newcomers > 1 ? 'x' : ''} à inscrire` : ''}</div>
+        <div class="uc-chips">
+          ${players.map((p, i) => `
+            <span class="uc-chip">
+              <span class="uc-mini" style="background:${AVATAR_COLORS[i % AVATAR_COLORS.length]}">${initial(p.name)}</span>
+              ${escapeHtml(p.name)}${p.score ? ` <span class="uc-chip-score">${p.score} pts</span>` : ''}
+              <button class="uc-chip-x" data-act="remove-player" data-id="${p.id}" aria-label="Retirer ${escapeHtml(p.name)}">✕</button>
+            </span>`).join('')}
+        </div>
+        ${hasScores ? '<button class="uc-link" data-act="reset-scores">Remettre les scores à zéro</button>' : ''}
+      </div>`;
+  }
+
+  function renderInfos() {
+    const counts = remaining();
+    return `
+      <div class="uc-infos">
+        <div class="uc-info">
+          <div class="uc-info-label">Infiltrés restants</div>
+          <div class="uc-info-icons">
+            ${game().slots.some((slot) => slot.role === 'white') ? `${roleIcon('white')}<span>${counts.white}</span>` : ''}
+            ${roleIcon('undercover')}<span>${counts.undercover}</span>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function renderGame() {
+    const g = game();
+    let head;
+    let bottom = '';
+    if (g.phase === 'distribute') {
+      head = hasBlankSlot()
+        ? `<h2>Joueur ${nextNewPlayerNumber()}</h2><p>Choisis une carte</p>`
+        : '<h2>Distribution</h2><p>Touche ta pastille pour lire ton mot secret</p>';
+    } else if (g.phase === 'vote') {
+      head = '<h2>Élimination</h2><p>Discutez qui éliminer puis votez tous en même temps en pointant du doigt !</p>';
+      bottom = '<button class="uc-btn uc-btn--green uc-btn--sm" data-act="describe-again">Décrire à nouveau</button>';
+    } else {
+      head = '<h2>Description</h2><p>Décrivez votre mot secret dans l\'ordre indiqué, en utilisant juste un mot ou une phrase.</p>';
+      if (g.phase === 'describe') bottom = '<button class="uc-btn uc-btn--orange" data-act="to-vote">Passer au vote</button>';
+    }
+    const headClass = g.phase === 'vote' ? 'uc-head--vote' : g.phase === 'distribute' ? '' : 'uc-head--describe';
+    const knownWaiting = g.phase === 'distribute' && hasBlankSlot() && g.slots.some((slot) => slot.pid && !slot.seen);
+
+    return `
+      <div class="uc-screen">
+        <button class="uc-exit" data-act="quit" aria-label="Quitter la partie">${SVG.exit}</button>
+        <div class="uc-head ${headClass}">${head}</div>
+        ${renderInfos()}
+        ${knownWaiting ? '<div class="uc-hint">Les joueurs déjà inscrits touchent leur pastille</div>' : ''}
+        <div class="uc-grid">${g.slots.map(renderSlot).join('')}</div>
+      </div>
+      ${bottom ? `<div class="uc-bottom">${bottom}</div>` : ''}`;
+  }
+
+  function renderSlot(slot, index) {
+    const g = game();
+    if (!slot.pid) {
+      const art = index % 2 === 0 ? SVG.cardBoy : SVG.cardGirl;
+      const clickable = g.phase === 'distribute' ? ' data-act="pick-card" data-slot="' + index + '"' : '';
+      return `<button class="uc-card"${clickable} aria-label="Carte face cachée">${art}</button>`;
+    }
+    const player = playerById(slot.pid);
+    const name = player ? player.name : '?';
+    const color = slotColor(index);
+    let extra = '';
+    let classes = 'uc-slot';
+    let act = '';
+
+    if (g.phase === 'distribute') {
+      if (slot.seen) {
+        classes += ' uc-slot--done';
+        extra = '<span class="uc-badge uc-badge--done">✓</span>';
+      } else {
+        classes += ' uc-slot--todo';
+        extra = '<span class="uc-badge uc-badge--todo">?</span>';
+        act = ` data-act="pick-known" data-slot="${index}"`;
+      }
+    } else if (!slot.alive) {
+      classes += ' uc-slot--dead';
+      extra = `<span class="uc-role-badge">${roleIcon(slot.role)}</span>`;
+    } else if (g.phase === 'describe') {
+      const order = speakingOrder()[index];
+      extra = `<span class="uc-badge ${order === 1 ? 'uc-badge--first' : ''}">${order}</span>`;
+    } else if (g.phase === 'vote') {
+      extra = '<span class="uc-tag">Éliminer</span>';
+      act = ` data-act="vote" data-slot="${index}"`;
+    }
+
+    const tag = act ? 'button' : 'div';
+    return `
+      <${tag} class="${classes}"${act}>
+        <span class="uc-avatar" style="background:${color}">${initial(name)}${extra}</span>
+        <span class="uc-name">${escapeHtml(name)}</span>
+      </${tag}>`;
+  }
+
+  function bigAvatar(name, color, role) {
+    const badge = role === 'white'
+      ? `<span class="uc-role-badge">${roleIcon('white')}</span><span class="uc-role-label">Mr. White</span>`
+      : role ? `<span class="uc-role-badge">${roleIcon(role)}</span>` : '';
+    const face = name ? initial(name) : SVG.silhouette;
+    return `<div class="uc-big-avatar" style="background:${color}">${face}${badge}</div>`;
+  }
+
+  function renderModal() {
+    if (!modal) return '';
+    const g = game();
+    const slot = g && modal.slot != null ? g.slots[modal.slot] : null;
+    const player = slot && slot.pid ? playerById(slot.pid) : null;
+
+    switch (modal.type) {
+      case 'handoff':
+        return overlay(`
+          <div class="uc-modal">
+            <h3>Joueur ${nextNewPlayerNumber()}</h3>
+            <p class="uc-sub">Choisis une carte</p>
+            <div class="uc-handoff-art">
+              <div class="uc-card">${SVG.cardBoy}</div><div class="uc-card">${SVG.cardGirl}</div>
+              <span class="uc-hand">👆</span>
+            </div>
+            <div class="uc-modal-spacer"></div>
+            <button class="uc-btn uc-btn--green" data-act="close-modal">OK</button>
+          </div>`);
+
+      case 'distributeInfo':
+        return overlay(`
+          <div class="uc-modal">
+            <h3>Nouvelle partie</h3>
+            <p class="uc-sub">Nouveaux mots, nouveaux rôles !</p>
+            <div class="uc-modal-spacer"></div>
+            <p class="uc-sub">Chacun son tour, touche ta pastille pour découvrir ton mot secret.</p>
+            <div class="uc-modal-spacer"></div>
+            <button class="uc-btn uc-btn--green" data-act="close-modal">OK</button>
+          </div>`);
+
+      case 'name': {
+        const color = slotColor(modal.slot);
+        const used = new Set(store.players.map((p) => p.name.toLowerCase()));
+        const suggestions = (options.getSuggestedNames() || []).filter((name) => !used.has(String(name).toLowerCase())).slice(0, 12);
+        return overlay(`
+          <div class="uc-modal">
+            ${bigAvatar(modal.value, color)}
+            <input class="uc-input" id="uc-name-input" maxlength="16" placeholder="Choisis un nom" value="${escapeHtml(modal.value)}" autocomplete="off" data-autofocus>
+            <div class="uc-helper">Saisis ton nom pour dévoiler ton mot secret</div>
+            ${suggestions.length ? `
+              <div class="uc-suggest">
+                <div class="uc-suggest-title">Ou touche ton prénom :</div>
+                <div class="uc-chips">${suggestions.map((name) => `<button class="uc-chip" data-act="suggest" data-name="${escapeHtml(name)}">${escapeHtml(name)}</button>`).join('')}</div>
+              </div>` : ''}
+            <div class="uc-modal-spacer"></div>
+            <button class="uc-btn uc-btn--green" data-act="submit-name" id="uc-name-submit" ${modal.value.trim() ? '' : 'style="visibility:hidden"'}>Lis ton mot secret</button>
+          </div>`);
+      }
+
+      case 'identity':
+        return overlay(`
+          <div class="uc-modal">
+            ${bigAvatar(player.name, slotColor(modal.slot))}
+            <div class="uc-player-name">${escapeHtml(player.name)}</div>
+            <p class="uc-sub uc-muted">C'est bien toi ?</p>
+            <div class="uc-modal-spacer"></div>
+            <button class="uc-btn uc-btn--green" data-act="reveal">Lis ton mot secret</button>
+            <button class="uc-link" style="color:rgba(255,255,255,.75)!important;margin-top:1rem" data-act="close-modal">Ce n'est pas moi</button>
+          </div>`);
+
+      case 'word': {
+        const isWhite = slot.role === 'white';
+        const word = slot.role === 'undercover' ? g.words.under : g.words.civil;
+        return overlay(`
+          <div class="uc-modal">
+            ${bigAvatar(player.name, slotColor(modal.slot), isWhite ? 'white' : null)}
+            <div class="uc-player-name">${escapeHtml(player.name)}</div>
+            <p class="uc-sub uc-muted">${isWhite ? 'Tu n\'as pas de mot secret' : 'Ton mot secret est'}</p>
+            <div class="uc-word ${isWhite ? 'uc-word--white' : ''}">${isWhite ? 'Tu es Mr. White' : escapeHtml(word)}</div>
+            <div class="uc-modal-spacer"></div>
+            <button class="uc-btn uc-btn--green" data-act="word-ok">OK</button>
+          </div>`);
+      }
+
+      case 'confirmVote':
+        return overlay(`
+          <div class="uc-dialog">
+            <p>Éliminer ${escapeHtml(player.name)} ?</p>
+            <div class="uc-dialog-actions">
+              <button class="uc-dialog-cancel" data-act="close-modal">Annuler</button>
+              <button class="uc-dialog-ok" data-act="eliminate">Éliminer</button>
+            </div>
+          </div>`);
+
+      case 'eliminated': {
+        const titles = { civil: '1 Civil(e) en moins !', undercover: '1 Undercover en moins !', white: '1 Mr. White en moins !' };
+        return overlay(`
+          <div class="uc-modal">
+            <h3 class="uc-modal-title-white">${titles[slot.role]}</h3>
+            <div class="uc-modal-spacer"></div>
+            ${bigAvatar(player.name, slotColor(modal.slot), slot.role)}
+            <div class="uc-player-name" style="color:#fff">${escapeHtml(player.name)}</div>
+            <div class="uc-modal-spacer"></div>
+            <button class="uc-btn uc-btn--green" data-act="eliminated-ok">OK</button>
+          </div>`);
+      }
+
+      case 'guess':
+        return overlay(`
+          <div class="uc-modal">
+            ${bigAvatar(player.name, slotColor(modal.slot), 'white')}
+            <div class="uc-player-name">${escapeHtml(player.name)}</div>
+            <p class="uc-sub">Dernière chance : devine le mot des civils pour gagner !</p>
+            <input class="uc-input" id="uc-guess-input" maxlength="40" placeholder="Le mot des civils" value="${escapeHtml(modal.value || '')}" autocomplete="off" data-autofocus>
+            <div class="uc-modal-spacer"></div>
+            <button class="uc-btn uc-btn--green" data-act="submit-guess">Valider</button>
+          </div>`);
+
+      case 'guessWrong':
+        return overlay(`
+          <div class="uc-modal">
+            <h3 class="uc-modal-title-white">Raté !</h3>
+            <p class="uc-sub">Ce n'est pas le mot des civils.</p>
+            <div class="uc-modal-spacer"></div>
+            ${bigAvatar(player.name, slotColor(modal.slot), 'white')}
+            <div class="uc-modal-spacer"></div>
+            <p class="uc-sub uc-muted">La partie continue…</p>
+            <button class="uc-btn uc-btn--green" data-act="guess-wrong-ok">OK</button>
+          </div>`);
+
+      case 'quit':
+        return overlay(`
+          <div class="uc-dialog">
+            <p>Quitter la partie ?<br><small style="opacity:.7;font-size:1rem">Les joueurs et les points sont gardés.</small></p>
+            <div class="uc-dialog-actions">
+              <button class="uc-dialog-cancel" data-act="close-modal">Annuler</button>
+              <button class="uc-dialog-danger" data-act="quit-confirm">Quitter</button>
+            </div>
+          </div>`);
+
+      case 'end':
+        return overlay(renderEnd());
+
+      default:
+        return '';
+    }
+  }
+
+  function renderEnd() {
+    const g = game();
+    const hasUnder = g.slots.some((slot) => slot.role === 'undercover');
+    let title;
+    let heroRole;
+    if (g.result === 'civils') {
+      title = 'Les Civils ont gagné !';
+      heroRole = 'civil';
+    } else if (g.result === 'white') {
+      title = 'Mr. White a gagné !';
+      heroRole = 'white';
+    } else {
+      const whiteAlive = g.slots.some((slot) => slot.role === 'white' && slot.alive);
+      const underCount = g.slots.filter((slot) => slot.role === 'undercover').length;
+      if (!hasUnder) {
+        title = 'Mr. White a gagné !';
+        heroRole = 'white';
+      } else {
+        title = whiteAlive ? 'Les Infiltrés ont gagné !' : underCount > 1 ? 'Les Undercovers ont gagné !' : "L'Undercover a gagné !";
+        heroRole = 'undercover';
+      }
+    }
+
+    const rows = g.slots
+      .map((slot, index) => ({ slot, index, player: playerById(slot.pid) }))
+      .filter((row) => row.player)
+      .sort((a, b) => b.player.score - a.player.score || g.deltas[b.index] - g.deltas[a.index]);
+
+    return `
+      <div class="uc-modal uc-end">
+        <h3>${title}</h3>
+        <div class="uc-end-words">
+          <div class="uc-end-word"><span class="uc-score-role">${roleIcon('civil')}</span><span>${escapeHtml(g.words.civil)}</span></div>
+          ${hasUnder ? `<div class="uc-end-word"><span class="uc-score-role">${roleIcon('undercover')}</span><span>${escapeHtml(g.words.under)}</span></div>` : ''}
+        </div>
+        <div class="uc-trophy-card"><span class="uc-trophy">🏆</span>${roleIcon(heroRole)}</div>
+        <div class="uc-ribbon">${title}</div>
+        <div class="uc-scores">
+          ${rows.map(({ slot, index, player }) => `
+            <div class="uc-score-row ${slot.alive ? '' : 'uc-score-row--out'}">
+              <span class="uc-mini" style="background:${slotColor(index)}">${initial(player.name)}</span>
+              <span class="uc-score-name">${escapeHtml(player.name)}</span>
+              <span class="uc-score-pts">${g.deltas[index] ? `<span class="uc-plus">+${g.deltas[index]}</span>` : ''}${player.score}<small>PTS</small></span>
+              <span class="uc-score-role">${roleIcon(slot.role)}</span>
+            </div>`).join('')}
+        </div>
+        <div class="uc-end-actions">
+          <button class="uc-round" data-act="end-home" aria-label="Retour aux réglages">${SVG.home}</button>
+          <button class="uc-round" data-act="end-next" aria-label="Partie suivante">${SVG.next}</button>
+        </div>
+      </div>`;
+  }
+
+  function overlay(content) {
+    return `<div class="uc-overlay">${content}</div>`;
+  }
+
+  function toast(message) {
+    const previous = root.querySelector('.uc-toast');
+    if (previous) previous.remove();
+    const node = document.createElement('div');
+    node.className = 'uc-toast';
+    node.textContent = message;
+    root.appendChild(node);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => node.remove(), 1700);
+  }
+
+  function shake(element) {
+    if (!element) return;
+    element.classList.remove('uc-shake');
+    void element.offsetWidth;
+    element.classList.add('uc-shake');
+  }
+
+  // ---------------------------------------------------------------- actions
+  function submitName() {
+    const input = root.querySelector('#uc-name-input');
+    const name = (input ? input.value : modal.value).trim().replace(/\s+/g, ' ');
+    if (!name) {
+      shake(input);
+      return;
+    }
+    if (store.players.some((p) => p.name.toLowerCase() === name.toLowerCase())) {
+      toast('Désolé, ce nom existe déjà...');
+      return;
+    }
+    const player = { id: uid(), name, score: 0 };
+    const g = game();
+    const slot = g.slots[modal.slot];
+    // les nouveaux joueurs sont rangés dans l'ordre des cartes pour garder leur place à la partie suivante
+    const before = g.slots.slice(0, modal.slot).filter((s) => s.pid).length;
+    store.players.splice(before, 0, player);
+    slot.pid = player.id;
+    save();
+    modal = { type: 'word', slot: modal.slot };
+    render();
+  }
+
+  function wordSeen() {
+    const g = game();
+    g.slots[modal.slot].seen = true;
+    if (g.slots.every((slot) => slot.seen)) {
+      // ordre des joueurs = ordre des cartes, pour la partie suivante
+      store.players = g.slots.map((slot) => playerById(slot.pid)).filter(Boolean)
+        .concat(store.players.filter((p) => !g.slots.some((slot) => slot.pid === p.id)));
+      startDescribe();
+      modal = null;
+    } else {
+      modal = hasBlankSlot() ? { type: 'handoff' } : null;
+    }
+    save();
+    render();
+  }
+
+  function submitGuess() {
+    const g = game();
+    const input = root.querySelector('#uc-guess-input');
+    const guess = input ? input.value : '';
+    if (!guess.trim()) {
+      shake(input);
+      return;
+    }
+    if (normalizeWord(guess) && normalizeWord(guess) === normalizeWord(g.words.civil)) {
+      finish('white', modal.slot);
+      render();
+      return;
+    }
+    modal = { type: 'guessWrong', slot: modal.slot };
+    render();
+  }
+
+  function onClick(event) {
+    const target = event.target.closest('[data-act]');
+    if (!target || !root.contains(target)) return;
+    const act = target.dataset.act;
+    const slotIndex = target.dataset.slot != null ? Number(target.dataset.slot) : null;
+    const g = game();
+
+    switch (act) {
+      case 'exit-app':
+        options.onExit();
+        break;
+      case 'role': {
+        const ok = changeRole(target.dataset.role, Number(target.dataset.delta));
+        if (!ok) shake(target);
+        syncSetup();
+        break;
+      }
+      case 'remove-player': {
+        store.players = store.players.filter((p) => p.id !== target.dataset.id);
+        setCount(Math.max(MIN_PLAYERS, store.settings.count - 1));
+        save();
+        syncSetup();
+        break;
+      }
+      case 'reset-scores':
+        store.players.forEach((p) => { p.score = 0; });
+        save();
+        syncSetup();
+        break;
+      case 'start':
+        startGame();
+        break;
+      case 'close-modal':
+        modal = null;
+        render();
+        break;
+      case 'pick-card':
+        if (!modal && g && g.phase === 'distribute') {
+          modal = { type: 'name', slot: slotIndex, value: '' };
+          render();
+        }
+        break;
+      case 'pick-known':
+        if (!modal && g && g.phase === 'distribute') {
+          modal = { type: 'identity', slot: slotIndex };
+          render();
+        }
+        break;
+      case 'suggest': {
+        const input = root.querySelector('#uc-name-input');
+        if (input) input.value = target.dataset.name;
+        modal.value = target.dataset.name;
+        submitName();
+        break;
+      }
+      case 'submit-name':
+        submitName();
+        break;
+      case 'reveal':
+        modal = { type: 'word', slot: modal.slot };
+        render();
+        break;
+      case 'word-ok':
+        wordSeen();
+        break;
+      case 'to-vote':
+        g.phase = 'vote';
+        save();
+        render();
+        break;
+      case 'describe-again':
+        g.phase = 'describe';
+        save();
+        render();
+        break;
+      case 'vote':
+        if (!modal) {
+          modal = { type: 'confirmVote', slot: slotIndex };
+          render();
+        }
+        break;
+      case 'eliminate':
+        g.slots[modal.slot].alive = false;
+        save();
+        modal = { type: 'eliminated', slot: modal.slot };
+        render();
+        break;
+      case 'eliminated-ok':
+        if (g.slots[modal.slot].role === 'white') {
+          modal = { type: 'guess', slot: modal.slot, value: '' };
+          render();
+        } else {
+          afterElimination();
+        }
+        break;
+      case 'submit-guess':
+        submitGuess();
+        break;
+      case 'guess-wrong-ok':
+        afterElimination();
+        break;
+      case 'quit':
+        modal = { type: 'quit' };
+        render();
+        break;
+      case 'quit-confirm':
+      case 'end-home':
+        store.game = null;
+        modal = null;
+        save();
+        render();
+        break;
+      case 'end-next':
+        modal = null;
+        startGame();
+        break;
+      default:
+        break;
+    }
+  }
+
+  function onInput(event) {
+    const target = event.target;
+    if (target.id === 'uc-slider') {
+      setCount(Number(target.value));
+      syncSetup();
+    } else if (target.id === 'uc-name-input' && modal) {
+      modal.value = target.value;
+      const submit = root.querySelector('#uc-name-submit');
+      if (submit) submit.style.visibility = target.value.trim() ? 'visible' : 'hidden';
+      const avatar = root.querySelector('.uc-big-avatar');
+      if (avatar) avatar.innerHTML = target.value.trim() ? initial(target.value) : SVG.silhouette;
+    } else if (target.id === 'uc-guess-input' && modal) {
+      modal.value = target.value;
+    }
+  }
+
+  function onChange(event) {
+    if (event.target.id === 'uc-hard') {
+      store.settings.hard = event.target.checked;
+      save();
+      syncSetup();
+    }
+  }
+
+  function onKeyDown(event) {
+    if (event.key !== 'Enter') return;
+    if (event.target.id === 'uc-name-input') {
+      event.preventDefault();
+      submitName();
+    } else if (event.target.id === 'uc-guess-input') {
+      event.preventDefault();
+      submitGuess();
+    }
+  }
+
+  // ---------------------------------------------------------------- module
+  function init(config) {
+    if (root) return;
+    root = document.getElementById('undercover');
+    if (!root) return;
+    options = Object.assign(options, config || {});
+    store = load();
+    clampSettings();
+    root.addEventListener('click', onClick);
+    root.addEventListener('input', onInput);
+    root.addEventListener('change', onChange);
+    root.addEventListener('keydown', onKeyDown);
+  }
+
+  function onOpen() {
+    if (!root) return;
+    const g = game();
+    modal = g && g.modal ? g.modal : null;
+    render();
+    root.scrollTop = 0;
+  }
+
   global.JDDModules = global.JDDModules || {};
-  global.JDDModules.undercover = module;
+  global.JDDModules.undercover = { init, onOpen };
 })(window);

@@ -1,47 +1,23 @@
-// BEGIN history-50
-JDD.players = JDD.players || [];
-const history = [];
+// Rotation équitable des joueurs : chacun passe une fois par « tour de table »
+// (ordre mélangé), sans tomber deux fois de suite sur la même personne.
+(function(){
+  let bag = [];
+  let last = null;
 
-// 50% des derniers joueurs sont “exclus” des tirages
-function histLimit(){ return Math.max(0, Math.ceil(JDD.players.length * 0.5)); }
+  JDD.nextPlayer = function(players){
+    if (!Array.isArray(players) || !players.length) return null;
+    bag = bag.filter(name => players.includes(name));
+    if (!bag.length) {
+      bag = JDD.shuffle(players.slice());
+      if (bag.length > 1 && bag[0] === last) bag.push(bag.shift());
+    }
+    last = bag.shift();
+    return last;
+  };
 
-function trim(){
-  for (let i = history.length - 1; i >= 0; i--) {
-    if (!JDD.players.includes(history[i])) history.splice(i, 1);
-  }
-  while (history.length > histLimit()) history.shift();
-}
-
-function remember(name){
-  if (name) { history.push(name); trim(); }
-}
-
-JDD.pickWithHistory = function(exclusions = [], { register = true } = {}){
-  if (!Array.isArray(JDD.players) || !JDD.players.length) return null;
-
-  trim();
-
-  const lim = histLimit();
-  const recent = lim > 0 ? history.slice(-lim) : [];
-
-  const excl = new Set([
-    ...(Array.isArray(exclusions) ? exclusions : [exclusions]).filter(Boolean),
-    ...recent
-  ]);
-
-  let candidates = JDD.players.filter(n => !excl.has(n));
-
-  // Si tout est exclu par l'historique, on ignore juste l'historique
-  if (!candidates.length) {
-    const ex2 = new Set(Array.isArray(exclusions) ? exclusions : [exclusions]);
-    candidates = JDD.players.filter(n => !ex2.has(n));
-  }
-
-  const chosen = candidates.length
-    ? candidates[Math.floor(Math.random() * candidates.length)]
-    : null;
-
-  if (chosen && register) remember(chosen);
-  return chosen;
-};
-// END history-50
+  JDD.pickOther = function(players, exclude){
+    const others = (players || []).filter(name => name !== exclude);
+    if (!others.length) return exclude || null;
+    return others[Math.floor(Math.random() * others.length)];
+  };
+})();

@@ -1,4 +1,7 @@
+*, *::before, *::after { box-sizing: border-box; }
+
 :root {
+  --green: #2ee59d;
   --orange: #ff7a18;
   --orange-dark: #ff5714;
   --yellow: #ffcc00;
@@ -96,6 +99,9 @@ input {
   background: var(--text-light);
 }
 
+.input-error { border-color: #ff1744 !important; animation: shake .3s; }
+@keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
 button {
   padding: 0.7rem 1.4rem;
   border: none;
@@ -136,9 +142,10 @@ button:hover {
 #mcqBox { margin-top: .5rem; display: none; }
 .mcq-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(140px,1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: .75rem;
 }
+.mcq-grid--vf { max-width: 360px; margin: 0 auto; }
 .mcq-btn {
   background: var(--yellow);
   border: 4px solid #000;
@@ -146,9 +153,13 @@ button:hover {
   color: var(--text-dark);
   font-weight: 900;
   text-transform: uppercase;
-  padding: .9rem 1rem;
+  padding: .9rem .6rem;
   border-radius: .8rem;
   cursor: pointer;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  line-height: 1.2;
   transition: transform .15s ease, filter .15s ease, background .15s ease;
 }
 .mcq-btn:active { transform: scale(.98); }
@@ -310,6 +321,7 @@ button:hover {
 }
 
 #answerBox { margin-top: 0.5rem; display: none; }
+#answerText { font-weight: 600; margin: .8rem 0 0; }
 
 .modes {
   display: grid;
@@ -422,75 +434,8 @@ button:hover {
 .spray{background:radial-gradient(circle,#a8e,#58f);}
 @keyframes moveEffect{to{transform:translate(calc(-50% + var(--x)),calc(-50% + var(--y))) scale(0);opacity:0;}}
 
-/* Styles spécifiques pour le jeu Undercover */
-#undercover{font-family:Arial,sans-serif;padding:1rem;text-align:center;background:#222;color:#fff;}
-#undercover input,#undercover button{padding:0.5rem;margin:0.2rem;border-radius:0.5rem;border:none;}
-#undercover button{cursor:pointer;background:#ffcc00;color:#222;font-weight:bold;}
-/* // BEGIN undercover-button-style */
-#undercover button{background:var(--cyan);border:3px solid #000;}
-/* // END undercover-button-style */
-/* BEGIN undercover-player-input-style */
-#undercover #playersInputs input{display:block;width:100%;text-align:center;}
-/* END undercover-player-input-style */
-#undercover h1{cursor:pointer;}
-#secretWord{font-size:2.5rem;font-weight:bold;margin-top:1rem;}
-/* BEGIN undercover-form-layout */
-#undercover #config{display:flex;flex-direction:column;align-items:center;}
-#undercover .form-group{display:flex;flex-direction:column;margin:0.5rem 0;}
-#undercover #roleConfig{margin-top:1rem;}
-/* END undercover-form-layout */
-/* BEGIN undercover-role-summary-style */
-#undercover .role-summary div{margin:0.2rem 0;}
-/* END undercover-role-summary-style */
-
-/* BEGIN undercover-da-update */
-#undercover .under-card{background:#111;border:4px solid #000;box-shadow:6px 6px 0 #000;border-radius:1.5rem;padding:1.5rem;margin:1rem auto;width:90%;max-width:400px;color:#fff;}
-#undercover #playersInputs{width:100%;max-width:260px;margin:auto;}
-#undercover .under-player-item{display:flex;align-items:center;justify-content:center;gap:0.5rem;margin:0.3rem 0;}
-#undercover .under-player-item input{flex:1;margin:0;}
-#undercover .under-remove-btn{background:none;color:#ff1744;border:none;padding:0.3rem 0.5rem;font-weight:bold;cursor:pointer;}
-#undercover .under-quit-btn{background:#ff1744;color:#fff;border:3px solid #000;border-radius:2rem;padding:0.6rem 1.2rem;font-weight:bold;position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);}
-/* END undercover-da-update */
-
-/* Mise en forme de la zone de vote */
-#voteList {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-}
-
-#voteList button {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
-}
-
-#voteList button::before {
-  content: "🃏";
-  font-size: 1.5rem;
-  display: block;
-}
-
-/* Killer game styles */
-#killer-screen{padding:1rem;text-align:center;background:#222;color:#fff;}
-.killer-hidden{display:none;}
-.killer-card{background:rgba(0,0,0,0.5);padding:1.5rem;border-radius:1.5rem;width:90%;max-width:600px;margin:auto;box-shadow:0 8px 20px rgba(0,0,0,0.5);backdrop-filter:blur(6px);}
-.killer-logo{width:80px;cursor:pointer;margin:0 auto 1rem auto;display:block;transition:transform 0.2s;/* // BEGIN killer-logo-size */width:160px;/* // END killer-logo-size */}
-.killer-logo:hover{transform:scale(1.1);}
-.killer-player-input-container{display:flex;justify-content:center;align-items:center;gap:1rem;margin:1.2rem 0;}
-.killer-player-list{margin-top:0.5rem;}
-.killer-player-item{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.2);padding:0.5rem 0.8rem;border-radius:0.8rem;margin:0.4rem auto;max-width:250px;}
-.killer-dead{text-decoration:line-through;opacity:0.5;}
-#killer-secret{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;justify-content:center;align-items:center;}
-/* BEGIN killer-secret-hide */
-#killer-secret.killer-hidden{display:none;}
-/* END killer-secret-hide */
-
 /* // BEGIN culture-alcool-style */
-.toggle-container{display:flex;align-items:center;justify-content:center;gap:0.5rem;margin-bottom:0.5rem;}
+.toggle-container{display:flex;align-items:center;justify-content:center;gap:0.5rem;width:fit-content;margin:0 auto 0.5rem;}
 .switch{position:relative;display:inline-block;width:50px;height:24px;}
 .switch input{opacity:0;width:0;height:0;}
 .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#ccc;transition:.4s;border-radius:24px;}
