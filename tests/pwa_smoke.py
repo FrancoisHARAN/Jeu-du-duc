@@ -97,7 +97,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         uc = page.locator('#undercoverBtn').bounding_box()
         players = page.locator('.home-players').bounding_box()
         heads = page.locator('#headsBtn').bounding_box()
-        assert players['y'] + players['height'] <= hero['y'] < uc['y'] < heads['y']
+        assert hero['y'] + hero['height'] <= players['y'] < uc['y'] < heads['y']
         page.wait_for_function('navigator.serviceWorker.controller !== null')
         registration = page.evaluate('''async () => {
           const reg = await navigator.serviceWorker.ready;

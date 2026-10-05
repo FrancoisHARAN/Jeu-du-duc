@@ -79,7 +79,8 @@ try:
 
         context, page = home()
         people = page.locator('.home-players').bounding_box()
-        assert people['y'] < page.locator('.home-hero').bounding_box()['y']
+        hero = page.locator('.home-hero').bounding_box()
+        assert hero['y'] + hero['height'] <= people['y']
         page.screenshot(path=str(OUT / 'accueil.png'))
         page.locator('#headsBtn').click()
         expect(page.locator('#playersDialogMode')).to_have_text('Devine Tête')
