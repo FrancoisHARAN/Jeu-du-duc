@@ -409,11 +409,16 @@
   }
 
   function init() {
-    if (modules.undercover && typeof modules.undercover.init === 'function') {
-      modules.undercover.init({
-        onExit: closeUndercover,
-        getSuggestedNames: () => players.slice(),
-      });
+    // Un module en erreur (ex. vieux fichier encore en cache) ne doit pas bloquer tout le jeu
+    try {
+      if (modules.undercover && typeof modules.undercover.init === 'function') {
+        modules.undercover.init({
+          onExit: closeUndercover,
+          getSuggestedNames: () => players.slice(),
+        });
+      }
+    } catch (error) {
+      console.error('Undercover indisponible', error);
     }
     attachEvents();
     const defaultCard = document.querySelector('.mode-card[data-mode="debut"]');
