@@ -439,6 +439,7 @@
       elements.gameScreen.classList.add('hidden');
       elements.setupScreen.classList.remove('hidden');
       elements.body.style.background = 'var(--cyan)';
+      window.scrollTo(0, 0);
     });
 
     elements.cultureToggle.addEventListener('change', () => {

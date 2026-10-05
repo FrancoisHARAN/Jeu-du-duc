@@ -5,6 +5,7 @@
   const DEFAULTS = { themes: ['quotidien'], duration: 60, controls: 'motion', clues: 'describe', sound: true, custom: '' };
   const NEUTRAL = .24;
   const TRIGGER = .64;
+  const HOME_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9"/></svg>';
   let root, store, round = null, phase = 'setup', opened = false;
   let options = { onExit() {}, getSuggestedNames() { return []; } };
   let clock = null, audio = null, wakeLock = null, permissionPending = false;
@@ -67,8 +68,12 @@
     document.body.classList.toggle('hu-playing', next === 'playing');
   }
 
+  function menuButton(compact = false) {
+    return `<button class="hu-pill hu-menu${compact ? ' hu-menu--compact' : ''}" data-act="exit" type="button" aria-label="Revenir au menu principal" title="Menu principal">${HOME_ICON}<span class="hu-menu-label">Menu</span></button>`;
+  }
+
   function topbar(label) {
-    return `<header class="hu-topbar"><button class="hu-pill" data-act="exit" type="button"><span aria-hidden="true">←</span> Accueil</button><span class="hu-pill hu-pill--pink">${escape(label)}</span></header>`;
+    return `<header class="hu-topbar">${menuButton()}<span class="hu-pill hu-pill--pink">${escape(label)}</span></header>`;
   }
 
   function windowBar(label) {
@@ -241,7 +246,7 @@
     countdownEnd = Date.now() + 3000;
     lastCount = 3;
     round.armed = false;
-    root.innerHTML = `<section class="hu-countdown"><span class="hu-pill">${escape(round.player || 'Devine Tête')}</span><p>Téléphone au front.<br>Ne regarde pas l’écran.</p><strong id="hu-count" role="status">3</strong><p>${round.clues === 'mime' ? 'Faites deviner sans parler.' : 'Donnez des indices sans dire le mot.'}</p><button class="hu-pill" data-act="cancel-countdown" type="button">Annuler</button></section>`;
+    root.innerHTML = `${topbar('Devine Tête')}<section class="hu-countdown"><span class="hu-pill">${escape(round.player || 'Devine Tête')}</span><p>Téléphone au front.<br>Ne regarde pas l’écran.</p><strong id="hu-count" role="status">3</strong><p>${round.clues === 'mime' ? 'Faites deviner sans parler.' : 'Donnez des indices sans dire le mot.'}</p><button class="hu-pill" data-act="cancel-countdown" type="button">Annuler</button></section>`;
     beep(440);
     keepAwake();
   }
@@ -280,7 +285,7 @@
 
   function renderPlay() {
     setPhase('playing');
-    root.innerHTML = `<section class="hu-live"><header class="hu-live-header"><button class="hu-pill" data-act="pause" type="button" aria-label="Mettre la manche en pause">Ⅱ Pause</button><span class="hu-live-player">${escape(round.player || 'Devine Tête')}</span><span class="hu-pill hu-pill--pink"><span id="hu-points">${score(round.rows)}</span> pt</span><span id="hu-timer" class="hu-pill hu-pill--yellow" aria-label="Temps restant">${timeLabel(round.remaining)}</span></header><div class="hu-word-card" id="hu-word-card">${windowBar(round.clues === 'mime' ? 'MIME · SANS PARLER' : 'FAIS DEVINER SANS DIRE LE MOT')}<div class="hu-word-area"><h1 id="hu-word" aria-live="polite">${escape(round.word)}</h1><p id="hu-feedback-hint"></p></div><div class="hu-time-track" aria-hidden="true"><span id="hu-time-progress"></span></div><div class="hu-floor" aria-hidden="true"></div></div><footer class="hu-live-footer"><button class="hu-button hu-button--pink" data-act="pass" type="button"><span aria-hidden="true">↑</span> Passer</button><p>${round.motion ? 'Lève pour passer · baisse pour valider<br>Reviens au front entre deux mots.' : 'Un ami valide ou passe avec les boutons.'}</p><button class="hu-button hu-button--green" data-act="correct" type="button"><span aria-hidden="true">↓</span> Trouvé !</button></footer></section>`;
+    root.innerHTML = `<section class="hu-live"><header class="hu-live-header">${menuButton(true)}<button class="hu-pill" data-act="pause" type="button" aria-label="Mettre la manche en pause"><span aria-hidden="true">Ⅱ</span><span class="hu-pause-label"> Pause</span></button><span class="hu-live-player">${escape(round.player || 'Devine Tête')}</span><span class="hu-pill hu-pill--pink"><span id="hu-points">${score(round.rows)}</span> pt</span><span id="hu-timer" class="hu-pill hu-pill--yellow" aria-label="Temps restant">${timeLabel(round.remaining)}</span></header><div class="hu-word-card" id="hu-word-card">${windowBar(round.clues === 'mime' ? 'MIME · SANS PARLER' : 'FAIS DEVINER SANS DIRE LE MOT')}<div class="hu-word-area"><h1 id="hu-word" aria-live="polite">${escape(round.word)}</h1><p id="hu-feedback-hint"></p></div><div class="hu-time-track" aria-hidden="true"><span id="hu-time-progress"></span></div><div class="hu-floor" aria-hidden="true"></div></div><footer class="hu-live-footer"><button class="hu-button hu-button--pink" data-act="pass" type="button"><span aria-hidden="true">↑</span> Passer</button><p>${round.motion ? 'Lève pour passer · baisse pour valider<br>Reviens au front entre deux mots.' : 'Un ami valide ou passe avec les boutons.'}</p><button class="hu-button hu-button--green" data-act="correct" type="button"><span aria-hidden="true">↓</span> Trouvé !</button></footer></section>`;
     fitWord();
     updateTimer();
   }
