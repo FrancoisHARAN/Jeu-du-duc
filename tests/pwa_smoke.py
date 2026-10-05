@@ -96,7 +96,8 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         hero = page.locator('.home-hero').bounding_box()
         uc = page.locator('#undercoverBtn').bounding_box()
         players = page.locator('.home-players').bounding_box()
-        assert hero['y'] + hero['height'] <= uc['y'] < players['y']
+        heads = page.locator('#headsBtn').bounding_box()
+        assert hero['y'] + hero['height'] <= uc['y'] < heads['y'] < players['y']
         page.wait_for_function('navigator.serviceWorker.controller !== null')
         registration = page.evaluate('''async () => {
           const reg = await navigator.serviceWorker.ready;
@@ -118,8 +119,10 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           const cache = await caches.open(name);
           return (await cache.keys()).map(r => r.url);
         }''', cache)
-        assert len(shell) == 42, (len(shell), shell)
+        assert len(shell) == 45, (len(shell), shell)
         assert base + 'styles/questions.css' in shell
+        for file in ['styles/heads-up.css', 'scripts/app/heads-up.js', 'data/heads.words.js']:
+            assert base + file in shell
         assert all(url.startswith(base) for url in shell)
         for name in ['Alice', 'Bob', 'Chloe']:
             page.locator('#playerInput').fill(name)
@@ -145,6 +148,18 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         assert audio['status'] == 206
         assert audio['range'] == f'bytes 0-31/{len(expected_audio)}'
         assert audio['bytes'] == list(expected_audio[:32])
+        page.locator('#headsBtn').click()
+        assert page.evaluate('JDD.HEADS_DECKS.reduce((n, d) => n + d.words.length, 0)') == 420
+        page.locator('input[name="hu-controls"][value="buttons"]').check()
+        page.locator('#hu-start').click()
+        page.locator('[data-act="countdown"]').click()
+        expect(page.locator('#heads')).to_have_attribute('data-screen', 'playing')
+        expect(page.locator('#hu-word')).not_to_be_empty()
+        page.locator('[data-act="correct"]').click()
+        expect(page.locator('#hu-points')).to_have_text('1')
+        page.locator('[data-act="pause"]').click()
+        page.locator('#heads [data-act="exit"]').click()
+        expect(page.locator('#setup')).to_be_visible()
         for mode in ['debut', 'hardcore', 'alcool', 'culture', 'custom']:
             page.locator(f'[data-mode="{mode}"]').click()
             page.locator('#startBtn').click()
@@ -155,7 +170,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         expect(page.locator('#undercover')).to_be_visible()
         page.locator('[data-act="exit-app"]').click()
         assert not errors, errors
-        print('PASS: mode avion, index.html et paramètres, 5 modes, Undercover, images, polices et audio partiel', flush=True)
+        print('PASS: mode avion, index.html et paramètres, 5 modes, Undercover, Devine Tête, images, polices et audio partiel', flush=True)
 
         context.set_offline(False)
         # Une mise à jour de HTML/CSS/JS/données doit fonctionner sans changer le worker.

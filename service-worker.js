@@ -5,7 +5,7 @@
  */
 const APP_ROOT = new URL('./', self.location.href);
 const CACHE_PREFIX = `jeu-du-duc-${encodeURIComponent(APP_ROOT.pathname)}-`;
-const CACHE_NAME = `${CACHE_PREFIX}2026-10-05-v2`;
+const CACHE_NAME = `${CACHE_PREFIX}2026-10-05-v3`;
 const SHELL_FILES = [
   './',
   'manifest.webmanifest',
@@ -14,11 +14,13 @@ const SHELL_FILES = [
   'styles/home.css',
   'styles/pwa.css',
   'styles/questions.css',
+  'styles/heads-up.css',
   'scripts/core/init.js',
   'scripts/core/history.js',
   'scripts/core/showQuestion.js',
   'scripts/app/undercover.js',
   'scripts/app/main-game.js',
+  'scripts/app/heads-up.js',
   'scripts/pwa.js',
   'data/debut.text.js',
   'data/hardcore.text.js',
@@ -27,6 +29,7 @@ const SHELL_FILES = [
   'data/culture.mcq.js',
   'data/rapidite.questions.js',
   'data/undercover.pairs.js',
+  'data/heads.words.js',
   'image/icon.png',
   'image/duc-head.png',
   'image/home/hero.webp',

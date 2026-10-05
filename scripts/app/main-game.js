@@ -14,6 +14,7 @@
     setupScreen: document.getElementById('setup'),
     gameScreen: document.getElementById('game'),
     undercoverScreen: document.getElementById('undercover'),
+    headsScreen: document.getElementById('heads'),
     playerInput: document.getElementById('playerInput'),
     playerList: document.getElementById('playerList'),
     selectedModeLabel: document.getElementById('homeSelectedMode'),
@@ -33,6 +34,7 @@
     mcqBox: document.getElementById('mcqBox'),
     mcqGrid: document.getElementById('mcqGrid'),
     undercoverButton: document.getElementById('undercoverBtn'),
+    headsButton: document.getElementById('headsBtn'),
     rapiditeAudio: document.getElementById('rapidite-audio'),
   };
 
@@ -409,6 +411,21 @@
     elements.body.style.background = 'var(--cyan)';
   }
 
+  function openHeads() {
+    elements.setupScreen.classList.add('hidden');
+    elements.gameScreen.classList.add('hidden');
+    elements.headsScreen.classList.remove('hidden');
+    if (modules.heads && typeof modules.heads.onOpen === 'function') {
+      modules.heads.onOpen();
+    }
+  }
+
+  function closeHeads() {
+    elements.headsScreen.classList.add('hidden');
+    elements.setupScreen.classList.remove('hidden');
+    window.scrollTo(0, 0);
+  }
+
   function attachEvents() {
     document.getElementById('playerForm').addEventListener('submit', (event) => {
       event.preventDefault();
@@ -437,6 +454,7 @@
     });
 
     elements.undercoverButton.addEventListener('click', openUndercover);
+    elements.headsButton.addEventListener('click', openHeads);
   }
 
   function init() {
@@ -450,6 +468,13 @@
       }
     } catch (error) {
       console.error('Undercover indisponible', error);
+    }
+    try {
+      if (modules.heads && typeof modules.heads.init === 'function') {
+        modules.heads.init({ onExit: closeHeads, getSuggestedNames: () => players.slice() });
+      }
+    } catch (error) {
+      console.error('Devine Tête indisponible', error);
     }
     attachEvents();
     const defaultCard = document.querySelector('.mode-card[data-mode="debut"]');
