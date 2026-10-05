@@ -1,0 +1,196 @@
+/* Écrans de questions : même charte que l'accueil, sans toucher à Undercover. */
+body:has(#game:not(.hidden)) {
+  justify-content: center;
+  padding: max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: #6b62cc !important;
+}
+
+body:has(#game:not(.hidden))::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 12px;
+  background: conic-gradient(#9a91eb 25%, transparent 0 50%, #9a91eb 0 75%, transparent 0) 0 0 / 24px 24px;
+  pointer-events: none;
+}
+
+#game {
+  --game-ink: #252124;
+  --game-cream: #fff9e9;
+  --game-purple: #6b62cc;
+  --game-pink: #f7c3d0;
+  --game-yellow: #ffd938;
+  --category-color: #f9d570;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: min(620px, 100%);
+  max-width: none;
+  min-height: 0;
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--game-ink);
+  box-shadow: none;
+  backdrop-filter: none;
+  font-family: 'Montserrat', Arial, sans-serif;
+  line-height: 1.4;
+}
+
+#game[data-category="hardcore"] { --category-color: #f0a6c5; }
+#game[data-category="alcool"] { --category-color: #f49e73; }
+#game[data-category="culture"] { --category-color: #a7d5bc; }
+#game[data-category="rapidite"] { --category-color: #f49e73; }
+
+#game .game-topbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#game .game-back, #game .game-mode-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 7px 12px;
+  border: 2px solid var(--game-ink);
+  border-radius: 30px;
+  background: var(--game-cream);
+  color: var(--game-ink);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+#game .game-back { flex-shrink: 0; }
+#game .game-back svg { width: 20px; height: 20px; }
+#game .game-mode-label { background: var(--category-color); text-align: center; }
+
+#game .game-question-card {
+  overflow: hidden;
+  width: 100%;
+  border: 2px solid var(--game-ink);
+  border-radius: 18px;
+  background: var(--game-cream);
+  box-shadow: 5px 5px 0 var(--game-ink);
+}
+#game .game-card-header { display: grid; grid-template-columns: 112px minmax(0, 1fr); border-bottom: 2px solid var(--game-ink); }
+#game .game-category-art { display: flex; align-items: center; border-right: 2px solid var(--game-ink); background: #7677ee; }
+#game #categoryIllustration { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: contain; }
+#game .game-card-heading { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 12px 16px 16px; background: var(--category-color); text-align: left; }
+#game .game-window-bar { display: flex; align-items: center; gap: 5px; margin-bottom: 10px; }
+#game .game-window-bar i { width: 8px; height: 8px; border: 1px solid var(--game-ink); border-radius: 50%; background: var(--game-cream); }
+#game .game-window-bar i:nth-child(2) { background: var(--game-pink); }
+#game .game-window-bar i:nth-child(3) { background: var(--game-yellow); }
+#game .game-window-bar span { margin-left: auto; font-size: 20px; line-height: 1; }
+#game #typeBox { margin: 0; font-size: clamp(22px, 6vw, 28px); font-weight: 900; line-height: 1.08; letter-spacing: -.7px; text-shadow: none; overflow-wrap: anywhere; }
+
+#game .game-card-content { padding: 22px 20px 26px; }
+#game #currentQuestion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  margin: 0;
+  font-size: clamp(22px, 5.8vw, 26px);
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: -.4px;
+  text-align: center;
+  text-shadow: none;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+#game[data-category="culture"] #currentQuestion { min-height: 0; margin: 10px 0 24px; font-size: clamp(20px, 5.3vw, 24px); text-align: left; }
+#game #gorgeesText { width: fit-content; margin: 0 0 18px; padding: 5px 12px; border: 1px solid var(--game-ink); border-radius: 24px; background: var(--game-pink); font-size: 14px; font-weight: 800; }
+#game #answerBox { margin: 0; }
+#game #mcqBox { margin: 0; }
+#game .mcq-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; counter-reset: choice; }
+#game .mcq-grid--vf { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: none; }
+#game .mcq-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 58px;
+  padding: 12px;
+  border: 2px solid var(--game-ink);
+  border-radius: 10px;
+  background: var(--game-yellow);
+  color: var(--game-ink);
+  box-shadow: 3px 3px 0 var(--game-ink);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.3;
+  text-align: left;
+  text-transform: none;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  counter-increment: choice;
+}
+#game .mcq-btn::before { content: counter(choice, upper-alpha); display: grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; border: 1px solid var(--game-ink); border-radius: 50%; background: var(--game-cream); font-size: 12px; font-weight: 900; }
+#game .mcq-grid--vf .mcq-btn { justify-content: center; text-align: center; }
+#game .mcq-grid--vf .mcq-btn::before { display: none; }
+#game .mcq-btn[disabled] { opacity: 1; filter: none; }
+#game .mcq-correct { background: #a7d5bc !important; }
+#game .mcq-wrong { background: #f0a6a6 !important; }
+#game .mcq-correct::before { content: '✓'; }
+#game .mcq-wrong::before { content: '×'; }
+#game #showAnswerBtn { width: 100%; min-height: 56px; padding: 12px; border: 2px solid var(--game-ink); border-radius: 10px; background: var(--game-yellow); box-shadow: 3px 3px 0 var(--game-ink); font-family: inherit; font-size: 15px; font-weight: 900; }
+#game #answerText { margin: 18px 0 0; padding: 14px; border: 1px solid var(--game-ink); border-radius: 10px; background: #e0edda; font-family: Arial, sans-serif; font-size: 16px; font-weight: 600; line-height: 1.5; text-align: left; overflow-wrap: anywhere; }
+#game #answerText:empty { display: none; }
+
+#game .toggle-container { width: 100%; min-height: 44px; margin: -6px 0 12px; justify-content: flex-start; gap: 10px; }
+#game .switch { flex-shrink: 0; width: 54px; height: 44px; }
+#game .slider { top: 7px; bottom: 7px; border: 2px solid var(--game-ink); background: #ded8ed; }
+#game .slider::before { width: 22px; height: 22px; left: 2px; bottom: 2px; border: 1px solid var(--game-ink); background: var(--game-cream); }
+#game .switch input:checked + .slider { background: var(--game-yellow); }
+#game .switch input:checked + .slider::before { transform: translateX(24px); }
+#game .switch input:focus-visible + .slider { outline: 3px solid var(--game-purple); outline-offset: 3px; }
+#game .toggle-label { font-size: 14px; font-weight: 700; }
+
+#game .game-card-floor { height: 20px; border-top: 2px solid var(--game-ink); background: conic-gradient(#f7c3d0 25%, #fff9e9 0 50%, #f7c3d0 0 75%, #fff9e9 0) 0 0 / 40px 40px; }
+#game .game-next-hint { display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-height: 44px; padding-right: 2px; color: var(--game-cream); font-size: 10px; font-weight: 800; letter-spacing: .3px; text-transform: uppercase; }
+#game .game-next-hint svg { flex-shrink: 0; width: 24px; height: 24px; }
+#game button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+#game button:hover { transform: none; filter: none; }
+#game button:active { transform: translate(2px, 2px); }
+#game button:focus-visible { outline: 3px solid var(--game-purple); outline-offset: 4px; }
+#game .game-back:focus-visible { outline-color: var(--game-yellow); }
+
+@media (max-width: 359px) {
+  #game .game-card-header { grid-template-columns: 96px minmax(0, 1fr); }
+  #game .game-card-heading { padding: 10px 12px 12px; }
+  #game .game-card-content { padding: 20px 16px 24px; }
+  #game #typeBox { font-size: 21px; }
+  #game .game-back, #game .game-mode-label { padding: 7px 10px; font-size: 10px; }
+}
+
+@media (max-height: 700px) {
+  body:has(#game:not(.hidden)) { padding-top: max(20px, env(safe-area-inset-top)); padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+  #game { gap: 12px; }
+  #game .game-card-header { grid-template-columns: 96px minmax(0, 1fr); }
+  #game .game-card-heading { padding-top: 10px; padding-bottom: 12px; }
+  #game #currentQuestion { min-height: 120px; }
+  #game .game-card-content { padding-top: 18px; padding-bottom: 22px; }
+}
+
+@media (min-width: 600px) {
+  #game .game-back, #game .game-mode-label { font-size: 12px; }
+  #game .game-card-header { grid-template-columns: 136px minmax(0, 1fr); }
+  #game .game-card-heading { padding: 18px 24px; }
+  #game #typeBox { font-size: 32px; }
+  #game .game-card-content { padding: 28px; }
+  #game .mcq-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #game #currentQuestion { min-height: 180px; font-size: 28px; }
+  #game[data-category="culture"] #currentQuestion { min-height: 0; font-size: 24px; }
+  #game .game-next-hint { font-size: 11px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #game *, #game *::before, #game *::after { animation: none !important; transition: none !important; }
+}

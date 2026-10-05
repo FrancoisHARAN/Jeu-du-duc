@@ -24,6 +24,8 @@
     showAnswerButton: document.getElementById('showAnswerBtn'),
     answerText: document.getElementById('answerText'),
     backLogo: document.getElementById('backLogo'),
+    categoryIllustration: document.getElementById('categoryIllustration'),
+    gameModeLabel: document.getElementById('gameModeLabel'),
     customWeightsBox: document.getElementById('customWeights'),
     cultureToggleContainer: document.getElementById('cultureToggleContainer'),
     cultureToggle: document.getElementById('cultureToggle'),
@@ -64,6 +66,23 @@
   const TYPE_LABELS = {
     TOUS: 'TOUT LE MONDE',
   };
+
+  const CATEGORY_PRESENTATION = {
+    debut: { label: 'Apéro chiantos', image: 'apero.webp' },
+    hardcore: { label: 'Sexy pas raffiné', image: 'hardcore.webp' },
+    alcool: { label: 'Torgnole express', image: 'torgnole.webp' },
+    culture: { label: 'Culture G.', image: 'culture.webp' },
+    rapidite: { label: 'Rapidité', image: 'lancer.webp' },
+  };
+
+  // Dans un mix personnalisé, l'illustration suit la banque de la carte tirée.
+  function showCategory(mode) {
+    const presentation = CATEGORY_PRESENTATION[mode];
+    if (!presentation) return;
+    elements.gameScreen.dataset.category = mode;
+    elements.gameModeLabel.textContent = presentation.label;
+    elements.categoryIllustration.setAttribute('src', `image/home/${presentation.image}`);
+  }
 
   // Mots en tête de question qu'on peut passer en minuscule après « Prénom, »
   const LOWERCASE_STARTERS = new Set([
@@ -246,6 +265,7 @@
 
   function showRapidity() {
     state.rapidityMode = true;
+    showCategory('rapidite');
     elements.typeBox.textContent = 'RAPIDITÉ';
     setBackground('RAPIDITÉ');
     elements.currentQuestion.textContent = '⚡ Question de rapidité pour tout le monde ! (Touchez pour révéler)';
@@ -295,6 +315,7 @@
   }
 
   function showQuestion() {
+    window.scrollTo(0, 0);
     elements.currentQuestion.textContent = '';
     elements.typeBox.textContent = '';
     hideQuestionArea();
@@ -304,6 +325,7 @@
 
     const mode = state.currentMode === 'custom' ? pickCustomMode() : state.currentMode;
     const data = (window.JDD && window.JDD.DATA) || {};
+    showCategory(mode);
 
     if (mode !== 'culture' && Math.random() < 0.02) {
       showRapidity();

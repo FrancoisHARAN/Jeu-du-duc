@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import tempfile
 import threading
@@ -117,7 +118,8 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           const cache = await caches.open(name);
           return (await cache.keys()).map(r => r.url);
         }''', cache)
-        assert len(shell) == 41, (len(shell), shell)
+        assert len(shell) == 42, (len(shell), shell)
+        assert base + 'styles/questions.css' in shell
         assert all(url.startswith(base) for url in shell)
         for name in ['Alice', 'Bob', 'Chloe']:
             page.locator('#playerInput').fill(name)
@@ -208,12 +210,12 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         expect(page.locator('#game')).to_be_visible()
         question = page.locator('#currentQuestion').inner_text()
         sw = site / 'service-worker.js'
-        sw.write_text(sw.read_text().replace('2026-10-05-v1', '2026-10-05-v2'))
+        sw.write_text(re.sub(r'(const CACHE_NAME = `[^`]+)(`;)', r'\1-test-update\2', sw.read_text(), count=1))
         page.evaluate('async () => (await navigator.serviceWorker.ready).update()')
         wait_async('''async old => {
           const names=await caches.keys();
           const reg=await navigator.serviceWorker.ready;
-          return !names.includes(old) && names.some(n=>n.endsWith('2026-10-05-v2')) && reg.active.state === 'activated';
+          return !names.includes(old) && names.some(n=>n.endsWith('-test-update')) && reg.active.state === 'activated';
         }''', cache)
         expect(page.locator('#game')).to_be_visible()
         expect(page.locator('#currentQuestion')).to_have_text(question)

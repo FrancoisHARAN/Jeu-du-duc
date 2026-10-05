@@ -5,7 +5,7 @@
  */
 const APP_ROOT = new URL('./', self.location.href);
 const CACHE_PREFIX = `jeu-du-duc-${encodeURIComponent(APP_ROOT.pathname)}-`;
-const CACHE_NAME = `${CACHE_PREFIX}2026-10-05-v1`;
+const CACHE_NAME = `${CACHE_PREFIX}2026-10-05-v2`;
 const SHELL_FILES = [
   './',
   'manifest.webmanifest',
@@ -13,6 +13,7 @@ const SHELL_FILES = [
   'styles/undercover.css',
   'styles/home.css',
   'styles/pwa.css',
+  'styles/questions.css',
   'scripts/core/init.js',
   'scripts/core/history.js',
   'scripts/core/showQuestion.js',

@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="styles/undercover.css?v=20261005a">
   <link rel="stylesheet" href="styles/home.css?v=20261005h">
   <link rel="stylesheet" href="styles/pwa.css?v=20261005i">
+  <link rel="stylesheet" href="styles/questions.css?v=20261005l">
 </head>
 <body>
   <main id="setup" class="home">
@@ -120,24 +121,49 @@
     <footer class="home-footer"><span>LE JEU DU DUC <span aria-hidden="true">✦</span> À JOUER. À REJOUER.</span><span>LES MEILLEURS SOUVENIRS N'ONT PAS DE SCORE.</span></footer>
   </main>
 
-  <div id="game" class="card hidden">
-    <img src="image/icon.png" alt="Logo Jeu du Duc" id="backLogo" class="logo">
-    <div id="cultureToggleContainer" class="toggle-container hidden">
-      <label class="switch">
-        <input type="checkbox" id="cultureToggle">
-        <span class="slider"></span>
-      </label>
-      <span class="toggle-label">Mode Alcool</span>
-    </div>
-    <div id="typeBox" class="question-type"></div>
-    <p class="question" id="currentQuestion"></p>
-    <p id="gorgeesText" class="hidden"></p>
-    <div id="answerBox">
-      <button id="showAnswerBtn" class="action-btn answer-btn">VOIR LA RÉPONSE</button>
-      <div id="mcqBox">
-        <div class="mcq-grid" id="mcqGrid"></div>
+  <div id="game" class="card game-screen hidden" data-category="debut">
+    <header class="game-topbar">
+      <button id="backLogo" class="game-back" type="button" aria-label="Revenir à l’accueil">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10 5-7 7 7 7M3 12h18"/></svg>
+        <span>Accueil</span>
+      </button>
+      <span id="gameModeLabel" class="game-mode-label">Apéro chiantos</span>
+    </header>
+
+    <section class="game-question-card" aria-labelledby="typeBox">
+      <header class="game-card-header">
+        <div class="game-category-art">
+          <img id="categoryIllustration" src="image/home/apero.webp" alt="" width="1254" height="1254" decoding="async">
+        </div>
+        <div class="game-card-heading">
+          <div class="game-window-bar" aria-hidden="true"><i></i><i></i><i></i><span>✦</span></div>
+          <div id="typeBox" class="question-type"></div>
+        </div>
+      </header>
+      <div class="game-card-content">
+        <div id="cultureToggleContainer" class="toggle-container hidden">
+          <label class="switch">
+            <input type="checkbox" id="cultureToggle" aria-label="Mode Alcool">
+            <span class="slider"></span>
+          </label>
+          <span class="toggle-label">Mode Alcool</span>
+        </div>
+        <p class="question" id="currentQuestion"></p>
+        <p id="gorgeesText" class="hidden"></p>
+        <div id="answerBox">
+          <button id="showAnswerBtn" class="action-btn answer-btn" type="button">VOIR LA RÉPONSE</button>
+          <div id="mcqBox">
+            <div class="mcq-grid" id="mcqGrid"></div>
+          </div>
+          <p id="answerText"></p>
+        </div>
       </div>
-      <p id="answerText"></p>
+      <div class="game-card-floor" aria-hidden="true"></div>
+    </section>
+
+    <div class="game-next-hint">
+      <span>Touche à droite pour continuer</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 5 7 7-7 7M3 12h18"/></svg>
     </div>
   </div>
 
@@ -153,7 +179,7 @@
 
   <!-- FEATURE MODULES -->
   <script src="scripts/app/undercover.js?v=20261005a" defer></script>
-  <script src="scripts/app/main-game.js?v=20261005d" defer></script>
+  <script src="scripts/app/main-game.js?v=20261005l" defer></script>
 
   <!-- DATA -->
   <script src="data/debut.text.js?v=20261005a" defer></script>
