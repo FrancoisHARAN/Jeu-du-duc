@@ -16,6 +16,8 @@
     undercoverScreen: document.getElementById('undercover'),
     playerInput: document.getElementById('playerInput'),
     playerList: document.getElementById('playerList'),
+    selectedModeLabel: document.getElementById('homeSelectedMode'),
+    playerCount: document.getElementById('homePlayerCount'),
     typeBox: document.getElementById('typeBox'),
     currentQuestion: document.getElementById('currentQuestion'),
     answerBox: document.getElementById('answerBox'),
@@ -127,6 +129,7 @@
       removeButton.type = 'button';
       removeButton.className = 'remove-btn';
       removeButton.textContent = '❌';
+      removeButton.setAttribute('aria-label', `Retirer ${name}`);
       removeButton.addEventListener('click', (event) => {
         event.stopPropagation();
         removePlayer(index);
@@ -135,6 +138,9 @@
       item.append(label, removeButton);
       elements.playerList.appendChild(item);
     });
+    if (elements.playerCount) {
+      elements.playerCount.textContent = `${players.length} joueur${players.length > 1 ? 's' : ''}`;
+    }
     savePlayers();
   }
 
@@ -353,9 +359,14 @@
   function activateModeCard(selectedCard) {
     document.querySelectorAll('.mode-card[data-mode]').forEach((card) => {
       card.classList.remove('active');
+      card.setAttribute('aria-pressed', 'false');
     });
     selectedCard.classList.add('active');
+    selectedCard.setAttribute('aria-pressed', 'true');
     state.currentMode = selectedCard.dataset.mode;
+    if (elements.selectedModeLabel) {
+      elements.selectedModeLabel.textContent = selectedCard.querySelector('.home-mode-label').innerText.replace(/\s+/g, ' ').trim();
+    }
     elements.customWeightsBox.classList.toggle('hidden', state.currentMode !== 'custom');
   }
 
@@ -377,13 +388,11 @@
   }
 
   function attachEvents() {
-    document.getElementById('addBtn').addEventListener('click', addPlayer);
-    document.getElementById('startBtn').addEventListener('click', startGame);
-    elements.playerInput.addEventListener('keyup', (event) => {
-      if (event.key === 'Enter') {
-        addPlayer();
-      }
+    document.getElementById('playerForm').addEventListener('submit', (event) => {
+      event.preventDefault();
+      addPlayer();
     });
+    document.getElementById('startBtn').addEventListener('click', startGame);
 
     elements.gameScreen.addEventListener('click', nextQuestion);
     elements.backLogo.addEventListener('click', (event) => {

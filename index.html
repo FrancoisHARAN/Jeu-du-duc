@@ -10,74 +10,109 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles/main.css?v=20261005a">
   <link rel="stylesheet" href="styles/undercover.css?v=20261005a">
+  <link rel="stylesheet" href="styles/home.css?v=20261005d">
 </head>
 <body>
-  <div id="setup" class="card">
-    <img src="image/icon.png" alt="Logo Jeu du Duc" class="logo">
-    <h1>LE JEU DU DUC</h1>
+  <main id="setup" class="home">
+    <header class="home-topbar">
+      <a class="home-brand" href="#setup" aria-label="Le Jeu du Duc, accueil">
+        <img class="home-brand-mascot" src="image/home/mascotte.webp" alt="" width="1254" height="1254" decoding="async"> LE JEU DU DUC
+      </a>
+      <span class="home-edition">LES BONNES SOIRÉES COMMENCENT ICI</span>
+      <span class="home-stamp">ENTRE POTES <span aria-hidden="true">✦</span></span>
+    </header>
 
-    <div class="player-input-container">
-      <input type="text" id="playerInput" placeholder="Entre un prénom" autocomplete="off">
-      <button id="addBtn" class="action-btn">Ajouter</button>
+    <section class="home-hero" aria-labelledby="home-title">
+      <h1 id="home-title"><span class="home-visually-hidden">Le Jeu du Duc</span><img class="home-title-illustration" src="image/home/hero.webp" alt="" width="1448" height="1086" fetchpriority="high" decoding="async"></h1>
+      <p class="home-tagline">Petites questions. Grands moments.</p>
+      <div class="home-hero-floor" aria-hidden="true"></div>
+    </section>
+
+    <div class="home-layout">
+      <section class="home-players" aria-labelledby="home-players-title">
+        <div class="home-player-window"><h2 id="home-players-title">Qui joue ?</h2><span>01 · LA BANDE</span></div>
+        <div class="home-player-content">
+          <label class="home-visually-hidden" for="playerInput">Prénom du joueur</label>
+          <form id="playerForm" class="player-input-container">
+            <input type="text" id="playerInput" placeholder="Prénom du joueur" autocomplete="off" autocapitalize="words" enterkeyhint="done" spellcheck="false">
+            <button id="addBtn" class="action-btn" type="submit" aria-label="Ajouter le joueur"><span class="home-add-label">Ajouter</span><span aria-hidden="true">+</span></button>
+          </form>
+          <div id="playerList" aria-label="Joueurs inscrits"></div>
+          <p class="home-player-note">2 joueurs minimum · 1 pour Culture G.</p>
+        </div>
+      </section>
+
+      <section class="home-modes" aria-labelledby="home-modes-title">
+        <div class="home-section-heading">
+          <div><span class="home-eyebrow">02 · L'AMBIANCE</span><h2 id="home-modes-title">Choisis ton mode.</h2></div>
+          <span class="home-section-note">FAIS TON CHOIX <span class="home-heading-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></span>
+        </div>
+        <div class="modes">
+          <button class="mode-card home-mode home-mode--debut" data-mode="debut" type="button" aria-pressed="true">
+            <span class="home-window-bar" aria-hidden="true"><i></i><i></i><i></i><span>01 — APÉRO</span></span>
+            <span class="home-mode-art"><img src="image/home/apero.webp" alt="" width="1254" height="1254" loading="lazy" decoding="async"></span>
+            <span class="home-mode-label">Apéro<br>chiantos</span>
+            <span class="home-mode-description">Pour lancer les hostilités.</span>
+            <span class="home-mode-choice"><span class="home-selected">SÉLECTIONNÉ</span><span class="home-unselected">CHOISIR CE MODE</span><span class="home-mode-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></span>
+          </button>
+          <button class="mode-card home-mode home-mode--hardcore" data-mode="hardcore" type="button" aria-pressed="false">
+            <span class="home-window-bar" aria-hidden="true"><i></i><i></i><i></i><span>02 — +18</span></span>
+            <span class="home-mode-art"><img src="image/home/hardcore.webp" alt="" width="1254" height="1254" loading="lazy" decoding="async"></span>
+            <span class="home-mode-label">Sexy pas<br>raffiné</span>
+            <span class="home-mode-description">Les joues vont rougir.</span>
+            <span class="home-mode-choice"><span class="home-selected">SÉLECTIONNÉ</span><span class="home-unselected">CHOISIR CE MODE</span><span class="home-mode-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></span>
+          </button>
+          <button class="mode-card home-mode home-mode--alcool" data-mode="alcool" type="button" aria-pressed="false">
+            <span class="home-window-bar" aria-hidden="true"><i></i><i></i><i></i><span>03 — EXPRESS</span></span>
+            <span class="home-mode-art"><img src="image/home/torgnole.webp" alt="" width="1254" height="1254" loading="lazy" decoding="async"></span>
+            <span class="home-mode-label">Torgnole<br>express</span>
+            <span class="home-mode-description">Ça part vite. Très vite.</span>
+            <span class="home-mode-choice"><span class="home-selected">SÉLECTIONNÉ</span><span class="home-unselected">CHOISIR CE MODE</span><span class="home-mode-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></span>
+          </button>
+          <button class="mode-card home-mode home-mode--culture" data-mode="culture" type="button" aria-pressed="false">
+            <span class="home-window-bar" aria-hidden="true"><i></i><i></i><i></i><span>04 — CULTURE</span></span>
+            <span class="home-mode-art"><img src="image/home/culture.webp" alt="" width="1254" height="1254" loading="lazy" decoding="async"></span>
+            <span class="home-mode-label">Culture G.</span>
+            <span class="home-mode-description">Qui fait le malin ?</span>
+            <span class="home-mode-choice"><span class="home-selected">SÉLECTIONNÉ</span><span class="home-unselected">CHOISIR CE MODE</span><span class="home-mode-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></span>
+          </button>
+          <button class="mode-card home-mode home-mode--custom" data-mode="custom" type="button" aria-pressed="false">
+            <span class="home-window-bar" aria-hidden="true"><i></i><i></i><i></i><span>05 — À TA SAUCE</span></span>
+            <span class="home-mode-art"><img src="image/home/personnalise.webp" alt="" width="1254" height="1254" loading="lazy" decoding="async"></span>
+            <span class="home-mode-label">Personnalisé</span>
+            <span class="home-mode-description">Ton mélange. Tes règles.</span>
+            <span class="home-mode-choice"><span class="home-selected">SÉLECTIONNÉ</span><span class="home-unselected">CHOISIR CE MODE</span><span class="home-mode-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></span>
+          </button>
+          <div id="customWeights" class="hidden">
+            <div class="home-custom-heading"><span aria-hidden="true">✦</span><h3>Le mix, c'est toi.</h3><p>Dose chaque catégorie comme tu veux.</p></div>
+            <div class="slider-container"><label for="weight-debut">Apéro chiantos</label><input type="range" min="0" max="100" value="25" id="weight-debut"></div>
+            <div class="slider-container"><label for="weight-hardcore">Sexy pas raffiné</label><input type="range" min="0" max="100" value="25" id="weight-hardcore"></div>
+            <div class="slider-container"><label for="weight-alcool">Torgnole express</label><input type="range" min="0" max="100" value="25" id="weight-alcool"></div>
+            <div class="slider-container"><label for="weight-culture">Culture G.</label><input type="range" min="0" max="100" value="25" id="weight-culture"></div>
+          </div>
+          <div id="otherGames" class="other-games home-other-games">
+            <h2 class="home-visually-hidden">Autres jeux</h2>
+            <button id="undercoverBtn" class="mode-card home-mode home-mode--undercover" type="button">
+              <span class="home-window-bar" aria-hidden="true"><i></i><i></i><i></i><span>06 — AUTRE JEU</span></span>
+              <span class="home-mode-art"><img src="image/home/undercover.webp" alt="" width="1254" height="1254" loading="lazy" decoding="async"></span>
+              <span class="home-mode-label">Undercover</span>
+              <span class="home-mode-description">Un intrus parmi vous.</span>
+              <span class="home-mode-choice">JOUER À UNDERCOVER<span class="home-mode-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></span>
+            </button>
+          </div>
+        </div>
+
+      </section>
+      <div class="home-launch">
+        <div class="home-launch-inner">
+          <div class="home-launch-summary"><span id="homeSelectedMode">Apéro chiantos</span><span id="homePlayerCount" aria-live="polite">0 joueur</span></div>
+          <button id="startBtn" class="action-btn" type="button"><img src="image/home/lancer.webp" alt="" width="1254" height="1254" decoding="async"><span>Lancer la partie</span><span class="home-start-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></button>
+        </div>
+      </div>
     </div>
-    <div id="playerList"></div>
 
-    <h2 class="mode-header">Choisis un mode</h2>
-    <div class="modes">
-      <div class="mode-card" data-mode="debut">
-        <img src="image/apero.png" alt="Apéro chiantos">
-        <div>Apéro chiantos</div>
-      </div>
-      <div class="mode-card" data-mode="hardcore">
-        <img src="image/hardcore.png" alt="Sexy pas raffiné">
-        <div>Sexy pas raffiné</div>
-      </div>
-      <div class="mode-card" data-mode="alcool">
-        <img src="image/torgnole.png" alt="Torgnole express">
-        <div>Torgnole express</div>
-      </div>
-      <div class="mode-card" data-mode="culture">
-        <img src="image/cultureg.png" alt="Culture G.">
-        <div>Culture G.</div>
-      </div>
-      <div class="mode-card fullwidth" data-mode="custom">
-        <img src="image/personnalisé.png" alt="Personnalisé">
-        <div>Personnalisé</div>
-      </div>
-    </div>
-
-    <div id="customWeights" class="hidden">
-      <div class="slider-container">
-        <label>🎉 Apéro chiantos</label>
-        <input type="range" min="0" max="100" value="25" id="weight-debut">
-      </div>
-      <div class="slider-container">
-        <label>🔥 Sexy pas raffiné</label>
-        <input type="range" min="0" max="100" value="25" id="weight-hardcore">
-      </div>
-      <div class="slider-container">
-        <label>🍻 Torgnole express</label>
-        <input type="range" min="0" max="100" value="25" id="weight-alcool">
-      </div>
-      <div class="slider-container">
-        <label>🧠 Culture G.</label>
-        <input type="range" min="0" max="100" value="25" id="weight-culture">
-      </div>
-    </div>
-
-    <button id="startBtn" class="action-btn">
-      <img src="image/lancer.png" alt="Lancer la partie">
-      <span>Lancer la partie</span>
-    </button>
-
-    <div id="otherGames" class="other-games">
-      <h2 class="mode-header">Autres jeux</h2>
-      <button id="undercoverBtn" class="mode-card" type="button">
-        <img src="image/undercover.png" alt="Undercover">
-        <span>Undercover</span>
-      </button>
-    </div>
-  </div>
+    <footer class="home-footer"><span>LE JEU DU DUC <span aria-hidden="true">✦</span> À JOUER. À REJOUER.</span><span>LES MEILLEURS SOUVENIRS N'ONT PAS DE SCORE.</span></footer>
+  </main>
 
   <div id="game" class="card hidden">
     <img src="image/icon.png" alt="Logo Jeu du Duc" id="backLogo" class="logo">
@@ -112,7 +147,7 @@
 
   <!-- FEATURE MODULES -->
   <script src="scripts/app/undercover.js?v=20261005a" defer></script>
-  <script src="scripts/app/main-game.js?v=20261005a" defer></script>
+  <script src="scripts/app/main-game.js?v=20261005d" defer></script>
 
   <!-- DATA -->
   <script src="data/debut.text.js?v=20261005a" defer></script>
