@@ -8,10 +8,10 @@ le lui font deviner pendant une manche chronométrée.
 
 - Inscrire au moins deux prénoms en haut de l’accueil : la liste sert à tous les jeux.
   Le bouton « Modifier les joueurs » de Devine Tête permet aussi de compléter cette même liste.
-- Choisir un ou plusieurs thèmes, ou saisir ses propres mots.
-- Manches de 30, 60, 90 ou 120 secondes ; 60 secondes par défaut.
+- Choisir qui devine sur les cartes de joueurs, puis appuyer sur « Lancer la partie ».
+- Tous les mots sont mélangés automatiquement, sans sélection de thèmes.
+- Les nouvelles manches durent 60 secondes, avec l'inclinaison et les sons activés automatiquement.
 - Les amis donnent des indices sans prononcer le mot ni une partie du mot.
-  En mode Mime, ils font deviner sans parler.
 - Téléphone à l’horizontale sur le front, écran vers les amis.
 - Baisser l’écran vers le sol = trouvé, lever vers le ciel = passer.
   Revenir au front entre deux mots.
@@ -26,7 +26,10 @@ le lui font deviner pendant une manche chronométrée.
 Les 420 mots des sept thèmes sont une sélection propre à ce projet, sans
 modification des banques des autres jeux. Ils ne se répètent pas dans une
 manche ; le tirage privilégie aussi les mots non vus dans les manches précédentes.
-Les mots personnalisés et les trente dernières manches restent sur le téléphone.
+Les mots personnalisés déjà enregistrés rejoignent le mélange automatiquement.
+Les trente dernières manches restent sur le téléphone ; les scores sont accessibles
+dans une section repliée sous le bouton de lancement. Une manche en pause conserve
+ses mots et sa durée jusqu'à sa fin.
 
 ## Capteurs et PWA
 
@@ -69,7 +72,7 @@ Les captures fournies par le propriétaire confirment les gestes haut/bas.
 
 `python3 tests/heads_smoke.py` vérifie les manches, les gestes simulés dans les
 deux sens paysage, les permissions accordées/refusées, les capteurs absents,
-les pauses, les scores, les mots personnalisés et les dimensions mobiles.
+les pauses, les scores, le mélange des banques, les anciens réglages et les dimensions mobiles.
 `python3 tests/pwa_smoke.py` vérifie le cache et le hors connexion.
 Un essai sur de vrais iPhone/Android reste nécessaire pour confirmer le ressenti
 et le sens des gestes avec leur matériel.

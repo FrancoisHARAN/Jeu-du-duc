@@ -163,9 +163,8 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         print('PASS: ajout de joueurs et lancement depuis le popup en mode avion', flush=True)
         page.locator('#headsBtn').click()
         assert page.evaluate('JDD.HEADS_DECKS.reduce((n, d) => n + d.words.length, 0)') == 420
-        page.locator('input[name="hu-controls"][value="buttons"]').check()
         page.locator('#hu-start').click()
-        page.locator('[data-act="countdown"]').click()
+        page.locator('#heads [data-act="buttons"], #heads [data-act="countdown"]').click()
         expect(page.locator('#heads')).to_have_attribute('data-screen', 'playing')
         expect(page.locator('#hu-word')).not_to_be_empty()
         page.locator('[data-act="correct"]').click()

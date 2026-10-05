@@ -89,7 +89,8 @@ try:
         def setup(page, controls='buttons'):
             page.locator('#headsBtn').click()
             phase(page, 'setup')
-            page.locator(f'input[name="hu-controls"][value="{controls}"]').check()
+            if controls == 'buttons':
+                page.evaluate("testPermission = 'denied'")
 
         def begin_manual(page):
             page.locator('#hu-start').click()
@@ -125,7 +126,7 @@ try:
             setup(page)
             counts = page.evaluate('JDD.HEADS_DECKS.map(d => d.words.length)')
             assert counts == [60] * 7, counts
-            expect(page.locator('#hu-player')).to_have_value('Alice')
+            expect(page.locator('input[name="hu-player"]:checked')).to_have_value('Alice')
             layout(page)
             if width == 393:
                 page.screenshot(path=str(OUT / 'setup.png'), full_page=True)
@@ -175,33 +176,48 @@ try:
             print(f'PASS {width}×{height}: placement, manche, pause, score, correction, joueur suivant, affichage', flush=True)
 
         context, page = new_page(568, 320)
+        # Petit paquet contrôlé : les 2 banques sont fusionnées et le doublon disparaît.
+        page.evaluate("""JDD.HEADS_DECKS = [
+          {id:'a', name:'A', words:['Pizza', 'Crème brûlée']},
+          {id:'b', name:'B', words:['Pizza', '<b>Les potes, oui !</b>', 'A'.repeat(60)]}
+        ]""")
         setup(page)
-        page.locator('[data-theme="animaux"]').click()
-        expect(page.locator('#hu-selection')).to_contain_text('120 mots')
-        page.locator('[data-theme="animaux"]').click()
-        page.locator('[data-theme="quotidien"]').click()
-        expect(page.locator('#hu-start')).to_be_disabled()
-        page.locator('[data-theme="custom"]').click()
-        custom = 'Pizza\nPizza\nCrème brûlée\n<b>Les potes, oui !</b>\n' + 'A' * 60
-        page.locator('#hu-custom').fill(custom)
         expect(page.locator('#hu-selection')).to_contain_text('4 mots')
-        page.locator('input[name="hu-clues"][value="mime"]').check()
         begin_manual(page)
-        expect(page.locator('.hu-word-card .hu-window')).to_contain_text('SANS PARLER')
+        expect(page.locator('.hu-word-card .hu-window')).to_contain_text('FAIS DEVINER SANS DIRE LE MOT')
         seen = []
         for _ in range(4):
             word = page.locator('#hu-word').inner_text()
             assert word not in seen, (word, seen)
             seen.append(word)
             layout(page, True)
-            assert page.locator('#hu-word b').count() == 0, 'Le texte personnalisé est injecté comme du HTML.'
+            assert page.locator('#hu-word b').count() == 0, 'Un mot est injecté comme du HTML.'
             click(page, 'correct')
             advance(page, 700)
         phase(page, 'results')
         expect(page.locator('.hu-results h1')).to_have_text('Tout le paquet est passé !')
         expect(page.locator('#hu-result-points')).to_have_text('4')
         context.close()
-        print('PASS: mots personnalisés, mélange sans doublon, échappement HTML, texte long, mimes et fin de paquet', flush=True)
+        print('PASS: toutes les banques fusionnées, doublons retirés, échappement HTML, mot long et fin de paquet', flush=True)
+
+        context, page = new_page()
+        # Les anciens filtres ne doivent pas laisser une partie des mots inaccessible.
+        page.evaluate("""localStorage.setItem('jdd.heads.v1', JSON.stringify({
+          config:{themes:['animaux'], duration:120, controls:'buttons', clues:'mime', sound:false, custom:'Souvenir de la bande'},
+          history:[], totals:[{player:'Alice', points:12, rounds:3}], used:[]
+        }))""")
+        setup(page)
+        assert page.locator('#heads .hu-rules, #heads [data-theme], #heads #hu-duration, #heads #hu-custom, #heads .hu-radio-row, #heads .hu-sound').count() == 0
+        expect(page.locator('#hu-start')).to_have_text('Lancer la partie ↗')
+        begin_manual(page)
+        active = page.evaluate("JSON.parse(localStorage.getItem('jdd.heads.v1')).active")
+        assert active['duration'] == 60 and active['clues'] == 'describe'
+        assert set(active['themes']) == set(page.evaluate('JDD.HEADS_DECKS.map(d=>d.id)'))
+        assert 'Souvenir de la bande' in active['pool']
+        assert set(page.evaluate('JDD.HEADS_DECKS.flatMap(d=>d.words)')).issubset(set(active['pool']))
+        assert page.evaluate("JSON.parse(localStorage.getItem('jdd.heads.v1')).totals[0].points") == 12
+        context.close()
+        print('PASS: anciens réglages remplacés pour les nouvelles manches, anciens mots et scores conservés', flush=True)
 
         context, page = new_page(852, 393)
         setup(page, 'motion')

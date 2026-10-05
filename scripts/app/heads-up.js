@@ -2,7 +2,7 @@
 (function (global) {
   'use strict';
   const STORE_KEY = 'jdd.heads.v1';
-  const DEFAULTS = { themes: ['quotidien'], duration: 60, controls: 'motion', clues: 'describe', sound: true, custom: '' };
+  const DEFAULTS = { duration: 60, controls: 'motion', clues: 'describe', sound: true, custom: '' };
   const NEUTRAL = .24;
   const TRIGGER = .64;
   const HOME_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9"/></svg>';
@@ -21,13 +21,9 @@
   function load() {
     let saved;
     try { saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (_) { /* stockage privé */ }
-    const config = Object.assign({}, DEFAULTS, saved && saved.config);
-    config.themes = Array.isArray(config.themes) ? config.themes.filter(id => decks().some(d => d.id === id) || id === 'custom') : DEFAULTS.themes.slice();
-    config.duration = [30, 60, 90, 120].includes(config.duration) ? config.duration : 60;
-    config.controls = config.controls === 'buttons' ? 'buttons' : 'motion';
-    config.clues = config.clues === 'mime' ? 'mime' : 'describe';
-    config.custom = typeof config.custom === 'string' ? config.custom.slice(0, 14000) : '';
-    config.sound = config.sound !== false;
+    // Les nouvelles manches utilisent tous les mots et les mêmes réglages simples.
+    // Les anciens mots personnels et les manches en pause restent conservés.
+    const config = { ...DEFAULTS, custom: typeof (saved && saved.config && saved.config.custom) === 'string' ? saved.config.custom.slice(0, 14000) : '' };
     const history = saved && Array.isArray(saved.history) ? saved.history.filter(r => r && typeof r.player === 'string' && Array.isArray(r.rows)).slice(-30) : [];
     const totals = saved && Array.isArray(saved.totals) ? saved.totals.filter(t => t && typeof t.player === 'string' && Number.isFinite(t.points) && Number.isFinite(t.rounds)) : [];
     if (!saved || !Array.isArray(saved.totals)) {
@@ -57,8 +53,7 @@
   }
 
   function pool() {
-    const all = decks().filter(d => store.config.themes.includes(d.id)).flatMap(d => d.words);
-    if (store.config.themes.includes('custom')) all.push(...customWords());
+    const all = [...decks().flatMap(d => d.words), ...customWords()];
     return [...new Map(all.map(word => [key(word), word])).values()];
   }
 
@@ -80,44 +75,47 @@
     return `<div class="hu-window"><span class="hu-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>${label}</span><span aria-hidden="true">✦</span></div>`;
   }
 
+  function playerChoices(people, selected) {
+    return people.length ? people.map((name) => `<label class="hu-player-choice"><input type="radio" name="hu-player" value="${escape(name)}" ${name === selected ? 'checked' : ''}><span class="hu-player-avatar" aria-hidden="true">${escape(name.trim().charAt(0).toUpperCase())}</span><span class="hu-player-name">${escape(name)}</span></label>`).join('') : '<p class="hu-help">Ajoute les joueurs de la bande pour commencer.</p>';
+  }
+
+  function selectedPlayer() {
+    const choice = root.querySelector('input[name="hu-player"]:checked');
+    return choice ? choice.value : '';
+  }
+
   function renderSetup() {
     setPhase('setup');
-    const c = store.config;
     const people = names();
     const player = people.includes(store.nextPlayer) ? store.nextPlayer : people[0] || '';
     root.innerHTML = `${topbar('Jeu de devinettes')}
       <section class="hu-panel">
         ${windowBar('LE MOT EST SUR TA TÊTE')}
         <div class="hu-intro"><img src="image/home/mascotte.webp" alt="" width="1254" height="1254"><div><h1>Devine<br>Tête</h1><p>Les potes expliquent.<br>Toi, tu devines.</p></div></div>
-        <details class="hu-rules"><summary>Comment on joue ?</summary><ol><li>À partir de 2 joueurs, choisis tes thèmes et la durée.</li><li>Tiens le téléphone à l’horizontale sur ton front, écran vers tes amis. Ne regarde pas le mot.</li><li>Ils donnent des indices sans dire le mot ni une partie du mot. En mode Mime, ils font deviner sans parler.</li><li><strong>Baisse le téléphone pour valider</strong> ou <strong>lève-le pour passer</strong>, puis reviens au front entre deux mots.</li><li>Un mot trouvé = 1 point. Passer ne retire aucun point. Au bip final, c’est au suivant !</li></ol></details>
-        ${round && !round.finished ? '<div class="hu-resume"><p>Une manche est en pause.</p><button class="hu-button hu-button--green" data-act="resume" type="button">Reprendre la manche</button></div>' : ''}
         <form id="hu-config" class="hu-config">
-          <fieldset><legend>01 · Choisis tes thèmes</legend><p class="hu-help">Tu peux en mélanger plusieurs.</p><div class="hu-themes">${decks().map(d => `<button type="button" class="hu-theme" data-theme="${d.id}" aria-pressed="${c.themes.includes(d.id)}" style="--theme-color:${d.color}"><span aria-hidden="true">${d.icon}</span><strong>${escape(d.name)}</strong><small>${d.words.length} mots</small></button>`).join('')}<button type="button" class="hu-theme" data-theme="custom" aria-pressed="${c.themes.includes('custom')}" style="--theme-color:#fff9e9"><span aria-hidden="true">＋</span><strong>Tes mots à toi</strong><small id="hu-custom-count">${customWords().length} mots</small></button></div>
-          <div id="hu-custom-box" class="${c.themes.includes('custom') ? '' : 'hidden'}"><label for="hu-custom">Un mot ou une expression par ligne</label><textarea id="hu-custom" rows="5" maxlength="14000" placeholder="Un surnom de pote&#10;Votre bar préféré&#10;Une blague de la bande">${escape(c.custom)}</textarea><p class="hu-help">200 mots maximum, 60 caractères par mot. Ils restent sur ce téléphone.</p></div></fieldset>
-          <fieldset><legend>02 · La manche</legend><div class="hu-options"><label for="hu-player">Qui devine ?<select id="hu-player">${people.length ? people.map(n => `<option value="${escape(n)}" ${n === player ? 'selected' : ''}>${escape(n)}</option>`).join('') : '<option value="">Ajoute des joueurs</option>'}</select></label><label for="hu-duration">Chrono<select id="hu-duration">${[30, 60, 90, 120].map(n => `<option value="${n}" ${n === c.duration ? 'selected' : ''}>${n} secondes</option>`).join('')}</select></label></div><p id="hu-players-note" class="hu-help">${people.length} joueur${people.length > 1 ? 's' : ''} · La bande de l’accueil.</p><button class="hu-text-button" data-act="edit-players" type="button">Modifier les joueurs</button></fieldset>
-          <fieldset><legend>03 · Pour faire deviner</legend><div class="hu-radio-row"><label><input type="radio" name="hu-clues" value="describe" ${c.clues === 'describe' ? 'checked' : ''}> Des indices</label><label><input type="radio" name="hu-clues" value="mime" ${c.clues === 'mime' ? 'checked' : ''}> Des mimes</label></div></fieldset>
-          <fieldset><legend>04 · Pour changer de mot</legend><div class="hu-radio-row"><label><input type="radio" name="hu-controls" value="motion" ${c.controls === 'motion' ? 'checked' : ''}> Inclinaison</label><label><input type="radio" name="hu-controls" value="buttons" ${c.controls === 'buttons' ? 'checked' : ''}> Boutons</label></div><p class="hu-help">Sur iPhone, autorise l’accès aux mouvements quand il est demandé. Les boutons restent disponibles.</p></fieldset>
-          <label class="hu-sound"><input type="checkbox" id="hu-sound" ${c.sound ? 'checked' : ''}> Sons et compte à rebours</label>
-          <p id="hu-selection" class="hu-selection" role="status"></p><button id="hu-start" class="hu-button" type="submit">${round && !round.finished ? 'Nouvelle manche' : 'C’est parti !'} <span aria-hidden="true">↗</span></button>
-        </form><div class="hu-floor" aria-hidden="true"></div>
-      </section>${historyMarkup()}`;
+          <fieldset class="hu-player-picker"><legend>Qui devine ?</legend><div id="hu-player" class="hu-player-grid">${playerChoices(people, player)}</div><div class="hu-player-note"><p id="hu-players-note" class="hu-help">${people.length} joueur${people.length > 1 ? 's' : ''} · La bande de l’accueil.</p><button class="hu-text-button" data-act="edit-players" type="button">Modifier les joueurs</button></div></fieldset>
+          <button id="hu-start" class="hu-button" type="submit">Lancer la partie <span aria-hidden="true">↗</span></button><p id="hu-selection" class="hu-selection" role="status"></p>
+        </form>
+        ${round && !round.finished ? '<div class="hu-resume"><p>Une manche est en pause.</p><button class="hu-button hu-button--green" data-act="resume" type="button">Reprendre la manche</button></div>' : ''}
+        <div class="hu-floor" aria-hidden="true"></div>
+      </section>${store.history.length ? `<details class="hu-history-summary"><summary>Les scores de la bande</summary>${historyMarkup()}</details>` : ''}`;
     updateSelection();
     window.scrollTo(0, 0);
   }
 
   function updateSelection() {
     const count = pool().length;
-    root.querySelector('#hu-selection').textContent = count ? `${count} mots · ${store.config.duration} secondes · 1 point par mot trouvé` : 'Choisis au moins un thème contenant des mots.';
+    root.querySelector('#hu-selection').textContent = count ? `${count} mots mélangés · 60 secondes` : 'Aucun mot disponible pour le moment.';
     root.querySelector('#hu-start').disabled = !count || names().length < 2;
-    root.querySelector('#hu-custom-count').textContent = `${customWords().length} mots`;
   }
 
   function onPlayersChanged() {
     if (!opened || phase !== 'setup') return;
     const picker = root.querySelector('#hu-player');
     const people = names();
-    const selected = people.includes(picker.value) ? picker.value : people[0] || '';
-    picker.innerHTML = people.length ? people.map(name => `<option value="${escape(name)}" ${name === selected ? 'selected' : ''}>${escape(name)}</option>`).join('') : '<option value="">Ajoute des joueurs</option>';
+    const previous = selectedPlayer();
+    const selected = people.includes(previous) ? previous : people[0] || '';
+    picker.innerHTML = playerChoices(people, selected);
     store.nextPlayer = selected;
     root.querySelector('#hu-players-note').textContent = `${people.length} joueur${people.length > 1 ? 's' : ''} · La bande de l’accueil.`;
     updateSelection();
@@ -238,7 +236,7 @@
     round = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       player: player || '', duration: store.config.duration, remaining: store.config.duration * 1000,
-      themes: store.config.themes.slice(), themeLabel: store.config.themes.map(id => id === 'custom' ? 'Tes mots' : decks().find(d => d.id === id).name).join(' + '),
+      themes: decks().map(d => d.id), themeLabel: 'Tous les mots',
       clues: store.config.clues, pool: words, seen: [], rows: [], word: '',
       motion: store.config.controls === 'motion', armed: false, pending: null, finished: false, deadline: 0,
     };
@@ -252,7 +250,7 @@
   function renderReady() {
     setPhase('ready');
     const status = readyMessage || (round.motion ? (landscape() ? 'Place le téléphone au front et tiens-le droit.' : 'Tourne le téléphone à l’horizontale.') : 'Au signal, tes amis te font deviner le mot.');
-    root.innerHTML = `${topbar('Devine Tête')}<section class="hu-panel hu-ready">${windowBar(resume ? 'ON REPREND ?' : 'À TOI DE DEVINER')}<h1>${escape(round.player || 'Prêt ?')}</h1><div class="hu-phone" aria-hidden="true"><span>?</span></div><h2>${round.motion ? 'Téléphone au front' : 'À toi de jouer'}</h2><p>${round.motion ? 'Tourne le téléphone à l’horizontale, puis place-le contre ton front, écran vers tes amis. La manche démarre quand tu es prêt.' : 'Place le téléphone sur ton front. Un ami utilise les boutons pour valider ou passer.'}</p><p id="hu-sensor-status" class="hu-status" role="status">${escape(status)}</p>${round.motion ? '<p class="hu-help">Si l’écran ne tourne pas, désactive le verrouillage portrait de ton téléphone.</p><div class="hu-gesture-guide"><span>↓ Baisser = trouvé</span><span>↑ Lever = passer</span></div>' : ''}<button class="hu-button" data-act="${round.motion ? 'buttons' : 'countdown'}" type="button" ${permissionPending ? 'disabled' : ''}>${round.motion ? 'Jouer avec les boutons' : 'Lancer le compte à rebours'}</button><button class="hu-text-button" data-act="settings" type="button">Retour aux réglages</button></section>`;
+    root.innerHTML = `${topbar('Devine Tête')}<section class="hu-panel hu-ready">${windowBar(resume ? 'ON REPREND ?' : 'À TOI DE DEVINER')}<h1>${escape(round.player || 'Prêt ?')}</h1><div class="hu-phone" aria-hidden="true"><span>?</span></div><h2>${round.motion ? 'Téléphone au front' : 'À toi de jouer'}</h2><p>${round.motion ? 'Tourne le téléphone à l’horizontale, puis place-le contre ton front, écran vers tes amis. La manche démarre quand tu es prêt.' : 'Place le téléphone sur ton front. Un ami utilise les boutons pour valider ou passer.'}</p><p id="hu-sensor-status" class="hu-status" role="status">${escape(status)}</p>${round.motion ? '<p class="hu-help">Si l’écran ne tourne pas, désactive le verrouillage portrait de ton téléphone.</p><div class="hu-gesture-guide"><span>↓ Baisser = trouvé</span><span>↑ Lever = passer</span></div>' : ''}<button class="hu-button" data-act="${round.motion ? 'buttons' : 'countdown'}" type="button" ${permissionPending ? 'disabled' : ''}>${round.motion ? 'Jouer avec les boutons' : 'Lancer le compte à rebours'}</button><button class="hu-text-button" data-act="settings" type="button">Choisir le joueur</button></section>`;
     window.scrollTo(0, 0);
   }
 
@@ -460,14 +458,6 @@
   }
 
   function onClick(event) {
-    const theme = event.target.closest('[data-theme]');
-    if (theme) {
-      const id = theme.dataset.theme, selected = store.config.themes.includes(id);
-      store.config.themes = selected ? store.config.themes.filter(t => t !== id) : [...store.config.themes, id];
-      theme.setAttribute('aria-pressed', String(!selected));
-      root.querySelector('#hu-custom-box').classList.toggle('hidden', !store.config.themes.includes('custom'));
-      updateSelection(); save(); return;
-    }
     const correction = event.target.closest('[data-correct-row]');
     if (correction && phase === 'results') {
       const row = round.rows[Number(correction.dataset.correctRow)];
@@ -504,13 +494,9 @@
 
   function onChange(event) {
     const el = event.target;
-    if (el.id === 'hu-duration') store.config.duration = Number(el.value);
-    else if (el.id === 'hu-sound') store.config.sound = el.checked;
-    else if (el.id === 'hu-player') store.nextPlayer = el.value;
-    else if (el.name === 'hu-controls') store.config.controls = el.value;
-    else if (el.name === 'hu-clues') store.config.clues = el.value;
-    else return;
-    updateSelection(); save();
+    if (el.name !== 'hu-player' || !el.checked) return;
+    store.nextPlayer = el.value;
+    save();
   }
 
   function init(config) {
@@ -520,15 +506,10 @@
     options = Object.assign(options, config || {});
     root.addEventListener('click', onClick);
     root.addEventListener('change', onChange);
-    root.addEventListener('input', event => {
-      if (event.target.id !== 'hu-custom') return;
-      store.config.custom = event.target.value;
-      updateSelection(); save();
-    });
     root.addEventListener('submit', event => {
       if (event.target.id !== 'hu-config') return;
       event.preventDefault();
-      startRound(root.querySelector('#hu-player').value);
+      startRound(selectedPlayer());
     });
     document.addEventListener('visibilitychange', () => {
       if (!opened || document.visibilityState !== 'hidden') return;

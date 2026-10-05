@@ -90,13 +90,13 @@ try:
         page.locator('#dialogPlayerInput').fill('Bob')
         page.locator('#dialogStartBtn').click()
         expect(page.locator('#heads')).to_have_attribute('data-screen', 'setup')
-        assert page.locator('#hu-player option').all_text_contents() == ['Alice', 'Bob']
+        assert page.locator('#hu-player .hu-player-name').all_text_contents() == ['Alice', 'Bob']
         page.locator('#heads [data-act="edit-players"]').click()
         expect(page.locator('#playersDialog')).to_be_visible()
         page.locator('#dialogPlayerInput').fill('Chloé')
         page.locator('#dialogStartBtn').click()
-        assert page.locator('#hu-player option').all_text_contents() == ['Alice', 'Bob', 'Chloé']
-        page.locator('#hu-player').select_option('Chloé')
+        assert page.locator('#hu-player .hu-player-name').all_text_contents() == ['Alice', 'Bob', 'Chloé']
+        page.get_by_role('radio', name='Chloé', exact=True).check()
         page.locator('#heads [data-act="exit"]').click()
         assert page.evaluate('JDD.players') == ['Alice', 'Bob', 'Chloé']
         page.locator('#undercoverBtn').click()
@@ -128,8 +128,8 @@ try:
         expect(page.locator('#uc-count-title')).to_contain_text('5 joueurs')
         act(page, 'exit-app')
         page.locator('#headsBtn').click()
-        assert page.locator('#hu-player option').all_text_contents() == ['Alice', 'Bob', 'Chloé', 'Dani', 'Emma']
-        expect(page.locator('#hu-player')).to_have_value('Chloé')
+        assert page.locator('#hu-player .hu-player-name').all_text_contents() == ['Alice', 'Bob', 'Chloé', 'Dani', 'Emma']
+        expect(page.locator('input[name="hu-player"]:checked')).to_have_value('Chloé')
         page.locator('#heads [data-act="exit"]').click()
         page.reload(wait_until='load')
         expect(page.locator('#playerList .player-item')).to_have_count(5)
