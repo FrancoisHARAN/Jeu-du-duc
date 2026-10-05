@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles/main.css?v=20261005a">
   <link rel="stylesheet" href="styles/undercover.css?v=20261005a">
-  <link rel="stylesheet" href="styles/home.css?v=20261005d">
+  <link rel="stylesheet" href="styles/home.css?v=20261005h">
 </head>
 <body>
   <main id="setup" class="home">
@@ -26,6 +26,16 @@
       <h1 id="home-title"><span class="home-visually-hidden">Le Jeu du Duc</span><img class="home-title-illustration" src="image/home/hero.webp" alt="" width="1448" height="1086" fetchpriority="high" decoding="async"></h1>
       <p class="home-tagline">Petites questions. Grands moments.</p>
       <div class="home-hero-floor" aria-hidden="true"></div>
+    </section>
+
+    <section id="otherGames" class="other-games home-undercover" aria-label="Undercover">
+      <button id="undercoverBtn" class="mode-card home-mode home-mode--undercover" type="button">
+        <span class="home-window-bar" aria-hidden="true"><i></i><i></i><i></i><span>JEU DE BLUFF</span></span>
+        <span class="home-mode-art"><img src="image/home/undercover.webp" alt="" width="1254" height="1254" decoding="async"></span>
+        <span class="home-mode-label">Undercover</span>
+        <span class="home-mode-description">Un intrus parmi vous.</span>
+        <span class="home-mode-choice">JOUER À UNDERCOVER<span class="home-mode-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></span>
+      </button>
     </section>
 
     <div class="home-layout">
@@ -89,16 +99,6 @@
             <div class="slider-container"><label for="weight-hardcore">Sexy pas raffiné</label><input type="range" min="0" max="100" value="25" id="weight-hardcore"></div>
             <div class="slider-container"><label for="weight-alcool">Torgnole express</label><input type="range" min="0" max="100" value="25" id="weight-alcool"></div>
             <div class="slider-container"><label for="weight-culture">Culture G.</label><input type="range" min="0" max="100" value="25" id="weight-culture"></div>
-          </div>
-          <div id="otherGames" class="other-games home-other-games">
-            <h2 class="home-visually-hidden">Autres jeux</h2>
-            <button id="undercoverBtn" class="mode-card home-mode home-mode--undercover" type="button">
-              <span class="home-window-bar" aria-hidden="true"><i></i><i></i><i></i><span>06 — AUTRE JEU</span></span>
-              <span class="home-mode-art"><img src="image/home/undercover.webp" alt="" width="1254" height="1254" loading="lazy" decoding="async"></span>
-              <span class="home-mode-label">Undercover</span>
-              <span class="home-mode-description">Un intrus parmi vous.</span>
-              <span class="home-mode-choice">JOUER À UNDERCOVER<span class="home-mode-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></span>
-            </button>
           </div>
         </div>
 

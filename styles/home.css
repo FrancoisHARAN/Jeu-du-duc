@@ -68,7 +68,7 @@ body:has(#setup:not(.hidden)) {
 #setup .home-section-heading h2 { margin: 6px 0 0; font-size: 28px; font-weight: 900; line-height: 1.15; letter-spacing: -.8px; }
 #setup .home-section-note { display: none; }
 #setup .modes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin: 0; }
-#setup .home-other-games { display: contents; }
+#setup .home-undercover { width: min(640px, 100%); margin: 0 auto 24px; }
 
 #setup .mode-card, #setup #otherGames button.mode-card {
   position: relative;
