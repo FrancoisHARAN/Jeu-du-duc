@@ -1,0 +1,32 @@
+{
+  "id": "./",
+  "name": "Jeu du duc",
+  "short_name": "Jeu du duc",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#6b62cc",
+  "theme_color": "#6b62cc",
+  "icons": [
+    {
+      "src": "image/app/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "image/app/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "image/app/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
