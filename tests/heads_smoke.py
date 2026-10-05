@@ -120,7 +120,7 @@ try:
             uc = page.locator('#undercoverBtn').bounding_box()
             heads = page.locator('#headsBtn').bounding_box()
             people = page.locator('.home-players').bounding_box()
-            assert uc['y'] + uc['height'] <= heads['y'] < people['y']
+            assert people['y'] < uc['y'] and uc['y'] + uc['height'] <= heads['y']
             assert not page.evaluate('document.documentElement.scrollWidth > innerWidth')
             setup(page)
             counts = page.evaluate('JDD.HEADS_DECKS.map(d => d.words.length)')

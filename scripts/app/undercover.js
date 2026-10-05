@@ -7,15 +7,15 @@
   const STORE_KEY = 'jdd.undercover.v2';
   const MIN_PLAYERS = 3;
   const MAX_PLAYERS = 20;
-  const AVATAR_COLORS = ['#69ee9a', '#3fdfdf', '#06aef7'];
+  const AVATAR_COLORS = ['#a7d5bc', '#f7c3d0', '#aac7e4', '#f9d570', '#c9b3ef'];
   const POINTS = { civil: 2, white: 6, undercover: 10 };
 
   // ---------------------------------------------------------------- icônes
   const SVG = {
     back: '<svg viewBox="0 0 32 32" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M26 16H7"/><path d="M14 8l-8 8 8 8"/></svg>',
     exit: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 6h13v20H13"/><path d="M3 16h15"/><path d="M8 11l-5 5 5 5"/></svg>',
-    home: '<svg viewBox="0 0 32 32" fill="#fff"><path d="M16 4 3 15h4v12h7v-8h4v8h7V15h4z"/></svg>',
-    next: '<svg viewBox="0 0 32 32" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16h19"/><path d="M18 8l8 8-8 8"/></svg>',
+    home: '<svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M16 4 3 15h4v12h7v-8h4v8h7V15h4z"/></svg>',
+    next: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16h19"/><path d="M18 8l8 8-8 8"/></svg>',
     // silhouettes des cartes (garçon / fille) avec le point d'interrogation
     cardBoy: '<svg viewBox="0 0 100 120"><path fill="#fff" d="M22 118c0-18 10-27 22-29v-8c-11-4-19-14-19-28 0-8 2-14 6-19l-10-3 10-4-5-10 13 4c6-6 14-8 22-7 14 2 22 13 22 27l-1 9 6 10c1 2 0 4-2 4h-4v8c0 5-4 8-9 8h-9v8c12 2 22 11 22 29z"/><text x="57" y="66" text-anchor="middle" font-family="Montserrat,Arial,sans-serif" font-weight="900" font-size="36" fill="#f6b400">?</text></svg>',
     cardGirl: '<svg viewBox="0 0 100 120"><path fill="#fff" d="M20 118c0-18 11-27 24-29v-6c-14-3-24-13-24-31 0-22 16-38 36-38 18 0 30 14 30 30l-1 8 6 9c1 2 0 4-2 4h-4v8c0 5-4 8-9 8h-10v8c12 2 22 11 22 29z"/><text x="57" y="66" text-anchor="middle" font-family="Montserrat,Arial,sans-serif" font-weight="900" font-size="36" fill="#f6b400">?</text></svg>',
@@ -34,7 +34,7 @@
 
   // ---------------------------------------------------------------- état
   let root = null;
-  let options = { onExit: function () {}, getSuggestedNames: function () { return []; } };
+  let options = { onExit: function () {}, getSuggestedNames: function () { return []; }, editPlayers: function () {} };
   let store = null;
   let modal = null;
   let toastTimer = null;
@@ -117,17 +117,6 @@
     if (s.undercover + s.white === 0) s.undercover = 1;
   }
 
-  function setCount(count) {
-    if (count === store.settings.count) return;
-    store.settings.count = count;
-    if (store.players.length > count) {
-      store.players.length = count;
-    }
-    Object.assign(store.settings, defaultRoles(count));
-    clampSettings();
-    save();
-  }
-
   function otherRole(role) {
     return role === 'white' ? 'undercover' : 'white';
   }
@@ -190,6 +179,14 @@
   }
 
   function startGame() {
+    if (game() && game().phase === 'end') store.game = null;
+    syncSharedPlayers();
+    if (store.players.length < MIN_PLAYERS || options.getSuggestedNames().length > MAX_PLAYERS) {
+      modal = null;
+      render();
+      options.editPlayers(startGame);
+      return;
+    }
     clampSettings();
     const s = store.settings;
     const roles = [];
@@ -307,33 +304,77 @@
     const g = game();
     let screen;
     if (!g) {
+      syncSharedPlayers();
       screen = renderSetup();
     } else {
       screen = renderGame();
     }
-    root.innerHTML = `<div class="uc-bg"></div>${screen}${renderModal()}`;
+    root.dataset.screen = g ? g.phase : 'setup';
+    root.innerHTML = `${screen}${renderModal()}`;
     if (g) {
       g.modal = modal;
       save();
     }
     if (!g) syncSetup();
+    fitSecretWords();
+    document.fonts.ready.then(fitSecretWords);
     const focus = root.querySelector('[data-autofocus]');
     if (focus) {
       setTimeout(() => focus.focus(), 60);
     }
   }
 
+  function fitSecretWords() {
+    const context = document.createElement('canvas').getContext('2d');
+    if (!context) return;
+    root.querySelectorAll('.uc-word, .uc-end-word > span:last-child').forEach((element) => {
+      element.style.fontSize = '';
+      const style = getComputedStyle(element);
+      const width = element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      context.font = style.font;
+      const widest = Math.max(...element.textContent.trim().split(/\s+/).map((word) => context.measureText(word).width));
+      if (width > 0 && widest > width) {
+        element.style.fontSize = `${Math.floor(parseFloat(style.fontSize) * width / widest * 2) / 2}px`;
+      }
+    });
+  }
+
+  function syncSharedPlayers() {
+    if (game()) return;
+    const previous = store.players;
+    const names = options.getSuggestedNames().slice(0, MAX_PLAYERS);
+    store.players = names.map((name) => {
+      const existing = previous.find((player) => player.name.toLowerCase() === name.toLowerCase());
+      return existing ? { ...existing, name } : { id: uid(), name, score: 0 };
+    });
+    const count = Math.max(MIN_PLAYERS, store.players.length);
+    if (count !== store.settings.count) Object.assign(store.settings, defaultRoles(count));
+    store.settings.count = count;
+    clampSettings();
+    save();
+  }
+
+  function topbar() {
+    return `<header class="uc-topbar"><button class="uc-menu" data-act="exit-app" type="button" aria-label="Revenir au menu principal">${SVG.home}<span>Menu</span></button><span class="uc-mode-label">Undercover</span></header>`;
+  }
+
+  function windowBar(label) {
+    return `<div class="uc-window"><span class="uc-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>${label}</span><span aria-hidden="true">✦</span></div>`;
+  }
+
   function renderSetup() {
     const s = store.settings;
     return `
       <div class="uc-screen">
-        <button class="uc-back" data-act="exit-app" aria-label="Retour">${SVG.back}</button>
-        <div class="uc-setup-title" id="uc-count-title"></div>
-        <div class="uc-slider-wrap">
-          <input class="uc-slider" id="uc-slider" type="range" min="${MIN_PLAYERS}" max="${MAX_PLAYERS}" step="1" value="${s.count}" aria-label="Nombre de joueurs">
-        </div>
-        <div class="uc-roles" id="uc-roles"></div>
-        <div class="uc-panel">
+        ${topbar()}
+        <section class="uc-panel uc-setup-panel">
+          ${windowBar('JEU DE BLUFF')}
+          <div class="uc-intro"><img src="image/home/undercover.webp" alt="" width="1254" height="1254"><div><h1>Undercover</h1><p>Un intrus parmi vous.<br>À vous de le démasquer.</p></div></div>
+          <details class="uc-rules"><summary>Comment on joue ?</summary><ol><li>De 3 à 20 joueurs. Les civils ont le même mot, les Undercovers un mot proche. Mr. White n’a aucun mot.</li><li>Chacun lit son mot en secret, puis le décrit à son tour sans le dévoiler.</li><li>Discutez et votez pour éliminer un suspect. Mr. White peut tenter de deviner le mot des civils quand il est éliminé.</li><li>Les civils gagnent en démasquant tous les infiltrés. Les infiltrés gagnent quand il reste un seul civil.</li></ol></details>
+          <div class="uc-config">
+          <section class="uc-setup-section"><h2>01 · La bande</h2><p class="uc-setup-title" id="uc-count-title"></p><div id="uc-players"></div></section>
+          <section class="uc-setup-section"><h2>02 · Les rôles</h2><div class="uc-roles" id="uc-roles"></div></section>
+          <section class="uc-setup-section"><h2>03 · Les mots</h2>
           <label class="uc-words-toggle">
             <span class="uc-words-text"><span class="uc-panel-label">Mots</span><strong id="uc-words-label"></strong></span>
             <span class="uc-hard-box">
@@ -341,23 +382,21 @@
               <span class="uc-switch"><input type="checkbox" id="uc-hard" ${s.hard ? 'checked' : ''}><span></span></span>
             </span>
           </label>
-        </div>
-        <div id="uc-players"></div>
+          </section>
+          </div><div class="uc-floor" aria-hidden="true"></div>
+        </section>
       </div>
-      <div class="uc-bottom"><button class="uc-btn uc-btn--green" data-act="start">Commencer</button></div>`;
+      <div class="uc-bottom"><button class="uc-btn" data-act="start" type="button" ${store.players.length < MIN_PLAYERS || options.getSuggestedNames().length > MAX_PLAYERS ? 'disabled' : ''}>Lancer la partie <span aria-hidden="true">↗</span></button></div>`;
   }
 
-  // Met à jour les parties dynamiques des réglages sans reconstruire le curseur (sinon le glisser est coupé)
+  // Met à jour les réglages de rôles et les joueurs communs.
   function syncSetup() {
     const s = store.settings;
     const civils = s.count - s.undercover - s.white;
     const max = maxInfiltrators(s.count);
     const title = root.querySelector('#uc-count-title');
-    const slider = root.querySelector('#uc-slider');
-    if (!title || !slider) return;
-    title.textContent = `Joueurs : ${s.count}`;
-    slider.value = s.count;
-    slider.style.setProperty('--pct', `${((s.count - MIN_PLAYERS) / (MAX_PLAYERS - MIN_PLAYERS)) * 100}%`);
+    if (!title) return;
+    title.textContent = `${store.players.length} joueur${store.players.length > 1 ? 's' : ''} · La bande de l’accueil.`;
 
     const plural = (n, word, pluralWord) => `${n} ${n > 1 ? pluralWord : word}`;
     const full = s.undercover + s.white >= max;
@@ -374,29 +413,20 @@
       <div class="uc-roles-hint">${full ? `Maximum ${max} infiltré${max > 1 ? 's' : ''} pour ${s.count} joueurs` : 'Ajuste les rôles avec − et +'}</div>`;
 
     root.querySelector('#uc-words-label').textContent = s.hard ? 'Standards + Hard' : 'Standards';
-    root.querySelector('.uc-screen').classList.toggle('uc-setup--compact', store.players.length > 0);
-
     const players = store.players;
     const playersBox = root.querySelector('#uc-players');
-    if (!players.length) {
-      playersBox.innerHTML = '';
-      return;
-    }
     const hasScores = players.some((p) => p.score > 0);
-    const newcomers = s.count - players.length;
     playersBox.innerHTML = `
-      <div class="uc-panel">
-        <div class="uc-panel-label">Joueurs de la partie${newcomers > 0 ? ` · ${newcomers} nouveau${newcomers > 1 ? 'x' : ''} à inscrire` : ''}</div>
         <div class="uc-chips">
           ${players.map((p, i) => `
             <span class="uc-chip">
               <span class="uc-mini" style="background:${AVATAR_COLORS[i % AVATAR_COLORS.length]}">${initial(p.name)}</span>
               ${escapeHtml(p.name)}${p.score ? ` <span class="uc-chip-score">${p.score} pts</span>` : ''}
-              <button class="uc-chip-x" data-act="remove-player" data-id="${p.id}" aria-label="Retirer ${escapeHtml(p.name)}">✕</button>
             </span>`).join('')}
         </div>
+        <button class="uc-link" data-act="edit-players" type="button">Modifier les joueurs</button>
         ${hasScores ? '<button class="uc-link" data-act="reset-scores">Remettre les scores à zéro</button>' : ''}
-      </div>`;
+      `;
   }
 
   function renderInfos() {
@@ -433,11 +463,16 @@
 
     return `
       <div class="uc-screen">
-        <button class="uc-exit" data-act="quit" aria-label="Quitter la partie">${SVG.exit}</button>
-        <div class="uc-head ${headClass}">${head}</div>
+        ${topbar()}
+        <section class="uc-panel uc-game-panel">
+        ${windowBar(g.phase === 'distribute' ? 'CHACUN SON SECRET' : `MANCHE ${g.round}`)}
+        <div class="uc-head ${headClass}"><img src="image/home/undercover.webp" alt="" width="1254" height="1254"><div>${head}</div></div>
         ${renderInfos()}
         ${knownWaiting ? '<div class="uc-hint">Les joueurs déjà inscrits touchent leur pastille</div>' : ''}
         <div class="uc-grid">${g.slots.map(renderSlot).join('')}</div>
+        <button class="uc-link" data-act="quit" type="button">Arrêter la partie</button>
+        <div class="uc-floor" aria-hidden="true"></div>
+        </section>
       </div>
       ${bottom ? `<div class="uc-bottom">${bottom}</div>` : ''}`;
   }
@@ -550,7 +585,7 @@
             <p class="uc-sub uc-muted">C'est bien toi ?</p>
             <div class="uc-modal-spacer"></div>
             <button class="uc-btn uc-btn--green" data-act="reveal">Lis ton mot secret</button>
-            <button class="uc-link" style="color:rgba(255,255,255,.75)!important;margin-top:1rem" data-act="close-modal">Ce n'est pas moi</button>
+            <button class="uc-link" data-act="close-modal">Ce n'est pas moi</button>
           </div>`);
 
       case 'word': {
@@ -584,7 +619,7 @@
             <h3 class="uc-modal-title-white">${titles[slot.role]}</h3>
             <div class="uc-modal-spacer"></div>
             ${bigAvatar(player.name, slotColor(modal.slot), slot.role)}
-            <div class="uc-player-name" style="color:#fff">${escapeHtml(player.name)}</div>
+            <div class="uc-player-name">${escapeHtml(player.name)}</div>
             <div class="uc-modal-spacer"></div>
             <button class="uc-btn uc-btn--green" data-act="eliminated-ok">OK</button>
           </div>`);
@@ -667,7 +702,7 @@
           ${hasUnder ? `<div class="uc-end-word"><span class="uc-score-role">${roleIcon('undercover')}</span><span>${escapeHtml(g.words.under)}</span></div>` : ''}
         </div>
         <div class="uc-trophy-card"><span class="uc-trophy">🏆</span>${roleIcon(heroRole)}</div>
-        <div class="uc-ribbon">${title}</div>
+        <div class="uc-ribbon">Les scores de la bande</div>
         <div class="uc-scores">
           ${rows.map(({ slot, index, player }) => `
             <div class="uc-score-row ${slot.alive ? '' : 'uc-score-row--out'}">
@@ -678,14 +713,15 @@
             </div>`).join('')}
         </div>
         <div class="uc-end-actions">
-          <button class="uc-round" data-act="end-home" aria-label="Retour aux réglages">${SVG.home}</button>
-          <button class="uc-round" data-act="end-next" aria-label="Partie suivante">${SVG.next}</button>
+          <button class="uc-round" data-act="end-home" aria-label="Retour aux réglages">${SVG.home}<span>Réglages</span></button>
+          <button class="uc-round" data-act="end-next" aria-label="Partie suivante">${SVG.next}<span>Rejouer</span></button>
         </div>
       </div>`;
   }
 
   function overlay(content) {
-    return `<div class="uc-overlay">${content}</div>`;
+    const charted = content.replace(/(<div class="uc-(?:modal|dialog)[^"]*">)/, `$1${windowBar('UNDERCOVER')}`);
+    return `<div class="uc-overlay" role="dialog" aria-modal="true" aria-label="Undercover">${charted}</div>`;
   }
 
   function toast(message) {
@@ -774,16 +810,12 @@
       case 'exit-app':
         options.onExit();
         break;
+      case 'edit-players':
+        options.editPlayers(onPlayersChanged);
+        break;
       case 'role': {
         const ok = changeRole(target.dataset.role, Number(target.dataset.delta));
         if (!ok) shake(target);
-        syncSetup();
-        break;
-      }
-      case 'remove-player': {
-        store.players = store.players.filter((p) => p.id !== target.dataset.id);
-        setCount(Math.max(MIN_PLAYERS, store.settings.count - 1));
-        save();
         syncSetup();
         break;
       }
@@ -886,10 +918,7 @@
 
   function onInput(event) {
     const target = event.target;
-    if (target.id === 'uc-slider') {
-      setCount(Number(target.value));
-      syncSetup();
-    } else if (target.id === 'uc-name-input' && modal) {
+    if (target.id === 'uc-name-input' && modal) {
       modal.value = target.value;
       const submit = root.querySelector('#uc-name-submit');
       if (submit) submit.style.visibility = target.value.trim() ? 'visible' : 'hidden';
@@ -931,6 +960,7 @@
     root.addEventListener('input', onInput);
     root.addEventListener('change', onChange);
     root.addEventListener('keydown', onKeyDown);
+    global.addEventListener('resize', () => { if (!root.classList.contains('hidden')) fitSecretWords(); });
   }
 
   function onOpen() {
@@ -941,6 +971,12 @@
     root.scrollTop = 0;
   }
 
+  function onPlayersChanged() {
+    if (!root || game()) return;
+    syncSharedPlayers();
+    if (!root.classList.contains('hidden')) render();
+  }
+
   global.JDDModules = global.JDDModules || {};
-  global.JDDModules.undercover = { init, onOpen };
+  global.JDDModules.undercover = { init, onOpen, onPlayersChanged, hasActiveGame: () => Boolean(store && game()) };
 })(window);

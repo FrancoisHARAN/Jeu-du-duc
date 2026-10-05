@@ -7,7 +7,7 @@
   const TRIGGER = .64;
   const HOME_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9"/></svg>';
   let root, store, round = null, phase = 'setup', opened = false;
-  let options = { onExit() {}, getSuggestedNames() { return []; } };
+  let options = { onExit() {}, getSuggestedNames() { return []; }, editPlayers() {} };
   let clock = null, audio = null, wakeLock = null, permissionPending = false;
   let sensor = null, neutralSince = 0, gesture = null, gestureSince = 0, readySince = 0;
   let countdownEnd = 0, lastCount = 0, requestId = 0, readyMessage = '', resume = false;
@@ -94,7 +94,7 @@
         <form id="hu-config" class="hu-config">
           <fieldset><legend>01 · Choisis tes thèmes</legend><p class="hu-help">Tu peux en mélanger plusieurs.</p><div class="hu-themes">${decks().map(d => `<button type="button" class="hu-theme" data-theme="${d.id}" aria-pressed="${c.themes.includes(d.id)}" style="--theme-color:${d.color}"><span aria-hidden="true">${d.icon}</span><strong>${escape(d.name)}</strong><small>${d.words.length} mots</small></button>`).join('')}<button type="button" class="hu-theme" data-theme="custom" aria-pressed="${c.themes.includes('custom')}" style="--theme-color:#fff9e9"><span aria-hidden="true">＋</span><strong>Tes mots à toi</strong><small id="hu-custom-count">${customWords().length} mots</small></button></div>
           <div id="hu-custom-box" class="${c.themes.includes('custom') ? '' : 'hidden'}"><label for="hu-custom">Un mot ou une expression par ligne</label><textarea id="hu-custom" rows="5" maxlength="14000" placeholder="Un surnom de pote&#10;Votre bar préféré&#10;Une blague de la bande">${escape(c.custom)}</textarea><p class="hu-help">200 mots maximum, 60 caractères par mot. Ils restent sur ce téléphone.</p></div></fieldset>
-          <fieldset><legend>02 · La manche</legend><div class="hu-options"><label for="hu-player">Qui devine ?<select id="hu-player"><option value="">Sans prénoms</option>${people.map(n => `<option value="${escape(n)}" ${n === player ? 'selected' : ''}>${escape(n)}</option>`).join('')}</select></label><label for="hu-duration">Chrono<select id="hu-duration">${[30, 60, 90, 120].map(n => `<option value="${n}" ${n === c.duration ? 'selected' : ''}>${n} secondes</option>`).join('')}</select></label></div></fieldset>
+          <fieldset><legend>02 · La manche</legend><div class="hu-options"><label for="hu-player">Qui devine ?<select id="hu-player">${people.length ? people.map(n => `<option value="${escape(n)}" ${n === player ? 'selected' : ''}>${escape(n)}</option>`).join('') : '<option value="">Ajoute des joueurs</option>'}</select></label><label for="hu-duration">Chrono<select id="hu-duration">${[30, 60, 90, 120].map(n => `<option value="${n}" ${n === c.duration ? 'selected' : ''}>${n} secondes</option>`).join('')}</select></label></div><p id="hu-players-note" class="hu-help">${people.length} joueur${people.length > 1 ? 's' : ''} · La bande de l’accueil.</p><button class="hu-text-button" data-act="edit-players" type="button">Modifier les joueurs</button></fieldset>
           <fieldset><legend>03 · Pour faire deviner</legend><div class="hu-radio-row"><label><input type="radio" name="hu-clues" value="describe" ${c.clues === 'describe' ? 'checked' : ''}> Des indices</label><label><input type="radio" name="hu-clues" value="mime" ${c.clues === 'mime' ? 'checked' : ''}> Des mimes</label></div></fieldset>
           <fieldset><legend>04 · Pour changer de mot</legend><div class="hu-radio-row"><label><input type="radio" name="hu-controls" value="motion" ${c.controls === 'motion' ? 'checked' : ''}> Inclinaison</label><label><input type="radio" name="hu-controls" value="buttons" ${c.controls === 'buttons' ? 'checked' : ''}> Boutons</label></div><p class="hu-help">Sur iPhone, autorise l’accès aux mouvements quand il est demandé. Les boutons restent disponibles.</p></fieldset>
           <label class="hu-sound"><input type="checkbox" id="hu-sound" ${c.sound ? 'checked' : ''}> Sons et compte à rebours</label>
@@ -108,8 +108,20 @@
   function updateSelection() {
     const count = pool().length;
     root.querySelector('#hu-selection').textContent = count ? `${count} mots · ${store.config.duration} secondes · 1 point par mot trouvé` : 'Choisis au moins un thème contenant des mots.';
-    root.querySelector('#hu-start').disabled = !count;
+    root.querySelector('#hu-start').disabled = !count || names().length < 2;
     root.querySelector('#hu-custom-count').textContent = `${customWords().length} mots`;
+  }
+
+  function onPlayersChanged() {
+    if (!opened || phase !== 'setup') return;
+    const picker = root.querySelector('#hu-player');
+    const people = names();
+    const selected = people.includes(picker.value) ? picker.value : people[0] || '';
+    picker.innerHTML = people.length ? people.map(name => `<option value="${escape(name)}" ${name === selected ? 'selected' : ''}>${escape(name)}</option>`).join('') : '<option value="">Ajoute des joueurs</option>';
+    store.nextPlayer = selected;
+    root.querySelector('#hu-players-note').textContent = `${people.length} joueur${people.length > 1 ? 's' : ''} · La bande de l’accueil.`;
+    updateSelection();
+    save();
   }
 
   function historyMarkup() {
@@ -214,6 +226,11 @@
   }
 
   function startRound(player) {
+    if (names().length < 2) {
+      options.editPlayers(() => startRound(names().includes(player) ? player : names()[0]));
+      return;
+    }
+    if (!names().includes(player)) player = names()[0];
     const words = pool();
     if (!words.length) return;
     initializeAudio();
@@ -467,6 +484,7 @@
     if (!button || button.disabled) return;
     switch (button.dataset.act) {
       case 'exit': exit(); break;
+      case 'edit-players': options.editPlayers(onPlayersChanged); break;
       case 'settings': backToSettings(); break;
       case 'buttons': ++requestId; permissionPending = false; round.motion = false; stopSensors(); beginCountdown(); break;
       case 'countdown': beginCountdown(); break;
@@ -549,5 +567,10 @@
   }
 
   global.JDDModules = global.JDDModules || {};
-  global.JDDModules.heads = { init, onOpen };
+  function hasActiveGame() {
+    const active = round || (store || load()).active;
+    return Boolean(active && !active.finished);
+  }
+
+  global.JDDModules.heads = { init, onOpen, onPlayersChanged, hasActiveGame };
 })(window);

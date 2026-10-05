@@ -1,5 +1,6 @@
 (function () {
   const PLAYERS_KEY = 'jdd.players';
+  const SHARED_PLAYERS_KEY = 'jdd.players.shared-v1';
   const MAX_PLAYERS = 30;
 
   const players = loadPlayers();
@@ -63,6 +64,7 @@
     },
     cultureDrinkMode: false,
   };
+  let playersDialogContext = null;
 
   const MODE_BACKGROUNDS = {
     'VÉRITÉ': 'var(--yellow)',
@@ -108,7 +110,22 @@
   function loadPlayers() {
     try {
       const stored = JSON.parse(localStorage.getItem(PLAYERS_KEY) || '[]');
-      return Array.isArray(stored) ? stored.filter((name) => typeof name === 'string' && name.trim()).slice(0, MAX_PLAYERS) : [];
+      let names = Array.isArray(stored) ? stored.filter((name) => typeof name === 'string' && name.trim()).slice(0, MAX_PLAYERS) : [];
+      // À la première ouverture, récupérer l'ancienne bande Undercover si l'accueil est vide.
+      // Le repère évite de réinscrire ces noms après un retrait volontaire.
+      if (!localStorage.getItem(SHARED_PLAYERS_KEY)) {
+        if (!names.length) {
+          let old;
+          try { old = JSON.parse(localStorage.getItem('jdd.undercover.v2') || 'null'); } catch (_) { /* ancien stockage invalide */ }
+          if (old && Array.isArray(old.players)) {
+            names = old.players.map((player) => player && player.name)
+              .filter((name) => typeof name === 'string' && name.trim());
+            names = names.filter((name, index) => names.findIndex((other) => other.toLowerCase() === name.toLowerCase()) === index).slice(0, MAX_PLAYERS);
+          }
+        }
+        try { localStorage.setItem(SHARED_PLAYERS_KEY, '1'); } catch (_) { /* conserver les noms si le stockage est plein */ }
+      }
+      return names;
     } catch (error) {
       return [];
     }
@@ -138,8 +155,9 @@
     if (!name) {
       return input === elements.dialogPlayerInput ? rejectPlayer(input, 'Entre un prénom pour ajouter un joueur.') : false;
     }
-    if (players.length >= MAX_PLAYERS) {
-      return rejectPlayer(input, `La bande est complète : ${MAX_PLAYERS} joueurs maximum.`);
+    const maximum = input === elements.dialogPlayerInput && playersDialogContext ? playersDialogContext.maximum : MAX_PLAYERS;
+    if (players.length >= maximum) {
+      return rejectPlayer(input, `La bande est complète : ${maximum} joueurs maximum.`);
     }
     if (players.some((existing) => existing.toLowerCase() === name.toLowerCase())) {
       return rejectPlayer(input, 'Ce prénom est déjà dans la bande. Choisis-en un autre.');
@@ -193,6 +211,9 @@
       elements.playerCount.textContent = `${players.length} joueur${players.length > 1 ? 's' : ''}`;
     }
     savePlayers();
+    Object.values(modules).forEach((module) => {
+      if (typeof module.onPlayersChanged === 'function') module.onPlayersChanged();
+    });
   }
 
   function minimumPlayers() {
@@ -200,24 +221,39 @@
   }
 
   function updatePlayersDialog(error = '') {
-    const minimum = minimumPlayers();
+    const { minimum, maximum } = playersDialogContext;
     const remaining = Math.max(0, minimum - players.length);
     const count = `${players.length} joueur${players.length > 1 ? 's' : ''}`;
-    const note = !remaining ? 'La bande est prête !'
+    const note = players.length > maximum ? `${maximum} joueurs maximum : retire quelques prénoms pour ce jeu.` : !remaining ? 'La bande est prête !'
       : `Ajoute encore ${remaining} joueur${remaining > 1 ? 's' : ''} pour lancer.`;
     elements.dialogStatus.textContent = error || `${count} · ${note}`;
     elements.dialogStatus.dataset.error = String(Boolean(error));
     const draft = elements.dialogPlayerInput.value.trim();
-    const canAddDraft = draft && players.length < MAX_PLAYERS
+    const canAddDraft = draft && players.length < maximum
       && !players.some((name) => name.toLowerCase() === draft.toLowerCase());
     // Le dernier prénom peut être ajouté directement avec « Lancer la partie ».
-    elements.dialogStartButton.disabled = players.length + (canAddDraft ? 1 : 0) < minimum;
+    elements.dialogStartButton.disabled = players.length + (canAddDraft ? 1 : 0) < minimum || players.length > maximum;
   }
 
-  function openPlayersDialog() {
+  function partyPlayersContext() {
     const selectedCard = document.querySelector('.mode-card[data-mode].active');
-    elements.dialogMode.textContent = elements.selectedModeLabel.textContent;
-    elements.dialogArt.src = selectedCard.querySelector('img').src;
+    return { label: elements.selectedModeLabel.textContent, image: selectedCard.querySelector('img').src,
+      minimum: minimumPlayers(), maximum: MAX_PLAYERS, onConfirm: startGame };
+  }
+
+  function gamePlayersContext(kind, onConfirm, editing = false) {
+    const undercover = kind === 'undercover';
+    return { label: undercover ? 'Undercover' : 'Devine Tête',
+      image: `image/home/${undercover ? 'undercover' : 'mascotte'}.webp`,
+      minimum: undercover ? 3 : 2, maximum: undercover ? 20 : MAX_PLAYERS,
+      buttonLabel: editing ? 'Valider les joueurs' : 'Lancer la partie', onConfirm };
+  }
+
+  function openPlayersDialog(context = partyPlayersContext()) {
+    playersDialogContext = context;
+    elements.dialogMode.textContent = context.label;
+    elements.dialogArt.src = context.image;
+    elements.dialogStartButton.firstChild.textContent = context.buttonLabel || 'Lancer la partie';
     elements.dialogPlayerInput.value = '';
     elements.dialogPlayerInput.classList.remove('input-error');
     elements.dialogPlayerInput.removeAttribute('aria-invalid');
@@ -225,6 +261,14 @@
     renderPlayersInto(elements.dialogPlayerList);
     updatePlayersDialog();
     elements.dialogPlayerInput.focus();
+  }
+
+  function requestGame(kind, open) {
+    const context = gamePlayersContext(kind, open);
+    const module = modules[kind];
+    if ((!module || !module.hasActiveGame || !module.hasActiveGame())
+      && (players.length < context.minimum || players.length > context.maximum)) openPlayersDialog(context);
+    else open();
   }
 
   function setBackground(type) {
@@ -471,6 +515,7 @@
     elements.setupScreen.classList.remove('hidden');
     elements.body.classList.remove('uc-open');
     elements.body.style.background = 'var(--cyan)';
+    window.scrollTo(0, 0);
   }
 
   function openHeads() {
@@ -505,7 +550,10 @@
     });
     elements.dialogStartButton.addEventListener('click', () => {
       if (elements.dialogPlayerInput.value.trim() && !addPlayer(elements.dialogPlayerInput)) return;
-      startGame();
+      const context = playersDialogContext;
+      if (players.length < context.minimum || players.length > context.maximum) return;
+      elements.playersDialog.close();
+      context.onConfirm();
     });
     document.getElementById('closePlayersDialog').addEventListener('click', () => elements.playersDialog.close());
     elements.playersDialog.addEventListener('click', (event) => {
@@ -518,6 +566,7 @@
       if (elements.playersDialog.open) return;
       elements.dialogPlayerList.innerHTML = '';
       elements.dialogPlayerInput.value = '';
+      playersDialogContext = null;
     });
 
     elements.gameScreen.addEventListener('click', nextQuestion);
@@ -541,8 +590,8 @@
       card.addEventListener('click', () => activateModeCard(card));
     });
 
-    elements.undercoverButton.addEventListener('click', openUndercover);
-    elements.headsButton.addEventListener('click', openHeads);
+    elements.undercoverButton.addEventListener('click', () => requestGame('undercover', openUndercover));
+    elements.headsButton.addEventListener('click', () => requestGame('heads', openHeads));
   }
 
   function init() {
@@ -552,6 +601,7 @@
         modules.undercover.init({
           onExit: closeUndercover,
           getSuggestedNames: () => players.slice(),
+          editPlayers: (onConfirm) => openPlayersDialog(gamePlayersContext('undercover', onConfirm, true)),
         });
       }
     } catch (error) {
@@ -559,7 +609,8 @@
     }
     try {
       if (modules.heads && typeof modules.heads.init === 'function') {
-        modules.heads.init({ onExit: closeHeads, getSuggestedNames: () => players.slice() });
+        modules.heads.init({ onExit: closeHeads, getSuggestedNames: () => players.slice(),
+          editPlayers: (onConfirm) => openPlayersDialog(gamePlayersContext('heads', onConfirm, true)) });
       }
     } catch (error) {
       console.error('Devine Tête indisponible', error);

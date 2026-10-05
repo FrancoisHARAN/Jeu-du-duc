@@ -14,11 +14,11 @@
   <link rel="apple-touch-icon" sizes="180x180" href="image/app/apple-touch-icon.png?v=20261005i">
   <link rel="icon" type="image/png" sizes="32x32" href="image/app/favicon-32.png?v=20261005i">
   <link rel="stylesheet" href="styles/main.css?v=20261005o">
-  <link rel="stylesheet" href="styles/undercover.css?v=20261005a">
-  <link rel="stylesheet" href="styles/home.css?v=20261005p">
+  <link rel="stylesheet" href="styles/undercover.css?v=20261005q">
+  <link rel="stylesheet" href="styles/home.css?v=20261005q">
   <link rel="stylesheet" href="styles/pwa.css?v=20261005i">
   <link rel="stylesheet" href="styles/questions.css?v=20261005o">
-  <link rel="stylesheet" href="styles/heads-up.css?v=20261005o">
+  <link rel="stylesheet" href="styles/heads-up.css?v=20261005q">
 </head>
 <body>
   <main id="setup" class="home">
@@ -29,6 +29,19 @@
       <span class="home-edition">LES BONNES SOIRÉES COMMENCENT ICI</span>
       <span class="home-stamp">ENTRE POTES <span aria-hidden="true">✦</span></span>
     </header>
+
+    <section class="home-players" aria-labelledby="home-players-title">
+      <div class="home-player-window"><h2 id="home-players-title">Qui joue ?</h2><span>01 · LA BANDE</span></div>
+      <div class="home-player-content">
+        <label class="home-visually-hidden" for="playerInput">Prénom du joueur</label>
+        <form id="playerForm" class="player-input-container">
+          <input type="text" id="playerInput" placeholder="Prénom du joueur" autocomplete="off" autocapitalize="words" enterkeyhint="done" spellcheck="false">
+          <button id="addBtn" class="action-btn" type="submit" aria-label="Ajouter le joueur"><span class="home-add-label">Ajouter</span><span aria-hidden="true">+</span></button>
+        </form>
+        <div id="playerList" aria-label="Joueurs inscrits"></div>
+        <p class="home-player-note">La même bande pour Undercover, Devine Tête et tous les modes.</p>
+      </div>
+    </section>
 
     <section class="home-hero" aria-labelledby="home-title">
       <h1 id="home-title"><span class="home-visually-hidden">Le Jeu du Duc</span><img class="home-title-illustration" src="image/home/hero.webp" alt="" width="1448" height="1086" fetchpriority="high" decoding="async"></h1>
@@ -54,19 +67,6 @@
     </section>
 
     <div class="home-layout">
-      <section class="home-players" aria-labelledby="home-players-title">
-        <div class="home-player-window"><h2 id="home-players-title">Qui joue ?</h2><span>01 · LA BANDE</span></div>
-        <div class="home-player-content">
-          <label class="home-visually-hidden" for="playerInput">Prénom du joueur</label>
-          <form id="playerForm" class="player-input-container">
-            <input type="text" id="playerInput" placeholder="Prénom du joueur" autocomplete="off" autocapitalize="words" enterkeyhint="done" spellcheck="false">
-            <button id="addBtn" class="action-btn" type="submit" aria-label="Ajouter le joueur"><span class="home-add-label">Ajouter</span><span aria-hidden="true">+</span></button>
-          </form>
-          <div id="playerList" aria-label="Joueurs inscrits"></div>
-          <p class="home-player-note">2 joueurs minimum · 1 pour Culture G.</p>
-        </div>
-      </section>
-
       <section class="home-modes" aria-labelledby="home-modes-title">
         <div class="home-section-heading">
           <div><span class="home-eyebrow">02 · L'AMBIANCE</span><h2 id="home-modes-title">Choisis ton mode.</h2></div>
@@ -127,6 +127,7 @@
     </div>
 
     <footer class="home-footer"><span>LE JEU DU DUC <span aria-hidden="true">✦</span> À JOUER. À REJOUER.</span><span>LES MEILLEURS SOUVENIRS N'ONT PAS DE SCORE.</span></footer>
+  </main>
 
     <dialog id="playersDialog" class="home-player-dialog" aria-labelledby="playersDialogTitle" aria-describedby="playersDialogHelp">
       <header class="home-player-window">
@@ -153,7 +154,6 @@
         <button id="dialogStartBtn" class="action-btn" type="button">Lancer la partie<span class="home-start-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></button>
       </footer>
     </dialog>
-  </main>
 
   <div id="game" class="card game-screen hidden" data-category="debut">
     <header class="game-topbar">
@@ -214,9 +214,9 @@
   <script src="scripts/core/showQuestion.js?v=20261005a" defer></script>
 
   <!-- FEATURE MODULES -->
-  <script src="scripts/app/undercover.js?v=20261005a" defer></script>
-  <script src="scripts/app/heads-up.js?v=20261005o" defer></script>
-  <script src="scripts/app/main-game.js?v=20261005p" defer></script>
+  <script src="scripts/app/undercover.js?v=20261005q" defer></script>
+  <script src="scripts/app/heads-up.js?v=20261005q" defer></script>
+  <script src="scripts/app/main-game.js?v=20261005q" defer></script>
 
   <!-- DATA -->
   <script src="data/debut.text.js?v=20261005a" defer></script>

@@ -6,7 +6,8 @@ le lui font deviner pendant une manche chronométrée.
 
 ## Règles dans Jeu du duc
 
-- Au moins deux personnes, avec ou sans inscription des prénoms sur l’accueil.
+- Inscrire au moins deux prénoms en haut de l’accueil : la liste sert à tous les jeux.
+  Le bouton « Modifier les joueurs » de Devine Tête permet aussi de compléter cette même liste.
 - Choisir un ou plusieurs thèmes, ou saisir ses propres mots.
 - Manches de 30, 60, 90 ou 120 secondes ; 60 secondes par défaut.
 - Les amis donnent des indices sans prononcer le mot ni une partie du mot.
