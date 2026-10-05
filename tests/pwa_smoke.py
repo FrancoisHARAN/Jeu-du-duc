@@ -148,6 +148,19 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         assert audio['status'] == 206
         assert audio['range'] == f'bytes 0-31/{len(expected_audio)}'
         assert audio['bytes'] == list(expected_audio[:32])
+        for name in ['Alice', 'Bob', 'Chloe']:
+            page.locator(f'#playerList button[aria-label="Retirer {name}"]').click()
+        page.locator('[data-mode="culture"]').click()
+        page.locator('#startBtn').click()
+        expect(page.locator('#playersDialog')).to_be_visible()
+        page.locator('#dialogPlayerInput').fill('Alice')
+        page.locator('#dialogStartBtn').click()
+        expect(page.locator('#game')).to_be_visible()
+        page.locator('#backLogo').click()
+        for name in ['Bob', 'Chloe']:
+            page.locator('#playerInput').fill(name)
+            page.locator('#addBtn').click()
+        print('PASS: ajout de joueurs et lancement depuis le popup en mode avion', flush=True)
         page.locator('#headsBtn').click()
         assert page.evaluate('JDD.HEADS_DECKS.reduce((n, d) => n + d.words.length, 0)') == 420
         page.locator('input[name="hu-controls"][value="buttons"]').check()

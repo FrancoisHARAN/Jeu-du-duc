@@ -17,6 +17,13 @@
     headsScreen: document.getElementById('heads'),
     playerInput: document.getElementById('playerInput'),
     playerList: document.getElementById('playerList'),
+    playersDialog: document.getElementById('playersDialog'),
+    dialogPlayerInput: document.getElementById('dialogPlayerInput'),
+    dialogPlayerList: document.getElementById('dialogPlayerList'),
+    dialogMode: document.getElementById('playersDialogMode'),
+    dialogArt: document.getElementById('playersDialogArt'),
+    dialogStatus: document.getElementById('playersDialogStatus'),
+    dialogStartButton: document.getElementById('dialogStartBtn'),
     selectedModeLabel: document.getElementById('homeSelectedMode'),
     playerCount: document.getElementById('homePlayerCount'),
     typeBox: document.getElementById('typeBox'),
@@ -115,21 +122,35 @@
     }
   }
 
-  function addPlayer() {
-    const name = elements.playerInput.value.trim();
-    if (!name || players.length >= MAX_PLAYERS) {
-      return;
+  function rejectPlayer(input, message) {
+    input.classList.add('input-error');
+    input.select();
+    setTimeout(() => input.classList.remove('input-error'), 900);
+    if (input === elements.dialogPlayerInput) {
+      input.setAttribute('aria-invalid', 'true');
+      updatePlayersDialog(message);
+    }
+    return false;
+  }
+
+  function addPlayer(input = elements.playerInput) {
+    const name = input.value.trim();
+    if (!name) {
+      return input === elements.dialogPlayerInput ? rejectPlayer(input, 'Entre un prénom pour ajouter un joueur.') : false;
+    }
+    if (players.length >= MAX_PLAYERS) {
+      return rejectPlayer(input, `La bande est complète : ${MAX_PLAYERS} joueurs maximum.`);
     }
     if (players.some((existing) => existing.toLowerCase() === name.toLowerCase())) {
-      elements.playerInput.classList.add('input-error');
-      elements.playerInput.select();
-      setTimeout(() => elements.playerInput.classList.remove('input-error'), 900);
-      return;
+      return rejectPlayer(input, 'Ce prénom est déjà dans la bande. Choisis-en un autre.');
     }
     players.push(name);
-    elements.playerInput.value = '';
-    elements.playerInput.focus();
+    input.value = '';
+    input.classList.remove('input-error');
+    input.removeAttribute('aria-invalid');
+    input.focus();
     renderPlayerList();
+    return true;
   }
 
   function removePlayer(index) {
@@ -137,8 +158,8 @@
     renderPlayerList();
   }
 
-  function renderPlayerList() {
-    elements.playerList.innerHTML = '';
+  function renderPlayersInto(list) {
+    list.innerHTML = '';
     players.forEach((name, index) => {
       const item = document.createElement('div');
       item.className = 'player-item';
@@ -154,15 +175,56 @@
       removeButton.addEventListener('click', (event) => {
         event.stopPropagation();
         removePlayer(index);
+        if (list === elements.dialogPlayerList) elements.dialogPlayerInput.focus();
       });
 
       item.append(label, removeButton);
-      elements.playerList.appendChild(item);
+      list.appendChild(item);
     });
+  }
+
+  function renderPlayerList() {
+    renderPlayersInto(elements.playerList);
+    if (elements.playersDialog.open) {
+      renderPlayersInto(elements.dialogPlayerList);
+      updatePlayersDialog();
+    }
     if (elements.playerCount) {
       elements.playerCount.textContent = `${players.length} joueur${players.length > 1 ? 's' : ''}`;
     }
     savePlayers();
+  }
+
+  function minimumPlayers() {
+    return state.currentMode === 'culture' ? 1 : 2;
+  }
+
+  function updatePlayersDialog(error = '') {
+    const minimum = minimumPlayers();
+    const remaining = Math.max(0, minimum - players.length);
+    const count = `${players.length} joueur${players.length > 1 ? 's' : ''}`;
+    const note = !remaining ? 'La bande est prête !'
+      : `Ajoute encore ${remaining} joueur${remaining > 1 ? 's' : ''} pour lancer.`;
+    elements.dialogStatus.textContent = error || `${count} · ${note}`;
+    elements.dialogStatus.dataset.error = String(Boolean(error));
+    const draft = elements.dialogPlayerInput.value.trim();
+    const canAddDraft = draft && players.length < MAX_PLAYERS
+      && !players.some((name) => name.toLowerCase() === draft.toLowerCase());
+    // Le dernier prénom peut être ajouté directement avec « Lancer la partie ».
+    elements.dialogStartButton.disabled = players.length + (canAddDraft ? 1 : 0) < minimum;
+  }
+
+  function openPlayersDialog() {
+    const selectedCard = document.querySelector('.mode-card[data-mode].active');
+    elements.dialogMode.textContent = elements.selectedModeLabel.textContent;
+    elements.dialogArt.src = selectedCard.querySelector('img').src;
+    elements.dialogPlayerInput.value = '';
+    elements.dialogPlayerInput.classList.remove('input-error');
+    elements.dialogPlayerInput.removeAttribute('aria-invalid');
+    if (!elements.playersDialog.open) elements.playersDialog.showModal();
+    renderPlayersInto(elements.dialogPlayerList);
+    updatePlayersDialog();
+    elements.dialogPlayerInput.focus();
   }
 
   function setBackground(type) {
@@ -360,11 +422,11 @@
   }
 
   function startGame() {
-    const minimum = state.currentMode === 'culture' ? 1 : 2;
-    if (players.length < minimum) {
-      alert(minimum === 1 ? 'Ajoute au moins 1 joueur !' : 'Ajoute au moins 2 joueurs !');
+    if (players.length < minimumPlayers()) {
+      openPlayersDialog();
       return;
     }
+    if (elements.playersDialog.open) elements.playersDialog.close();
     elements.setupScreen.classList.add('hidden');
     elements.gameScreen.classList.remove('hidden');
     showQuestion();
@@ -432,6 +494,31 @@
       addPlayer();
     });
     document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('dialogPlayerForm').addEventListener('submit', (event) => {
+      event.preventDefault();
+      addPlayer(elements.dialogPlayerInput);
+    });
+    elements.dialogPlayerInput.addEventListener('input', () => {
+      elements.dialogPlayerInput.classList.remove('input-error');
+      elements.dialogPlayerInput.removeAttribute('aria-invalid');
+      updatePlayersDialog();
+    });
+    elements.dialogStartButton.addEventListener('click', () => {
+      if (elements.dialogPlayerInput.value.trim() && !addPlayer(elements.dialogPlayerInput)) return;
+      startGame();
+    });
+    document.getElementById('closePlayersDialog').addEventListener('click', () => elements.playersDialog.close());
+    elements.playersDialog.addEventListener('click', (event) => {
+      if (event.target !== elements.playersDialog) return;
+      const bounds = elements.playersDialog.getBoundingClientRect();
+      if (event.clientX < bounds.left || event.clientX > bounds.right
+        || event.clientY < bounds.top || event.clientY > bounds.bottom) elements.playersDialog.close();
+    });
+    elements.playersDialog.addEventListener('close', () => {
+      if (elements.playersDialog.open) return;
+      elements.dialogPlayerList.innerHTML = '';
+      elements.dialogPlayerInput.value = '';
+    });
 
     elements.gameScreen.addEventListener('click', nextQuestion);
     elements.backLogo.addEventListener('click', (event) => {

@@ -15,7 +15,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="image/app/favicon-32.png?v=20261005i">
   <link rel="stylesheet" href="styles/main.css?v=20261005o">
   <link rel="stylesheet" href="styles/undercover.css?v=20261005a">
-  <link rel="stylesheet" href="styles/home.css?v=20261005h">
+  <link rel="stylesheet" href="styles/home.css?v=20261005p">
   <link rel="stylesheet" href="styles/pwa.css?v=20261005i">
   <link rel="stylesheet" href="styles/questions.css?v=20261005o">
   <link rel="stylesheet" href="styles/heads-up.css?v=20261005o">
@@ -127,6 +127,32 @@
     </div>
 
     <footer class="home-footer"><span>LE JEU DU DUC <span aria-hidden="true">✦</span> À JOUER. À REJOUER.</span><span>LES MEILLEURS SOUVENIRS N'ONT PAS DE SCORE.</span></footer>
+
+    <dialog id="playersDialog" class="home-player-dialog" aria-labelledby="playersDialogTitle" aria-describedby="playersDialogHelp">
+      <header class="home-player-window">
+        <h2 id="playersDialogTitle">Qui joue ?</h2>
+        <button id="closePlayersDialog" class="home-dialog-close" type="button" aria-label="Fermer et revenir au menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </header>
+      <div class="home-dialog-content">
+        <div class="home-dialog-mode">
+          <img id="playersDialogArt" src="image/home/apero.webp" alt="" width="1254" height="1254" decoding="async">
+          <div><span>LA PARTIE VOUS ATTEND</span><strong id="playersDialogMode">Apéro chiantos</strong></div>
+        </div>
+        <p id="playersDialogHelp">Ajoute les prénoms, puis lance la partie.</p>
+        <label class="home-visually-hidden" for="dialogPlayerInput">Prénom du joueur</label>
+        <form id="dialogPlayerForm" class="player-input-container">
+          <input type="text" id="dialogPlayerInput" placeholder="Prénom du joueur" autocomplete="off" autocapitalize="words" enterkeyhint="done" spellcheck="false" aria-describedby="playersDialogStatus" autofocus>
+          <button id="dialogAddBtn" class="action-btn" type="submit" aria-label="Ajouter le joueur"><span aria-hidden="true">+</span></button>
+        </form>
+        <div id="dialogPlayerList" aria-label="Joueurs inscrits"></div>
+        <p id="playersDialogStatus" class="home-player-note" role="status" aria-live="polite"></p>
+      </div>
+      <footer class="home-dialog-footer">
+        <button id="dialogStartBtn" class="action-btn" type="button">Lancer la partie<span class="home-start-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></button>
+      </footer>
+    </dialog>
   </main>
 
   <div id="game" class="card game-screen hidden" data-category="debut">
@@ -190,7 +216,7 @@
   <!-- FEATURE MODULES -->
   <script src="scripts/app/undercover.js?v=20261005a" defer></script>
   <script src="scripts/app/heads-up.js?v=20261005o" defer></script>
-  <script src="scripts/app/main-game.js?v=20261005n" defer></script>
+  <script src="scripts/app/main-game.js?v=20261005p" defer></script>
 
   <!-- DATA -->
   <script src="data/debut.text.js?v=20261005a" defer></script>
