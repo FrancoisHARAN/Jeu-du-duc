@@ -157,8 +157,9 @@ button:hover {
   border-radius: .8rem;
   cursor: pointer;
   min-width: 0;
-  overflow-wrap: anywhere;
-  hyphens: auto;
+  overflow-wrap: normal;
+  -webkit-hyphens: none;
+  hyphens: none;
   line-height: 1.2;
   transition: transform .15s ease, filter .15s ease, background .15s ease;
 }

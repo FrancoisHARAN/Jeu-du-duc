@@ -297,8 +297,9 @@
       const box = word.parentElement;
       let size = Math.min(100, global.innerHeight * .23, global.innerWidth * .12);
       word.style.fontSize = `${size}px`;
-      while (size > 24 && (word.scrollWidth > box.clientWidth - 16 || word.scrollHeight > box.clientHeight - 40)) {
-        size -= 2;
+      // Les expressions passent à la ligne aux espaces. Un mot seul reste entier.
+      while (size > 2 && (word.scrollWidth > box.clientWidth - 16 || word.scrollHeight > box.clientHeight - 40)) {
+        size = Math.max(2, size - 2);
         word.style.fontSize = `${size}px`;
       }
     });

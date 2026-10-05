@@ -20,6 +20,9 @@ body.hu-playing { overflow: hidden; }
   font-size: 16px;
   line-height: 1.4;
   text-align: left;
+  -webkit-hyphens: none;
+  hyphens: none;
+  word-break: normal;
 }
 .hu-root * { min-width: 0; }
 .hu-root h1, .hu-root h2 { margin: 0; text-shadow: none; color: var(--hu-ink); font-weight: 900; line-height: 1.1; letter-spacing: -.7px; text-transform: none; }
@@ -116,7 +119,7 @@ body.hu-playing { overflow: hidden; }
 .hu-root .hu-word-card { display: grid; grid-template-rows: auto minmax(0, 1fr) 6px 20px; overflow: hidden; min-height: 0; border: 2px solid var(--hu-ink); border-radius: 16px; background: var(--hu-cream); box-shadow: 4px 4px 0 var(--hu-ink); }
 .hu-root .hu-word-card .hu-window { background: var(--hu-yellow); }
 .hu-root .hu-word-area { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 0; padding: 12px 16px; text-align: center; }
-.hu-root #hu-word { width: 100%; margin: 0; font-size: clamp(32px, 10vw, 100px); line-height: 1.05; font-weight: 900; overflow-wrap: anywhere; }
+.hu-root #hu-word { width: 100%; margin: 0; font-size: clamp(32px, 10vw, 100px); line-height: 1.05; font-weight: 900; overflow-wrap: normal; }
 .hu-root #hu-feedback-hint { margin: 0; font-size: 13px; font-weight: 700; }
 .hu-root #hu-feedback-hint:empty { display: none; }
 .hu-root .hu-word-card[data-feedback="correct"] { background: var(--hu-green); }
