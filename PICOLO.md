@@ -3,9 +3,22 @@
 `Jeu_a_boire_Picolo_regles_fr.xlsx` (5 569 règles, packs default, silly, war,
 hot et bar) est ajouté aux cartes de soirée, sans retirer les cartes existantes.
 
+## Cartes retirées
+
+À la demande du propriétaire, `tools/picolo_excluded.json` écarte :
+- tout le pack **bar** (447 défis avec des inconnus dans un bar) ;
+- les 510 cartes « poste une phrase ou une story… #picoloapp », faites pour la pub de l'appli ;
+- les cartes de pub (« si tu n'as pas l'appli », « note-la 5 étoiles »…) et celles où il faut
+  agir sur les réseaux sociaux ou se servir de son téléphone (publier, liker, ajouter en ami, envoyer un snap,
+  un texto ou une photo, lire ses SMS, prêter son portable…) ;
+- les défis où il faut sortir ou aller voir des voisins ou des inconnus.
+
+Les aveux sur ses habitudes (« Ceux qui ont déjà posté bourrés sur un réseau social boivent »),
+les jeux de listes et les « tu préfères » qui parlent de réseaux sociaux restent.
+
 ## Répartition
 
-Chaque carte de départ (5 066) a été classée selon son contenu dans l'une des
+Chaque carte de départ a été classée selon son contenu dans l'une des
 trois catégories, avec son type (Vérité, Action ou Tout le monde) :
 
 - **Apéro chiantos** : questions, « tu préfères », jeux de listes et de culture,
@@ -13,7 +26,7 @@ trois catégories, avec son type (Vérité, Action ou Tout le monde) :
 - **Sexy pas raffiné** : tout ce qui touche au sexe, à la nudité, à la drague
   ou aux bisous, quel que soit le pack d'origine.
 - **Torgnole express** : les cartes où l'on boit et fait boire, cul sec, défis
-  trash ou extrêmes, défis de bar avec des inconnus.
+  trash ou extrêmes.
 
 Le classement est enregistré dans `tools/picolo_classification.json`.
 Les 503 cartes de suite (fins de règle, suites de mini-jeux) suivent la

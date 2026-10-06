@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Importe les règles du classeur Picolo dans data/picolo.cards.js.
 
+Les cartes listées dans tools/picolo_excluded.json (pack bar, stories, pub, réseaux sociaux) sont ignorées.
+
 Usage : python tools/import_picolo_workbook.py /chemin/Jeu_a_boire_Picolo_regles_fr.xlsx
 
 Les textes sont convertis au format du jeu ({p1}… joueurs, {n} gorgées, {team} équipe, « cul sec »).
@@ -75,7 +77,13 @@ def load(src):
 def build(src):
     root = Path(__file__).resolve().parents[1]
     classification = json.loads((root / 'tools/picolo_classification.json').read_text(encoding='utf-8'))
+    # cartes retirées à la demande du propriétaire : pack bar, stories et pub de l'appli, actions sur les réseaux
+    excluded = json.loads((root / 'tools/picolo_excluded.json').read_text(encoding='utf-8'))
     cards = load(src)
+    removed = {c['id'] for c in cards if c['pack'] in excluded['packs_exclus'] or str(c['id']) in excluded['cartes']}
+    removed_keys = {c['key'] for c in cards if c['id'] in removed and c['key']}
+    cards = [c for c in cards if c['id'] not in removed and c['parent'] not in removed_keys]
+    print(f'{len(removed)} cartes retirées (et les suites de {len(removed_keys)} règles)')
     kids = collections.defaultdict(list)
     for c in cards:
         if c['parent']:
