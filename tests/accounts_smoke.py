@@ -363,6 +363,7 @@ try:
 
         # Foot : les points de l'équipe sont attribués aux comptes du départ,
         # même si leurs profils ont été retirés de la bande pendant la partie.
+        page.evaluate('window.footNow=Date.now;window.footOffset=0;Date.now=()=>footNow()+footOffset')
         page.locator('#footballBtn').click()
         expect(page.locator('#football')).to_have_attribute('data-screen','setup')
         page.locator('[name="foot-format"][value="teams"]').check()
@@ -370,15 +371,20 @@ try:
         page.locator('[data-foot-team="1"]').select_option('0')  # François compte
         page.locator('[data-foot-team="2"]').select_option('0')  # Axel compte
         page.locator('[data-foot="start"]').click()
-        football_id=page.evaluate('JSON.parse(localStorage.getItem("jdd.football.v1")).cloud.id')
+        football_id=page.evaluate('JSON.parse(localStorage.getItem("jdd.football.v2")).cloud.id')
         page.evaluate('JDD.clearAccountPlayers()')
         control['block_rpc']=True
-        for i in range(10):
+        for camp in range(2):
             page.locator('[data-foot="begin"]').click()
-            page.locator('[data-foot="reveal"]').click()
-            action = 'correct' if i%2==0 else 'wrong'
-            page.locator(f'[data-foot="{action}"]').click()
-            page.locator('[data-foot="next"]').click()
+            for _ in range(5):
+                action='correct' if camp==0 else 'wrong'
+                page.locator(f'[data-foot="{action}"]').click()
+                expect(page.locator('#football')).to_have_attribute('data-screen','feedback')
+                page.evaluate('footOffset+=600')
+                expect(page.locator('#football')).to_have_attribute('data-screen','playing')
+            page.evaluate('footOffset+=61000')
+            expect(page.locator('#football')).to_have_attribute('data-screen','results' if camp else 'round-end')
+            if camp==0: page.locator('[data-foot="next"]').click()
         expect(page.locator('#football')).to_have_attribute('data-screen','results')
         page.wait_for_function('() => JDDCloud.status().state === "error"')
         queued=page.evaluate('JSON.parse(localStorage.getItem("jdd.cloud-outbox.v1"))')
@@ -386,16 +392,31 @@ try:
         assert {p['account_id'] for p in event['participants']}=={A,B}
         assert all(p['metrics']['points']==5 and p['metrics']['correct_answers']==5 and p['metrics']['wins']==1 for p in event['participants'])
         assert 'invité' not in json.dumps(event['payload']) and 'Axel' not in json.dumps(event['payload'])
+        # Une correction hors connexion remplace la révision en attente.
+        page.locator('[data-foot="var"]').click()
+        page.locator('#foot-review-round').select_option('0')
+        page.locator('[data-foot-review="0"][data-result="wrong"]').click()
+        revised=next(e for e in page.evaluate('JSON.parse(localStorage.getItem("jdd.cloud-outbox.v1"))') if e['id']==football_id)
+        assert revised['id']==football_id and revised['revision']==2
+        assert all(p['metrics']['points']==4 and p['metrics']['games']==1 for p in revised['participants'])
         control['block_rpc']=False
         page.evaluate('JDDCloud.flush()'); settled(page)
         assert len([e for e in events if e==football_id])==1
+        assert events[football_id]['p_revision']==2
+        # Une correction après synchronisation met à jour la même partie.
+        page.locator('[data-foot-review="0"][data-result="correct"]').click()
+        settled(page)
+        assert events[football_id]['p_revision']==3
+        assert all(p['metrics']['games']==1 and p['metrics']['points']==5 and p['metrics']['turns']==1 for p in events[football_id]['p_participants'])
+        page.locator('[data-foot="close-var"]').click()
+        page.evaluate('Date.now=footNow')
         page.locator('[data-foot="exit"]').click()
         page.locator('#statisticsPlayer').select_option(B)
         page.locator('.account-mode-stats--football summary').click()
         expect(page.locator('.account-mode-stats--football')).to_contain_text('Bonnes réponses')
         expect(page.locator('.account-mode-stats--football dd').nth(2)).to_have_text('5')
         add_account(page,A); add_account(page,B)
-        print('PASS: foot en équipes, comptes du départ, invité homonyme exclu et synchronisation après coupure',flush=True)
+        print('PASS: foot 60 s en équipes, identités du départ, invité homonyme exclu et VAR synchronisée sans doubler les parties',flush=True)
 
         # Photo réencodée et stockée sous le dossier du propriétaire.
         page.locator('#accountButton').click()

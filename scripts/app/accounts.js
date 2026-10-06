@@ -187,7 +187,7 @@
       const relevant = mode === 'undercover' ? ['games','wins','white_wins','undercover_wins','civil_wins','points']
         : mode === 'heads' ? ['games','words_found','words_passed','points']
         : mode === 'geography' ? ['games','wins','turns','correct_places','perfect_places','points','distance_km']
-        : mode === 'football' ? ['games','wins','points','turns','correct_answers']
+        : mode === 'football' ? ['games','wins','points','turns','questions_answered','correct_answers']
         : mode === 'culture' ? ['games','questions_answered','correct_answers','answers_revealed'] : ['games','cards_seen'];
       relevant.forEach(metric => {
         const value = rows.find(r => r.mode === mode && r.metric === metric)?.total || 0;

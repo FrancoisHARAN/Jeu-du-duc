@@ -23,45 +23,64 @@ python tools/import-football.py /chemin/Questions_football_jeu_du_duc_fr.xlsx
 
 La banque est le contenu fourni, sans vérification factuelle externe. Les
 questions datées ou portant sur des records restent celles du classeur.
-Le tirage évite de poser deux fois le même texte de question dans une partie,
+Le tirage évite de poser deux fois le même texte de question dans une manche,
 même si le classeur contient plusieurs exemplaires. Un thème sans sélection
 signifie tous les thèmes ; plusieurs thèmes cochés sont réunis.
 
 ## Parties
 
-- **Classique** : alternance des joueurs ou équipes, réponse orale en 30 s,
-  puis l'arbitre vérifie et valide « Bonne réponse » (+1) ou « Mauvaise réponse »
-  (0). « Personne ne trouve » et le temps écoulé valent 0.
-- **Shotgun** : même question pour tous. L'arbitre garde le téléphone, écoute
-  les réponses, ouvre la réponse avant la fin des 30 s puis attribue 1 point
-  au premier joueur ou à la première équipe ayant répondu juste. « Personne »
-  ou le temps écoulé valent 0. L'arbitrage repose sur l'ordre des réponses
+- **Classique** : chaque joueur ou équipe dispose de 60 secondes pour répondre
+  oralement à autant de questions que possible. Le camp adverse tient le
+  téléphone et voit la question avec sa réponse. Un appui sur « Correct »
+  rapporte 1 point ; « Incorrect » et « Passer » valent 0. Le retour visuel
+  vert, rose ou jaune dure 0,5 seconde, puis la question suivante apparaît
+  automatiquement. Ces 0,5 seconde font partie des 60 secondes.
+- **Shotgun** : 60 secondes de questions communes à tous. L'arbitre garde
+  le téléphone et touche directement le nom du premier joueur ou de la
+  première équipe ayant répondu juste (+1). Il peut passer une question.
+  L'arbitrage repose sur l'ordre des réponses
   entendues : aucun buzzer à distance ou connexion simultanée n'est nécessaire.
 - **Équipes** : deux équipes préremplies et modifiables ; chaque équipe doit
   avoir au moins un membre. Un bouton mélange les joueurs de façon équilibrée.
-- **Durée** : cible de 10 ou 20 questions ; le classique arrondit au nombre de
-  camps pour donner autant de tours à tous. Si le filtre contient moins de
-  questions distinctes, la partie utilise le nombre disponible en conservant
-  cette équité ; impossible de lancer si aucun tour complet n'est possible.
-- **Chrono** : démarre uniquement lorsque l'on affiche la question. La vérification
-  arrête le chrono. Masquer l'application ou revenir au menu met la question
+- **Durée** : 1 ou 2 tours. En classique, chaque camp joue une manche de
+  60 secondes par tour ; en Shotgun, chaque tour est une manche commune.
+  Aucun nombre de questions ne limite la partie. Une fois le filtre épuisé,
+  aucune question n'est répétée avant la prochaine manche ; le chrono termine
+  ses 60 secondes. Un filtre vide empêche de lancer la partie.
+- **Difficulté** : Amateur, Connaisseur, Expert ou Footix ; « Tous les niveaux »
+  mélange les difficultés du classeur dans le même tirage.
+- **Chrono** : démarre sur « GO ! » et continue pendant les validations. À zéro,
+  le bilan apparaît automatiquement ; une réponse encore ouverte ne compte
+  pas comme incorrecte. Masquer l'application ou revenir au menu met la manche
   en pause ; reprendre demande un geste explicite. Le classement conserve les
   égalités et ne désigne aucun vainqueur quand tous les scores sont nuls.
+- **VAR** : l'icône en haut à droite du bilan et du classement permet de
+  corriger les réponses de n'importe quelle manche déjà jouée. Le score,
+  le classement et les statistiques sont recalculés. En Shotgun, on peut
+  changer le camp qui reçoit le point. Les corrections sont conservées
+  immédiatement et restent accessibles via « Dernier classement ».
 
-Une partie en cours est enregistrée sous `jdd.football.v1` avec son tirage,
+Une partie en cours est enregistrée sous `jdd.football.v2` avec son tirage,
 ses scores, ses équipes et les identités du départ. Les préférences utilisent
-`jdd.football.settings.v1`. La banque, l'illustration et les fichiers du jeu
+`jdd.football.settings.v1`. L'ancienne sauvegarde v1 est conservée sans être
+reprise dans les nouvelles règles. La banque, l'illustration et les fichiers du jeu
 sont précachés par le service worker ; le jeu fonctionne en mode avion après
 une première installation complète.
 
 ## Statistiques et validation
 
 Les résultats des comptes sont envoyés en fin de partie via `JDDCloud`, avec
-un événement unique et une révision : les réessais ne doublent pas les points.
-Les invités gardent uniquement le résultat local. En équipes, les tours et
-points reviennent à chaque membre ; en Shotgun, un tour est une question
-proposée à tous, et seule une réponse correcte validée est comptée comme
+un événement unique et une révision : les réessais et corrections VAR ne
+doublent pas les parties. Une correction après la fin envoie une nouvelle
+révision du même événement, y compris après une coupure de connexion.
+Les invités gardent uniquement le résultat local. En équipes, les manches et
+points reviennent à chaque membre ; un tour joué correspond désormais à une
+manche de 60 secondes. En classique, les réponses validées correctes ou
+incorrectes comptent dans « Questions répondues », et les passes sont exclues.
+En Shotgun, seule une réponse correcte attribuée à un camp est comptée comme
 réponse donnée. L'application ne devine pas le nombre d'essais oraux ratés.
+Le détail complet reste sur le téléphone ; le cloud reçoit les totaux et
+les 500 dernières décisions sous forme compacte, sans noms d'invités.
 Les réponses sont arbitrées entre amis, sans prétention d'anti-triche.
 
 L'extension SQL `202610060002_football.sql` doit être appliquée après la migration

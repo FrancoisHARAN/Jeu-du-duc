@@ -289,6 +289,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
             page.locator('[data-geo="exit"]').click()
         print('PASS: trois cartes vectorielles et données géographiques hors connexion', flush=True)
         # Banque du classeur et les deux variantes du quiz disponibles en mode avion.
+        page.evaluate('window.footNow=Date.now;window.footOffset=0;Date.now=()=>footNow()+footOffset')
         for mode in ['classic', 'shotgun']:
             page.locator('#footballBtn').click()
             expect(page.locator('#football')).to_have_attribute('data-screen', 'setup')
@@ -297,15 +298,26 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
             page.locator('[data-foot="begin"]').click()
             expect(page.locator('#football')).to_have_attribute('data-screen', 'playing')
             assert page.locator('.foot-question').inner_text().strip()
-            page.locator('[data-foot="reveal"]').click()
             assert page.locator('.foot-answer').inner_text().strip()
             if mode == 'classic':
                 page.locator('[data-foot="correct"]').click()
             else:
                 page.locator('[data-foot-award="1"]').click()
-            expect(page.locator('#football')).to_have_attribute('data-screen', 'answer')
+            expect(page.locator('#football')).to_have_attribute('data-screen', 'feedback')
+            expect(page.locator('#football')).to_have_attribute('data-screen', 'playing')
+            page.evaluate('footOffset+=61000')
+            expect(page.locator('#football')).to_have_attribute('data-screen', 'round-end' if mode=='classic' else 'results')
+            page.locator('[data-foot="var"]').click()
+            if mode=='classic':
+                page.locator('[data-foot-review="0"][data-result="wrong"]').click()
+            else:
+                page.locator('[data-foot-review-winner="0"]').select_option('0')
+            scores=page.evaluate('JSON.parse(localStorage.getItem("jdd.football.v2")).scores')
+            assert scores[0]==(0 if mode=='classic' else 1) and scores[1]==0
+            page.locator('[data-foot="close-var"]').click()
             page.locator('[data-foot="exit"]').click()
-        print('PASS: quiz foot classique et Shotgun avec réponses et scores hors connexion', flush=True)
+        page.evaluate('Date.now=footNow')
+        print('PASS: quiz foot classique et Shotgun, chrono, scores et VAR hors connexion', flush=True)
         expect(page.locator('#setup')).to_be_visible()
         for mode in ['debut', 'hardcore', 'alcool', 'culture', 'custom']:
             page.locator(f'[data-mode="{mode}"]').click()

@@ -52,7 +52,10 @@ sa politique réseau actuelle.
    déjà appliquée ; conserver son historique pour les évolutions suivantes.
    Exécuter ensuite `supabase/migrations/202610060002_football.sql` pour
    autoriser les résultats du Grand Quiz Foot. Si la première migration est
-   déjà appliquée, exécuter uniquement cette deuxième migration.
+  déjà appliquée, exécuter uniquement cette deuxième migration.
+   Les manches de foot de 60 secondes et la VAR réutilisent cette migration :
+   une correction envoie une nouvelle révision du même résultat, sans ajouter
+   de partie. Les statistiques incluent les questions répondues et correctes.
 2. Dans **Authentication → URL Configuration**, définir le Site URL sur
    `https://francoisharan.github.io/Jeu-du-duc/` et ajouter cette même URL aux
    Redirect URLs. Pour une prévisualisation, autoriser explicitement son URL
