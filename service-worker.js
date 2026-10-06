@@ -5,7 +5,7 @@
  */
 const APP_ROOT = new URL('./', self.location.href);
 const CACHE_PREFIX = `jeu-du-duc-${encodeURIComponent(APP_ROOT.pathname)}-`;
-const CACHE_NAME = `${CACHE_PREFIX}2026-10-06-v19`;
+const CACHE_NAME = `${CACHE_PREFIX}2026-10-06-v20`;
 const QUIZ_IMAGES_ORIGIN = 'https://quizimagescm.s3.eu-west-3.amazonaws.com';
 const SHELL_FILES = [
   './',
@@ -35,6 +35,8 @@ const SHELL_FILES = [
   'data/culture.text.js',
   'data/culture.mcq.js',
   'data/culture.imported.js',
+  'data/culture.quiz360.js',
+  'data/culture.quiz360.images.json',
   'data/rapidite.questions.js',
   'data/undercover.pairs.js',
   'data/heads.words.js',
@@ -71,6 +73,10 @@ self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
     await cache.addAll(SHELL_FILES.map((file) => new Request(new URL(file, APP_ROOT), { cache: 'no-cache' })));
+    // Les photos Quiz360 sont livrées avec le jeu, même celles jamais consultées.
+    const imageList = await cache.match(new URL('data/culture.quiz360.images.json', APP_ROOT));
+    const images = await imageList.json();
+    await cache.addAll(images.map((file) => new Request(new URL(file, APP_ROOT), { cache: 'no-cache' })));
     await self.skipWaiting();
   })());
 });

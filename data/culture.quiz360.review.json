@@ -1,0 +1,68 @@
+[
+  {
+    "question": {
+      "id": "quiz360-1623",
+      "category": "General",
+      "question": "L'anthophobie est la peur :",
+      "source": {
+        "name": "Quiz360",
+        "localId": 1623,
+        "type": "Texte",
+        "level": 99,
+        "target": "all"
+      },
+      "choices": [
+        "Des contacts humains",
+        "De l'eau",
+        "Des lieux fermés",
+        "Du vide"
+      ],
+      "answerIndex": 0
+    },
+    "reason": "Le même énoncé sur l’anthophobie donne les contacts humains ici, mais les fleurs à la ligne 1622. Terme ou réponse à vérifier avant de jouer."
+  },
+  {
+    "question": {
+      "id": "quiz360-4671",
+      "category": "General",
+      "question": "Quelle est la deuxième plus grande ville francophone au monde",
+      "source": {
+        "name": "Quiz360",
+        "localId": 4671,
+        "type": "Texte",
+        "level": 6,
+        "target": "all"
+      },
+      "choices": [
+        "Paris",
+        "Aix-la-Chapelle",
+        "Athènes",
+        "Bangkok"
+      ],
+      "answerIndex": 0
+    },
+    "reason": "Deuxième plus grande ville francophone : Paris ici, Montréal à la ligne 4921. Date et périmètre non précisés."
+  },
+  {
+    "question": {
+      "id": "quiz360-4921",
+      "category": "General",
+      "question": "Quelle est la deuxième plus grande ville francophone au monde",
+      "source": {
+        "name": "Quiz360",
+        "localId": 4921,
+        "type": "Texte",
+        "level": 99,
+        "target": "all"
+      },
+      "choices": [
+        "Montréal",
+        "Paris",
+        "Versailles",
+        "Alger"
+      ],
+      "answerIndex": 0
+    },
+    "reason": "Deuxième plus grande ville francophone : Montréal ici, Paris à la ligne 4671. Date et périmètre non précisés."
+  }
+]

@@ -62,3 +62,60 @@ Le script vérifie les colonnes et les images attendues avant d'écrire la banqu
 Il ne modifie pas les autres fichiers de questions. Après un nouvel import,
 versionner les assets dans `index.html`, incrémenter le cache du service worker,
 puis exécuter `python tests/culture_smoke.py` et `python tests/pwa_smoke.py`.
+
+## Vague Quiz360 du 6 octobre 2026
+
+L'archive `Quiz360_questions_fr_dechiffrees.zip` est ajoutée séparément dans
+`data/culture.quiz360.js`, sans remplacer les banques précédentes. Sur ses
+6 950 lignes, 6 947 sont jouables :
+
+- 6 026 QCM textuels ;
+- 359 QCM illustrés ;
+- 562 vrai/faux, traduits en boutons « Vrai » / « Faux ».
+
+La première proposition du classeur est la bonne réponse pour les QCM ;
+elle est mélangée à l'affichage par le système existant. Pour les vrai/faux,
+`true` correspond à Vrai et `false` à Faux, sans inverser le résultat.
+Les catégories originales (y compris la catégorie absente de la ligne 5179),
+identifiants, niveaux, types, cibles et métadonnées sont conservés dans le code.
+Les trois doublons exacts du fichier restent conservés avec leurs identifiants.
+Aucune réécriture éditoriale des questions n'a été effectuée.
+
+Les libellés des questions illustrées nomment souvent ce qui est montré
+(« Petunia », « Zimbabwe »…) : ils restent dans les données, mais le jeu
+affiche son invitation neutre existante pour ne pas donner la réponse.
+Chaque photo est reliée à sa ligne et chaque bonne réponse reste reliée
+à sa question lors du mélange des propositions.
+
+Les 336 photos fournies sont copiées sans modification dans
+`image/culture/quiz360/`. Leur liste `data/culture.quiz360.images.json` est
+chargée par le worker à l'installation ; toutes les photos sont mises en
+cache, même si leur question n'a jamais été vue. Cette vague fonctionne
+donc entièrement hors connexion après la première installation du cache
+avec Internet. Les limites des anciennes photos externes restent décrites
+plus haut. Le cache v20 remplace les anciens caches ; le réseau reste
+prioritaire pour récupérer les futurs changements.
+
+Trois lignes contradictoires ont été signalées au propriétaire et conservées
+dans `data/culture.quiz360.review.json`, sans les faire apparaître en partie :
+
+- 1623 : l'anthophobie est associée aux contacts humains, contre les fleurs
+  à la ligne 1622 ;
+- 4671 et 4921 : la deuxième plus grande ville francophone est tantôt Paris,
+  tantôt Montréal, sans date ni périmètre.
+
+Leur contenu original n'est pas supprimé ni corrigé automatiquement. Les
+motifs sont dans `tools/quiz360_review.json`. Pour reproduire l'import après
+extraction complète du ZIP :
+
+```sh
+python tools/import_quiz360_workbook.py /chemin/Quiz360_questions_fr_dechiffrees.xlsx
+```
+
+Le script nécessite `openpyxl` et `Pillow`, vérifie les colonnes, les réponses,
+les identifiants et toutes les images avant d'écrire la banque. Une éventuelle
+validation explicite des lignes signalées permet l'option `--include-review`.
+Les tests Culture G. contrôlent les 607 questions visuelles des deux imports,
+les 562 nouveaux vrai/faux, le mélange des réponses et le rendu mobile.
+Le test PWA vérifie aussi les 336 vraies photos hors ligne sous
+`/Jeu-du-duc/`, puis les mises à jour et la suppression des anciens caches.

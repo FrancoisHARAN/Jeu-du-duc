@@ -29,6 +29,31 @@ for q in bank:
     if q.get('choiceImages'):
         assert len(q['choiceImages']) == 4 and all(q['choiceImages'])
 print('PASS: 7 632 lignes, 36 catégories, 248 questions visuelles et quatre réponses par question', flush=True)
+quiz360 = [json.loads(line.strip().rstrip(',')) for line in
+           (REPO / 'data/culture.quiz360.js').read_text().splitlines() if line.lstrip().startswith('{')]
+review = json.loads((REPO / 'data/culture.quiz360.review.json').read_text())
+assert len(quiz360) + len(review) == 6950
+assert len({q['id'] for q in [*quiz360, *(entry['question'] for entry in review)]}) == 6950
+assert not {q['id'] for q in quiz360} & {entry['question']['id'] for entry in review}
+assert sum(bool(q.get('image')) for q in quiz360) == 359
+assert sum(q.get('vf', False) for q in quiz360) == 562
+local_images = json.loads((REPO / 'data/culture.quiz360.images.json').read_text())
+assert len(set(local_images)) == len(local_images) == 336
+assert set(local_images) == {q['image'] for q in quiz360 if q.get('image')}
+for q in quiz360:
+    assert q['source']['name'] == 'Quiz360' and q['source']['localId']
+    assert 'category' in q and 'target' in q['source'] and 'level' in q['source']
+    assert len(q['choices']) == len(set(q['choices'])) == (2 if q.get('vf') else 4)
+    if q.get('vf'):
+        assert q['choices'] == ['Vrai', 'Faux']
+        assert q['answerIndex'] == (0 if q['source']['originalAnswer'] == 'true' else 1)
+    else:
+        assert q['answerIndex'] == 0
+for asset in local_images:
+    with Image.open(REPO / asset) as image:
+        image.verify()
+print(f'PASS: {len(quiz360)} questions Quiz360, 562 vrai/faux, 336 images décodables et {len(review)} lignes en attente', flush=True)
+all_imported = bank + quiz360
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -66,7 +91,7 @@ try:
                        lambda route: route.fulfill(content_type='image/png', body=fixture.getvalue()))
             page.goto(base, wait_until='load')
             page.evaluate('''() => {
-              window.imported = JDD.DATA.cultureMcq.filter(q => q.id && q.id.startsWith('classeur-'));
+              window.imported = JDD.DATA.cultureMcq.filter(q => q.id && /^(classeur|quiz360)-/.test(q.id));
               window.originalBank = JSON.stringify(imported);
               window.testQuestion = imported.find(q => !q.image && !q.choiceImages);
               JDD.DATA.culture = [];
@@ -81,7 +106,7 @@ try:
         def render(page, question):
             page.evaluate('question => { testQuestion = question; }', question)
             page.locator('.game-next-hint').dispatch_event('click', {'clientX': page.viewport_size['width'] - 1})
-            expect(page.locator('.mcq-btn')).to_have_count(4)
+            expect(page.locator('.mcq-btn')).to_have_count(len(question['choices']))
             expect(page.locator('.mcq-btn').first).to_be_enabled()
 
         def verify_answer(page, question, choose_wrong=False):
@@ -94,8 +119,8 @@ try:
             else:
                 shown = buttons.all_text_contents()
                 assert sorted(shown) == sorted(question['choices'])
-                correct = shown.index(question['choices'][0])
-            selected = (correct + 1) % 4 if choose_wrong else correct
+                correct = shown.index(question['choices'][question['answerIndex']])
+            selected = (correct + 1) % len(question['choices']) if choose_wrong else correct
             buttons.nth(selected).click()
             expect(buttons.nth(correct)).to_have_class(re.compile(r'mcq-correct'))
             expect(page.locator('.mcq-correct')).to_have_count(1)
@@ -104,9 +129,9 @@ try:
             return correct
 
         context, page = new_page()
-        assert page.evaluate('imported.length') == 7632
+        assert page.evaluate('imported.length') == len(all_imported)
         # Tous les médias du classeur sont liés à leur question / leur réponse.
-        for i, question in enumerate(q for q in bank if q.get('image') or q.get('choiceImages')):
+        for i, question in enumerate(q for q in all_imported if q.get('image') or q.get('choiceImages')):
             render(page, question)
             if question.get('image'):
                 expect(page.locator('#questionMedia')).to_be_visible()
@@ -114,6 +139,7 @@ try:
                 prompt = question.get('imageTitle') or 'Quelle est la bonne réponse pour cette image ?'
                 assert prompt[0].lower() + prompt[1:] in page.locator('#currentQuestion').inner_text()
                 assert question['question'] not in page.locator('#currentQuestion').inner_text()
+                assert page.locator('#questionMedia img').evaluate('img => img.naturalWidth > 0')
             else:
                 expect(page.locator('#questionMedia')).to_be_hidden()
             expect(page.locator('#questionMediaStatus')).to_be_hidden()
@@ -121,14 +147,26 @@ try:
             expect(page.locator('#typeBox')).to_have_text('CULTURE G.')
             verify_answer(page, question, choose_wrong=i % 2 == 0)
         assert page.evaluate('JSON.stringify(imported) === originalBank')
-        print('PASS: les 248 questions visuelles, leurs 290 photos et la bonne réponse restent associées après mélange', flush=True)
+        print('PASS: les 607 questions visuelles, les vraies images locales et les bonnes réponses restent associées après mélange', flush=True)
+
+        for i, question in enumerate(q for q in quiz360 if q.get('vf')):
+            render(page, question)
+            expect(page.locator('.mcq-btn').first).to_have_text('Vrai')
+            expect(page.locator('.mcq-btn').last).to_have_text('Faux')
+            expect(page.locator('#currentQuestion')).to_contain_text(question['question'])
+            expect(page.locator('#questionMedia')).to_be_hidden()
+            verify_answer(page, question, choose_wrong=i % 2 == 0)
+        print('PASS: les 562 vrai/faux conservent leur vérité, affichent deux boutons et corrigent les erreurs', flush=True)
 
         text_question = bank[248]
-        positions = set()
-        for _ in range(40):
-            render(page, text_question)
-            positions.add(verify_answer(page, text_question))
-        assert positions == {0, 1, 2, 3}, positions
+        new_text_question = next(q for q in quiz360 if not q.get('image') and not q.get('vf'))
+        for question in [text_question, new_text_question, quiz360[0]]:
+            positions = set()
+            for _ in range(40):
+                render(page, question)
+                positions.add(verify_answer(page, question))
+            assert positions == {0, 1, 2, 3}, positions
+        render(page, new_text_question)
         expect(page.locator('#questionMedia')).to_be_hidden()
         assert page.locator('#questionMedia img').count() == 0
         print('PASS: bonne réponse dans chacune des quatre positions, mauvaises réponses et nettoyage des anciennes photos', flush=True)
@@ -160,11 +198,11 @@ try:
         context.close()
         print('PASS: image absente, réponses bloquées, réessai et passage à la question suivante', flush=True)
 
-        long_questions = [q for q in bank if not q.get('image') and not q.get('choiceImages') and
+        long_questions = [q for q in all_imported if not q.get('image') and not q.get('choiceImages') and
                           any(len(word) > 21 for text in [q['question'], *q['choices']] for word in re.split(r'\s+', text))]
         for width, height in [(320, 568), (360, 640), (393, 852), (430, 932), (568, 320), (852, 393), (1440, 900)]:
             context, page = new_page(width, height)
-            for question in [bank[0], bank[2], *long_questions]:
+            for question in [bank[0], bank[2], quiz360[0], quiz360[40], new_text_question, *long_questions]:
                 render(page, question)
                 page.wait_for_function('''() => document.documentElement.scrollWidth <= innerWidth + 1 &&
                   [...document.querySelectorAll('#currentQuestion, .mcq-btn, .mcq-label')]
@@ -174,6 +212,8 @@ try:
                     assert image.evaluate('el => el.naturalWidth > 0 && getComputedStyle(el).objectFit === "contain"')
                 if width == 393 and question['id'] in ['classeur-1', 'classeur-3']:
                     page.screenshot(path=str(OUT / f'{question["id"]}.png'), full_page=True)
+                if width == 393 and question['id'] == 'quiz360-1':
+                    page.screenshot(path=str(OUT / 'quiz360-flower.png'), full_page=True)
             context.close()
             print(f'PASS {width}×{height}: photos entières, quatre cartes, noms longs et URL sans débordement', flush=True)
 

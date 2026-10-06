@@ -138,7 +138,10 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           const cache = await caches.open(name);
           return (await cache.keys()).map(r => r.url);
         }''', cache)
-        assert len(shell) == 57, (len(shell), shell)
+        quiz360_images = json.loads((site / 'data/culture.quiz360.images.json').read_text())
+        assert len(shell) == 59 + len(quiz360_images), (len(shell), shell)
+        for file in ['data/culture.quiz360.js', 'data/culture.quiz360.images.json', *quiz360_images]:
+            assert base + file in shell
         assert base + 'styles/questions.css' in shell
         assert base + 'data/culture.imported.js' in shell
         for file in ['styles/heads-up.css', 'scripts/app/heads-up.js', 'data/heads.words.js', 'data/heads.imported.js',
@@ -181,14 +184,26 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         assert page.evaluate(load_images, [url + '?offline-check=1' for url in image_urls]) == [240, 240]
         imported = page.evaluate('JDD.DATA.cultureMcq.filter(q => q.id && q.id.startsWith("classeur-")).length')
         assert imported == 7632, imported
+        pending = json.loads((site / 'data/culture.quiz360.review.json').read_text())
+        imported_quiz360 = page.evaluate('JDD.DATA.cultureMcq.filter(q => q.id && q.id.startsWith("quiz360-")).length')
+        assert imported_quiz360 + len(pending) == 6950, imported_quiz360
+        # Même les photos jamais vues doivent être disponibles en mode avion.
+        assert all(width > 0 for width in page.evaluate(load_images, quiz360_images))
+        expect(page.locator('#questionMediaStatus')).to_be_hidden()
+        quiz360_question = page.evaluate('JDD.DATA.cultureMcq.find(q => q.id === "quiz360-1")')
         # Les autres photos n'ont pas encore été vues : les questions sans photo
         # permettent de vérifier les modes hors ligne sans requête externe aléatoire.
         page.evaluate('JDD.DATA.cultureMcq = JDD.DATA.cultureMcq.filter(q => !q.image && !q.choiceImages)')
-        print('PASS: 7 632 nouvelles questions disponibles hors ligne, photos déjà chargées retrouvées sans réseau', flush=True)
+        print(f'PASS: 7 632 anciennes et {imported_quiz360} nouvelles questions hors ligne ; les 336 images locales sont toutes disponibles', flush=True)
         expect(page.locator('.player-item')).to_have_count(3)
         counts = page.evaluate('''() => ({...Object.fromEntries(Object.entries(JDD.DATA).map(([k,v])=>[k,v.length])),
           undercover:JDD.UNDERCOVER_PAIRS.length, rapidity:JDD.RAPIDITY.length})''')
         assert all(count > 0 for count in counts.values()), counts
+        page.evaluate('''q => {
+          window.originalCulture = JDD.DATA.culture; JDD.DATA.culture = [];
+          window.offlineQuiz360 = q;
+          window.originalDrawCard = JDD.drawCard; JDD.drawCard = () => offlineQuiz360;
+        }''', quiz360_question)
         page.evaluate('''async () => {
           await Promise.all([...document.images].map(async img => {img.loading='eager'; await img.decode();}));
           await document.fonts.ready;
@@ -210,6 +225,12 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         page.locator('#dialogPlayerInput').fill('Alice')
         page.locator('#dialogStartBtn').click()
         expect(page.locator('#game')).to_be_visible()
+        expect(page.locator('#questionMedia img')).to_be_visible()
+        assert page.locator('#questionMedia img').evaluate('img => img.naturalWidth > 0')
+        expect(page.locator('.mcq-btn').first).to_be_enabled()
+        page.get_by_role('button', name=quiz360_question['choices'][0], exact=True).click()
+        expect(page.locator('.mcq-correct')).to_have_count(1)
+        page.evaluate('() => { JDD.drawCard = originalDrawCard; JDD.DATA.culture = originalCulture; }')
         page.locator('#backLogo').click()
         for name in ['Bob', 'Chloe']:
             page.locator('#playerInput').fill(name)
@@ -228,11 +249,11 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           };
         }''')
         page.locator('#headsBtn').click()
-        assert page.evaluate('JDD.HEADS_DECKS.reduce((n, d) => n + d.words.length, 0)') == 2420
+        assert page.evaluate('JDD.HEADS_DECKS.reduce((n, d) => n + d.words.length, 0)') == 1681
         page.locator('#hu-start').click()
         page.locator('#heads [data-act="buttons"], #heads [data-act="countdown"]').click()
         expect(page.locator('#heads')).to_have_attribute('data-screen', 'playing')
-        assert page.evaluate("JSON.parse(localStorage.getItem('jdd.heads.v1')).active.pool.length") == 2195
+        assert page.evaluate("JSON.parse(localStorage.getItem('jdd.heads.v1')).active.pool.length") == 1681
         expect(page.locator('#hu-word')).not_to_be_empty()
         page.locator('[data-act="correct"]').click()
         expect(page.locator('#hu-points')).to_have_text('1')
