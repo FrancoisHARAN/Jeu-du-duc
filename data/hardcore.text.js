@@ -105,7 +105,7 @@ JDD.registerQuestions('hardcore', [
   "ACTION|{player}, roule une pelle de 10 secondes à {other} ou bois 5 gorgées.",
   "ACTION|{player}, mets-toi à califourchon sur {other} pendant 15 secondes ou bois 5 gorgées.",
   "ACTION|{player}, lèche la joue de {other} ou bois 5 gorgées.",
-  "ACTION|{player}, envoie « tu dors ? » à ton ex ou bois 4 gorgées.",
+  "TOUS|Tous ceux qui ont déjà envoyé « tu dors ? » à un ex juste pour baiser boivent 3 gorgées.",
   "ACTION|{player}, fais un compliment bien cochon à {other} ou bois 2 gorgées.",
   "ACTION|{player}, laisse {other} te lécher le nombril ou bois 4 gorgées.",
   "ACTION|{player}, laisse {other} te lécher le cou ou bois 4 gorgées.",
