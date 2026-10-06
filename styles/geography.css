@@ -77,8 +77,9 @@ body.geo-open { justify-content: flex-start; padding: 0; background: #6b62cc !im
 @media (orientation: landscape) and (max-height: 550px) { .geo-root { padding-top: max(10px, env(safe-area-inset-top)); } .geo-topbar { margin-bottom: 10px; } .geo-root .geo-map { height: 65dvh; } }
 
 /* Les contours sortent du SVG pendant le vol ; le conteneur Leaflet masque hors carte. */
-.geo-map--cities .leaflet-overlay-pane > svg { overflow: visible; }
-.geo-map--cities .leaflet-overlay-pane path { vector-effect: non-scaling-stroke; }
+.geo-map--cities .leaflet-pane > svg { overflow: visible; }
+.geo-map--cities .leaflet-pane path { vector-effect: non-scaling-stroke; }
+.geo-map .leaflet-geoPhysical-pane, .geo-map .geo-relief-shape, .geo-map .geo-river-line { pointer-events: none; }
 
 /* Jackpot transparent, ancré à la carte et sans interception des gestes. */
 .geo-map-stage { position: relative; isolation: isolate; }

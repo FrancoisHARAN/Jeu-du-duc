@@ -145,7 +145,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           return (await cache.keys()).map(r => r.url);
         }''', cache)
         quiz360_images = json.loads((site / 'data/culture.quiz360.images.json').read_text())
-        assert len(shell) == 75 + len(quiz360_images), len(shell)
+        assert len(shell) == 76 + len(quiz360_images), len(shell)
         for file in ['styles/accounts.css','vendor/supabase/supabase.js','scripts/supabase-config.js',
                      'scripts/core/participants.js','scripts/core/cloud.js','scripts/app/accounts.js']:
             assert any(url.endswith('/' + file) for url in shell), file
@@ -158,7 +158,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
                      'scripts/app/player-editor.js', 'styles/players.css', 'scripts/app/geography.js',
                      'styles/geography.css', 'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css',
                      'data/geography/countries.geojson', 'data/geography/departments.geojson',
-                     'data/geography/cities.json', 'image/home/geography.svg', 'image/geography/mega-win.webp', 'styles/football.css',
+                     'data/geography/cities.json', 'data/geography/physical.json', 'image/home/geography.svg', 'image/geography/mega-win.webp', 'styles/football.css',
                      'scripts/app/football.js', 'data/football.questions.json', 'image/home/football.jpg']:
             assert base + file in shell
         assert all(url.startswith(base) for url in shell)
@@ -285,6 +285,8 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
             page.locator('[data-geo="start"]').click()
             expect(page.locator('#geography')).to_have_attribute('data-screen', 'playing')
             assert page.locator('#geo-map path.leaflet-interactive').count() == expected
+            assert page.locator('.geo-river-line').count() > 0
+            assert page.locator('.geo-relief-shape').count() > 0
             if mode == 'cities':
                 page.evaluate('''() => { const match=JSON.parse(localStorage.getItem('jdd.geography.v1'));
                   const city=match.targets[match.index],point=L.latLng(city.lat,city.lng);

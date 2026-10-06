@@ -51,6 +51,16 @@ l'illustration apparaît, sans rebond ni particules.
 Les villes utilisent des marqueurs déplaçables et une ligne suivant le plus
 court arc terrestre. Aucun fond en image, serveur de tuiles ni clé d'API.
 
+Les trois cartes affichent les grands fleuves en bleu doux et les massifs,
+plateaux et piémonts dans une seconde nuance beige. Les fleuves secondaires
+apparaissent progressivement avec le zoom ; aucun nom de ville n'est ajouté.
+Les reliefs représentent les grandes régions physiques de Natural Earth,
+pas une altitude mesurée ni une courbe de niveau. Leurs zones sont fusionnées
+pour éviter les taches de couleurs superposées, puis découpées au littoral.
+Les nouvelles couches n'interceptent aucun clic ou geste. Seules les formes
+de la zone visible sont montées ; la destination est préparée avant le vol
+de révélation, y compris lorsque la réponse traverse l'antiméridien.
+
 Sources récupérées le 6 octobre 2026 :
 
 - [Natural Earth, pays 1:50 millions](https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_50m_admin_0_countries.geojson)
@@ -64,6 +74,13 @@ Sources récupérées le 6 octobre 2026 :
   et les codes restent conservés ; la simplification de la source allège les contours.
 - [Leaflet 1.9.4](https://github.com/Leaflet/Leaflet/tree/v1.9.4), distribution
   locale issue du paquet officiel sur jsDelivr.
+- [Natural Earth, fleuves 1:10 millions](https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_10m_rivers_lake_centerlines.geojson)
+  et [régions physiques 1:10 millions](https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_10m_geography_regions_polys.geojson),
+  domaine public. `physical.json` conserve 1 155 tracés hydrographiques et
+  189 zones issues de 297 régions de relief. Les données sont simplifiées
+  pour le jeu (environ 110 m en France/alentours et 440 m ailleurs pour les
+  fleuves, coordonnées arrondies à quatre décimales) : elles gardent les grands
+  méandres mais ne constituent pas une carte locale de précision.
 
 `data/geography/` contient 242 formes pays/territoires, dont 159 pays choisis
 pour les questions, 96 départements, 81 villes françaises et 140 villes du monde.
@@ -85,6 +102,18 @@ Tous les fichiers de Géographie, les données et Leaflet sont dans `SHELL_FILES
 du service worker. Une première ouverture en ligne télécharge ces ressources ;
 les trois jeux peuvent ensuite fonctionner hors connexion. Le réseau reste
 prioritaire lors des mises à jour, selon le mécanisme PWA existant.
+
+`tools/prepare-geography-physical.py` reproduit les données physiques à partir
+des deux GeoJSON Natural Earth, avec Python et Shapely (outil de préparation,
+aucune dépendance supplémentaire dans le navigateur) :
+
+```sh
+python tools/prepare-geography-physical.py --rivers /chemin/fleuves.geojson --regions /chemin/regions.geojson
+```
+
+Le fichier enregistre les empreintes SHA-256 des sources. Les tracés détaillés
+des fleuves sont généralisés, les massifs sont fusionnés et limités aux terres
+de `countries.geojson`. Le fichier local pèse environ 2,6 Mio avant compression.
 
 `python tests/geography_smoke.py` vérifie les coordonnées cliquées, l'édition
 des épingles, la distance, la révélation des polygones, les points, le chrono,

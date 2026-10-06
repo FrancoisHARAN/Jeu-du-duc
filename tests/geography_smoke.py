@@ -16,6 +16,14 @@ CHROMIUM = os.environ.get('PWA_TEST_CHROMIUM') or shutil.which('chromium')
 countries = json.loads((REPO / 'data/geography/countries.geojson').read_text())
 departments = json.loads((REPO / 'data/geography/departments.geojson').read_text())
 cities = json.loads((REPO / 'data/geography/cities.json').read_text())
+physical = json.loads((REPO / 'data/geography/physical.json').read_text())
+river_names = {f['properties']['name'] for f in physical['rivers']['features']}
+assert {'Loire','Seine','Rhône','Garonne','Dordogne','Amazonas','Nile','Congo','Mississippi','Chang Jiang','Murray'} <= river_names
+assert (REPO / 'data/geography/physical.json').stat().st_size < 3_000_000
+for kind in ['rivers','relief']:
+    for feature in physical[kind]['features']:
+        west,south,east,north=feature['bbox']
+        assert -180<=west<=east<=180 and -90<=south<=north<=90
 with Image.open(REPO / 'image/geography/mega-win.webp') as image:
     assert image.mode == 'RGBA' and image.getextrema()[3] == (0, 255)
     assert image.getpixel((0, 0))[3] == 0, 'Le jackpot doit avoir un vrai fond transparent.'
@@ -247,7 +255,7 @@ try:
         click_coordinate(page, [-36.85, -179], True)
         action(page, 'validate')
         assert state(page)['result']['km'] < 1000
-        assert page.locator('#geo-map path').count() > 242, 'Les côtes sont répétées après le passage de l’antiméridien.'
+        assert page.locator('.leaflet-geoLand-pane path').count() > 242, 'Les côtes sont répétées après le passage de l’antiméridien.'
         page.wait_for_function('() => !document.querySelector(".geo-route--reveal")')
         map_box = page.locator('#geo-map').bounding_box()
         for kind in ['guess', 'truth']:
@@ -329,6 +337,33 @@ try:
             assert len(state(page)['rows'])==3
             context.close()
         print('PASS: MEGA WIN transparent et léger, seuil de 5 km France/Monde, durée 2 s, commandes libres et nettoyage sans replay',flush=True)
+
+        context,page=home(['Alice']);start(page,'cities')
+        page.evaluate('() => {testMap.setView([47.9,1.9],8,{animate:false});}')
+        assert page.locator('[data-geo-river="Loire"]').count()>0
+        assert page.locator('#geo-map .leaflet-tooltip').count()==0
+        # Cliquer sur le tracé réel de la Loire doit poser l'épingle normalement.
+        loire=next(f for f in physical['rivers']['features'] if f['properties']['name']=='Loire'
+                   and any(47.7<p[1]<48.1 and 1.6<p[0]<2.2 for line in f['geometry']['coordinates'] for p in line))
+        point=min((p for line in loire['geometry']['coordinates'] for p in line),key=lambda p:(p[0]-1.9)**2+(p[1]-47.9)**2)
+        click_coordinate(page,[point[1],point[0]])
+        guess=state(page)['guess'];assert abs(guess['lat']-point[1])<.005 and abs(guess['lng']-point[0])<.005
+        assert page.locator('.geo-river-line').evaluate_all('nodes => nodes.every(n => getComputedStyle(n).pointerEvents === "none")')
+        page.evaluate('() => {testMap.setView([45.8,6.8],7,{animate:false});}')
+        assert page.locator('.geo-relief-shape').count()>0
+        assert page.locator('.geo-relief-shape').evaluate_all('nodes => nodes.every(n => getComputedStyle(n).pointerEvents === "none")')
+        page.evaluate('() => {testMap.setView([20,0],2,{animate:false});}')
+        expect(page.locator('#geography')).to_have_attribute('data-screen','playing')
+        assert page.locator('[data-geo-river="Nile"]').count()>0
+        assert page.locator('[data-geo-river="Amazonas"]').count()>0
+        assert page.locator('.geo-river-line').count()<150, 'Le monde garde seulement les grands fleuves à ce zoom.'
+        action(page,'exit');context.close()
+        context,page=home(['Alice']);start(page,'departments')
+        select_region(page,'74','departments') # Le relief alpin ne masque pas la sélection.
+        assert state(page)['guess']=='74'
+        action(page,'validate');expect(page.locator('#geography')).to_have_attribute('data-screen','answer')
+        action(page,'exit');context.close()
+        print('PASS: Loire à Orléans, relief alpin, fleuves mondiaux filtrés par zoom, clics libres et départements sélectionnables sous le relief',flush=True)
 
         for width, height in [(320, 568), (360, 640), (393, 852), (430, 932), (852, 393), (1440, 900)]:
             context, page = home(['Alice'], width, height)

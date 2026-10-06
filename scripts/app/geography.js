@@ -8,7 +8,7 @@
   const MODES = { cities: 'Où est la ville ?', countries: 'Trouve le pays', departments: 'Trouve le département' };
   const HOME = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9"/></svg>';
   const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  let root, options, data, loading, map, regions, guessMarker, clock, editor, celebrationTimer;
+  let root, options, data, loading, map, regions, physicalLayers, guessMarker, clock, editor, celebrationTimer;
   let match = null, phase = 'menu', opened = false, chosenMode = 'cities', zone = 'france', request = 0;
   const names = () => options.getSuggestedNames().slice();
   const target = () => match.targets[match.index];
@@ -17,12 +17,12 @@
 
   async function loadData() {
     if (data) return data;
-    if (!loading) loading = Promise.all(['countries.geojson', 'departments.geojson', 'cities.json'].map(async file => {
+    if (!loading) loading = Promise.all(['countries.geojson', 'departments.geojson', 'cities.json', 'physical.json'].map(async file => {
       const response = await fetch(`data/geography/${file}`);
       if (!response.ok) throw new Error('Carte indisponible');
       return response.json();
-    })).then(([countries, departments, cities]) => {
-      data = { countries, departments, cities }; return data;
+    })).then(([countries, departments, cities, physical]) => {
+      data = { countries, departments, cities, physical }; return data;
     }).catch(error => { loading = null; throw error; });
     return loading;
   }
@@ -32,7 +32,7 @@
   function disposeMap() {
     clearCelebration();
     if (map) map.remove();
-    map = regions = guessMarker = null;
+    map = regions = physicalLayers = guessMarker = null;
     clearInterval(clock); clock = null;
   }
   function setPhase(next) { phase = next; root.dataset.screen = next; }
@@ -116,9 +116,11 @@
       zoomSnap: .25, zoomAnimation: false, fadeAnimation: false, markerZoomAnimation: false, touchZoom: true, scrollWheelZoom: true, doubleClickZoom: false,
       maxBounds: [[-86, -180], [86, 180]], maxBoundsViscosity: 1 });
     if (isCity()) map.getContainer().classList.add('geo-map--cities');
+    map.createPane('geoLand').style.zIndex = '350';
     L.control.zoom({ position: 'topright', zoomInTitle: 'Zoomer', zoomOutTitle: 'Dézoomer' }).addTo(map);
     const countries = match.mode !== 'departments';
     regions = L.geoJSON(countries ? data.countries : data.departments, {
+      pane: 'geoLand',
       noClip: isCity(), // Garder les contours complets pendant le déplacement/zoom des villes.
       style: f => isCity() ? baseStyle() : answerStyle(f),
       onEachFeature(feature, layer) {
@@ -144,6 +146,7 @@
     if (isCity()) map.on('click', event => placePin(event.latlng));
     if (isCity() && match.guess) placePin(match.guess);
     homeMap();
+    makePhysicalLayers();
     const reset = L.control({ position: 'topright' });
     reset.onAdd = () => {
       const button = L.DomUtil.create('button', 'geo-map-reset');
@@ -153,6 +156,56 @@
     };
     reset.addTo(map);
     requestAnimationFrame(() => { if (map) map.invalidateSize(); });
+  }
+  function shiftedFeature(feature, offset) {
+    if (!offset) return feature;
+    const shift = coordinates => typeof coordinates[0] === 'number'
+      ? [coordinates[0] + offset, ...coordinates.slice(1)] : coordinates.map(shift);
+    return { ...feature, geometry: { ...feature.geometry, coordinates: shift(feature.geometry.coordinates) } };
+  }
+  function makePhysicalLayers() {
+    const L = global.L, pane = map.createPane('geoPhysical');
+    pane.style.zIndex = '390'; pane.style.pointerEvents = 'none';
+    const common = { pane: 'geoPhysical', interactive: false, noClip: isCity() };
+    const relief = L.geoJSON(null, { ...common, style: { stroke: false, fillColor: '#d8c7a7', fillOpacity: .58, className: 'geo-relief-shape' } }).addTo(map);
+    const riverStyle = feature => ({ color: '#75a8bf', opacity: .95, weight: Math.min(2.8, 1.05 + map.getZoom() * .14) + (feature.properties.rank <= 2 ? .25 : 0), lineCap: 'round', lineJoin: 'round', className: 'geo-river-line' });
+    const rivers = L.geoJSON(null, { ...common, style: riverStyle, onEachFeature(feature, layer) {
+      layer.on('add', () => layer.getElement()?.setAttribute('data-geo-river', feature.properties.name));
+    } }).addTo(map);
+    const offsets = new Set([0]), signatures = new Map();
+    const refresh = (views = [{ bounds: map.getBounds().pad(.25), zoom: map.getZoom() }]) => {
+      for (const [key, layer] of [['relief', relief], ['rivers', rivers]]) {
+        const features = [], ids = [];
+        data.physical[key].features.forEach((feature, index) => {
+          for (const offset of offsets) {
+            const [west, south, east, north] = feature.bbox;
+            if (!views.some(view => (key !== 'rivers' || view.zoom >= feature.properties.min_zoom)
+              && west + offset <= view.bounds.getEast() && east + offset >= view.bounds.getWest()
+              && south <= view.bounds.getNorth() && north >= view.bounds.getSouth())) continue;
+            features.push(shiftedFeature(feature, offset)); ids.push(`${index}:${offset}`);
+          }
+        });
+        const signature = ids.join('|');
+        if (signatures.get(key) !== signature) {
+          layer.clearLayers(); layer.addData({ type: 'FeatureCollection', features }); signatures.set(key, signature);
+        }
+      }
+      rivers.setStyle(riverStyle);
+    };
+    physicalLayers = {
+      refresh,
+      addWorldCopy(offset) { offsets.add(offset); },
+      prepare(bounds, maxZoom) {
+        const zoom = Math.min(maxZoom, map.getBoundsZoom(bounds, false, L.point(90, 90)));
+        const center = L.bounds(map.project(bounds.getSouthWest(), zoom), map.project(bounds.getNorthEast(), zoom)).getCenter();
+        const half = map.getSize().divideBy(2);
+        const destination = L.latLngBounds(map.unproject(center.subtract(half), zoom), map.unproject(center.add(half), zoom)).pad(.25);
+        // Préparer aussi la destination : aucun relief/fleuve ne surgit à la fin du vol.
+        refresh([{ bounds: map.getBounds().pad(.25), zoom: map.getZoom() }, { bounds: destination, zoom }]);
+      },
+    };
+    map.on('moveend', () => physicalLayers.refresh());
+    refresh();
   }
   function homeMap() {
     if (!map) return;
@@ -170,7 +223,7 @@
     disposeMap(); setPhase(match.result ? 'answer' : 'playing');
     const current = player(), index = match.index % match.players.length;
     const prompt = isCity() ? `Où est ${target().name} ?` : `Trouve : ${target().name}${match.mode === 'departments' ? ` (${target().id})` : ''}`;
-    root.innerHTML = `${topbar()}<section class="geo-panel geo-turn">${windowBar(MODES[match.mode])}<div class="geo-stats"><strong id="geo-current-player">${escape(current)}</strong><span>Manche ${match.index + 1} / ${match.targets.length}</span><span id="geo-score">${match.scores[index]} pts</span><strong id="geo-timer" aria-label="Temps restant">${Math.ceil(match.remaining / 1000)} s</strong></div><h1 class="geo-prompt">${escape(prompt)}</h1><div class="geo-map-stage"><div id="geo-map" class="geo-map" role="region" aria-label="Carte interactive, déplacement et zoom à deux doigts"></div>${isCity() ? '<div id="geo-mega-win" class="geo-mega-win" hidden aria-hidden="true"><img class="geo-mega-win-art" src="image/geography/mega-win.webp" width="768" height="768" alt="" decoding="async" draggable="false"></div>' : ''}</div><div class="geo-answer"><p id="geo-selection" class="geo-help" role="status">${isCity() ? 'Touche la carte pour placer ton épingle.' : 'Touche une zone sur la carte.'}</p><div id="geo-result" role="status"></div><button type="button" class="geo-button" data-geo="validate" ${match.guess ? '' : 'disabled'}>Valider</button></div><details class="geo-map-sources"><summary>Données cartographiques</summary><p>Frontières : Natural Earth (domaine public). Départements : IGN / Admin Express via France GeoJSON (Licence ouverte). Carte : Leaflet.</p></details><div class="geo-floor" aria-hidden="true"></div></section>`;
+    root.innerHTML = `${topbar()}<section class="geo-panel geo-turn">${windowBar(MODES[match.mode])}<div class="geo-stats"><strong id="geo-current-player">${escape(current)}</strong><span>Manche ${match.index + 1} / ${match.targets.length}</span><span id="geo-score">${match.scores[index]} pts</span><strong id="geo-timer" aria-label="Temps restant">${Math.ceil(match.remaining / 1000)} s</strong></div><h1 class="geo-prompt">${escape(prompt)}</h1><div class="geo-map-stage"><div id="geo-map" class="geo-map" role="region" aria-label="Carte interactive, déplacement et zoom à deux doigts"></div>${isCity() ? '<div id="geo-mega-win" class="geo-mega-win" hidden aria-hidden="true"><img class="geo-mega-win-art" src="image/geography/mega-win.webp" width="768" height="768" alt="" decoding="async" draggable="false"></div>' : ''}</div><div class="geo-answer"><p id="geo-selection" class="geo-help" role="status">${isCity() ? 'Touche la carte pour placer ton épingle.' : 'Touche une zone sur la carte.'}</p><div id="geo-result" role="status"></div><button type="button" class="geo-button" data-geo="validate" ${match.guess ? '' : 'disabled'}>Valider</button></div><details class="geo-map-sources"><summary>Données cartographiques</summary><p>Frontières, fleuves et grands reliefs : Natural Earth (domaine public). Départements : IGN / Admin Express via France GeoJSON (Licence ouverte). Carte : Leaflet.</p></details><div class="geo-floor" aria-hidden="true"></div></section>`;
     makeMap();
     if (match.result) reveal();
     global.scrollTo(0, 0);
@@ -261,12 +314,10 @@
       map.setMaxBounds([[-86, -360], [86, 360]]);
       if (Math.abs(truthLng) > 180) {
         const offset = truthLng > 180 ? 360 : -360;
-        const shift = coordinates => typeof coordinates[0] === 'number'
-          ? [coordinates[0] + offset, ...coordinates.slice(1)] : coordinates.map(shift);
         // Répéter les vraies côtes au passage du méridien, avec la même projection.
-        L.geoJSON({ type: 'FeatureCollection', features: data.countries.features.map(feature => ({
-          ...feature, geometry: { ...feature.geometry, coordinates: shift(feature.geometry.coordinates) },
-        })) }, { style: baseStyle, interactive: false, noClip: true }).addTo(map);
+        L.geoJSON({ type: 'FeatureCollection', features: data.countries.features.map(feature => shiftedFeature(feature, offset)) },
+          { pane: 'geoLand', style: baseStyle, interactive: false, noClip: true }).addTo(map);
+        physicalLayers.addWorldCopy(offset);
       }
       const truthIcon = icon('truth');
       if (motion) truthIcon.options.className += ' geo-pin--reveal';
@@ -279,10 +330,12 @@
         const route = L.polyline(line, { color: '#6b36ad', weight: 3, dashArray: '7 5', interactive: false, noClip: true }).addTo(map);
         if (motion) drawRoute(route.getElement());
         const bounds = L.latLngBounds(line), options = { padding: [45, 45], maxZoom: match.zone === 'france' ? 9 : 6 };
+        physicalLayers.prepare(bounds, options.maxZoom);
         if (motion) map.flyToBounds(bounds, { ...options, duration: REVEAL_SECONDS });
         else map.fitBounds(bounds, { ...options, animate: false });
       } else {
         const point = [target().lat, target().lng], zoom = match.zone === 'france' ? 7 : 4;
+        physicalLayers.prepare(L.latLngBounds([point]), zoom);
         if (motion) map.flyTo(point, zoom, { duration: REVEAL_SECONDS });
         else map.setView(point, zoom, { animate: false });
       }
