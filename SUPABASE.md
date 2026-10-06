@@ -28,6 +28,9 @@ Appliquer `supabase/migrations/202610060003_confirmed_profiles.sql` dans
 non confirmées restent invisibles aux autres joueurs. Cette migration reprend
 les états Auth actuels sans supprimer ni fusionner les comptes. La confirmation
 est synchronisée par un trigger protégé ; le client ne peut pas modifier cet état.
+Ce script est relançable si la colonne `is_confirmed` existe déjà : copier la
+version complète actuelle, jusqu'à `commit;`, puis l'exécuter. Il complète le
+trigger et le filtre sans supprimer les profils ni les résultats.
 
 ## Aucun email reçu
 

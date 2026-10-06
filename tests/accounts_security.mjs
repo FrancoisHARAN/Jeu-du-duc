@@ -29,7 +29,18 @@ await db.exec(await readFile(new URL('../supabase/migrations/202610060002_footba
 await db.query('insert into auth.users(id,raw_user_meta_data,email) values ($1,$2,$3),($4,$5,$6),($7,$8,$9)',
   [a,{display_name:'François'},'private-francois@example.test',b,{display_name:'Axel'},'private-axel@example.test',c,{display_name:'Nico'},'private-nico@example.test']);
 await db.query('insert into auth.users values ($1,$2,$3,null)',[pending,{display_name:'François'},'pending@example.test']);
-await db.exec(await readFile(new URL('../supabase/migrations/202610060003_confirmed_profiles.sql', import.meta.url), 'utf8'));
+const confirmationMigration = await readFile(new URL('../supabase/migrations/202610060003_confirmed_profiles.sql', import.meta.url), 'utf8');
+await db.exec(confirmationMigration);
+const initialProfiles = (await db.query('select id,display_name from public.profiles order by id')).rows;
+// Installation partielle : la colonne existe, mais pas encore le trigger ni le filtre.
+await db.exec(`drop trigger sync_player_confirmation on auth.users;
+  drop function public.sync_player_confirmation();
+  alter policy profiles_read on public.profiles using (true);
+  update public.profiles set is_confirmed=false;`);
+await db.exec(confirmationMigration);
+await db.exec(confirmationMigration);
+assert.deepEqual((await db.query('select id,display_name from public.profiles order by id')).rows,initialProfiles);
+console.log('PASS: installation neuve, reprise avec colonne existante et relance complète sans doublon ni perte de profils');
 await db.query('insert into auth.users values ($1,$2,$3,null)',[secondPending,{display_name:'François'},'second-pending@example.test']);
 async function as(role, id, fn) {
   await db.exec(`set role ${role}`); await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id || '']);
@@ -113,6 +124,9 @@ await as('authenticated', a, async () => {
   await rejects(() => record(a,'20000000-0000-4000-8000-000000000003',1,people,'invalid-mode'),'22023');
 });
 console.log('PASS: migration foot, statistiques sans doublon et protections existantes conservées');
+const initialResults = (await db.query('select * from public.game_results order by event_id,player_id')).rows;
+await db.exec(confirmationMigration);
+assert.deepEqual((await db.query('select * from public.game_results order by event_id,player_id')).rows,initialResults);
 await db.query('delete from auth.users where id=$1',[b]);
 assert.equal((await db.query('select id from public.profiles where id=$1',[b])).rows.length,0);
 assert.equal((await db.query('select player_id from public.game_results where player_id=$1',[b])).rows.length,0);
