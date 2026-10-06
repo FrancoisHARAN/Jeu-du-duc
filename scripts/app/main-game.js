@@ -16,6 +16,7 @@
     gameScreen: document.getElementById('game'),
     undercoverScreen: document.getElementById('undercover'),
     headsScreen: document.getElementById('heads'),
+    geographyScreen: document.getElementById('geography'),
     playerInput: document.getElementById('playerInput'),
     playerError: document.getElementById('playerError'),
     playerList: document.getElementById('playerList'),
@@ -46,6 +47,7 @@
     mcqGrid: document.getElementById('mcqGrid'),
     undercoverButton: document.getElementById('undercoverBtn'),
     headsButton: document.getElementById('headsBtn'),
+    geographyButton: document.getElementById('geographyBtn'),
     rapiditeAudio: document.getElementById('rapidite-audio'),
   };
 
@@ -155,6 +157,11 @@
     if (input === elements.dialogPlayerInput) {
       input.setAttribute('aria-invalid', 'true');
       updatePlayersDialog(message);
+    } else if (input.closest('.jdd-player-editor')) {
+      const status = input.closest('.jdd-player-editor').querySelector('.jdd-player-error');
+      input.setAttribute('aria-invalid', 'true');
+      status.textContent = message;
+      status.hidden = false;
     } else if (elements.playerError) {
       input.setAttribute('aria-invalid', 'true');
       elements.playerError.textContent = message;
@@ -176,12 +183,12 @@
     return String(value).normalize('NFC').replace(/\s+/g, ' ').trim();
   }
 
-  function addPlayer(input = elements.playerInput) {
+  function addPlayer(input = elements.playerInput, limit = MAX_PLAYERS) {
     const name = cleanName(input.value);
     if (!name) {
       return input === elements.dialogPlayerInput ? rejectPlayer(input, 'Entre un prénom pour ajouter un joueur.') : false;
     }
-    const maximum = input === elements.dialogPlayerInput && playersDialogContext ? playersDialogContext.maximum : MAX_PLAYERS;
+    const maximum = input === elements.dialogPlayerInput && playersDialogContext ? playersDialogContext.maximum : limit;
     if (players.length >= maximum) {
       return rejectPlayer(input, `La bande est complète : ${maximum} joueurs maximum.`);
     }
@@ -220,7 +227,7 @@
       const removeButton = document.createElement('button');
       removeButton.type = 'button';
       removeButton.className = 'remove-btn';
-      removeButton.textContent = '❌';
+      removeButton.textContent = '−';
       removeButton.setAttribute('aria-label', `Retirer ${name}`);
       if (wait > 0) {
         removeButton.disabled = true;
@@ -280,11 +287,21 @@
   }
 
   function gamePlayersContext(kind, onConfirm, editing = false) {
-    const undercover = kind === 'undercover';
-    return { label: undercover ? 'Undercover' : 'Devine Tête',
-      image: `image/home/${undercover ? 'undercover' : 'mascotte'}.webp`,
-      minimum: undercover ? 3 : 2, maximum: undercover ? 20 : MAX_PLAYERS,
+    const games = {
+      undercover: { label: 'Undercover', image: 'image/home/undercover.webp', minimum: 3, maximum: 20 },
+      heads: { label: 'Devine Tête', image: 'image/home/mascotte.webp', minimum: 2, maximum: MAX_PLAYERS },
+      geography: { label: 'Géographie', image: 'image/home/geography.svg', minimum: 1, maximum: MAX_PLAYERS },
+    };
+    return { ...games[kind],
       buttonLabel: editing ? 'Valider les joueurs' : 'Lancer la partie', onConfirm };
+  }
+
+  function removeSharedPlayer(name) {
+    if (Date.now() - lastRemoveAt < REMOVE_DELAY) return;
+    const index = players.indexOf(name);
+    if (index < 0) return;
+    lastRemoveAt = Date.now();
+    removePlayer(index);
   }
 
   function openPlayersDialog(context = partyPlayersContext()) {
@@ -299,14 +316,6 @@
     renderPlayersInto(elements.dialogPlayerList);
     updatePlayersDialog();
     elements.dialogPlayerInput.focus();
-  }
-
-  function requestGame(kind, open) {
-    const context = gamePlayersContext(kind, open);
-    const module = modules[kind];
-    if ((!module || !module.hasActiveGame || !module.hasActiveGame())
-      && (players.length < context.minimum || players.length > context.maximum)) openPlayersDialog(context);
-    else open();
   }
 
   function setBackground(type) {
@@ -722,6 +731,19 @@
     window.scrollTo(0, 0);
   }
 
+  function openGeography() {
+    elements.setupScreen.classList.add('hidden');
+    elements.gameScreen.classList.add('hidden');
+    elements.geographyScreen.classList.remove('hidden');
+    modules.geography.onOpen();
+  }
+
+  function closeGeography() {
+    elements.geographyScreen.classList.add('hidden');
+    elements.setupScreen.classList.remove('hidden');
+    window.scrollTo(0, 0);
+  }
+
   function attachEvents() {
     window.addEventListener('resize', fitCultureText);
     if (document.fonts) document.fonts.ready.then(fitCultureText);
@@ -787,8 +809,9 @@
       card.addEventListener('click', () => activateModeCard(card));
     });
 
-    elements.undercoverButton.addEventListener('click', () => requestGame('undercover', openUndercover));
-    elements.headsButton.addEventListener('click', () => requestGame('heads', openHeads));
+    elements.undercoverButton.addEventListener('click', openUndercover);
+    elements.headsButton.addEventListener('click', openHeads);
+    elements.geographyButton.addEventListener('click', openGeography);
   }
 
   function init() {
@@ -798,6 +821,7 @@
         modules.undercover.init({
           onExit: closeUndercover,
           getSuggestedNames: () => players.slice(),
+          addPlayer, removePlayer: removeSharedPlayer,
           editPlayers: (onConfirm) => openPlayersDialog(gamePlayersContext('undercover', onConfirm, true)),
         });
       }
@@ -807,11 +831,16 @@
     try {
       if (modules.heads && typeof modules.heads.init === 'function') {
         modules.heads.init({ onExit: closeHeads, getSuggestedNames: () => players.slice(),
+          addPlayer, removePlayer: removeSharedPlayer,
           editPlayers: (onConfirm) => openPlayersDialog(gamePlayersContext('heads', onConfirm, true)) });
       }
     } catch (error) {
       console.error('Devine Tête indisponible', error);
     }
+    try {
+      modules.geography.init({ onExit: closeGeography, getSuggestedNames: () => players.slice(),
+        addPlayer, removePlayer: removeSharedPlayer });
+    } catch (error) { console.error('Géographie indisponible', error); }
     attachEvents();
     const defaultCard = document.querySelector('.mode-card[data-mode="debut"]');
     if (!restoreSettings() && defaultCard) {

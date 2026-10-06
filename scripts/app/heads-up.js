@@ -6,7 +6,7 @@
   const NEUTRAL = .24;
   const TRIGGER = .64;
   const HOME_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9"/></svg>';
-  let root, store, round = null, phase = 'setup', opened = false;
+  let root, store, round = null, phase = 'setup', opened = false, playerEditor;
   let options = { onExit() {}, getSuggestedNames() { return []; }, editPlayers() {} };
   let clock = null, audio = null, feedbackSounds = null, wakeLock = null, permissionPending = false;
   let sensor = null, neutralSince = 0, gesture = null, gestureSince = 0, readySince = 0;
@@ -40,6 +40,10 @@
       history, totals,
       active: saved && saved.active,
       nextPlayer: saved && typeof saved.nextPlayer === 'string' ? saved.nextPlayer : '',
+      teams: saved && saved.teams && Array.isArray(saved.teams.members) && saved.teams.members.length === 2
+        ? { enabled: saved.teams.enabled === true, members: saved.teams.members.map(list => Array.isArray(list) ? list.filter(n => typeof n === 'string') : []),
+          totals: [0, 1].map(i => ({ points: Number(saved.teams.totals?.[i]?.points) || 0, rounds: Number(saved.teams.totals?.[i]?.rounds) || 0 })) }
+        : { enabled: false, members: [[], []], totals: [{ points: 0, rounds: 0 }, { points: 0, rounds: 0 }] },
     };
   }
 
@@ -75,30 +79,65 @@
     return `<div class="hu-window"><span class="hu-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>${label}</span><span aria-hidden="true">✦</span></div>`;
   }
 
-  function playerChoices(people, selected) {
-    return people.length ? people.map((name) => `<label class="hu-player-choice"><input type="radio" name="hu-player" value="${escape(name)}" ${name === selected ? 'checked' : ''}><span class="hu-player-avatar" aria-hidden="true">${escape(name.trim().charAt(0).toUpperCase())}</span><span class="hu-player-name">${escape(name)}</span></label>`).join('') : '<p class="hu-help">Ajoute les joueurs de la bande pour commencer.</p>';
+  function selectedPlayer() {
+    return store.nextPlayer || names()[0] || '';
   }
 
-  function selectedPlayer() {
-    const choice = root.querySelector('input[name="hu-player"]:checked');
-    return choice ? choice.value : '';
+  function syncTeams() {
+    const people = names();
+    const teams = store.teams;
+    const assigned = new Set();
+    teams.members = teams.members.map(list => list.filter(name => {
+      if (!people.includes(name) || assigned.has(name)) return false;
+      assigned.add(name); return true;
+    }));
+    people.filter(name => !assigned.has(name)).forEach(name => {
+      const index = teams.members[0].length <= teams.members[1].length ? 0 : 1;
+      teams.members[index].push(name);
+    });
+    if (people.length < 4) teams.enabled = false;
+    if (people.length >= 4 && teams.members.some(list => !list.length)) {
+      teams.members = [people.filter((_, i) => i % 2 === 0), people.filter((_, i) => i % 2 === 1)];
+    }
+  }
+
+  function teamMarkup() {
+    if (names().length < 4) return '';
+    const teams = store.teams;
+    return `<section class="hu-teams"><label class="hu-team-toggle"><span>Jouer en équipes</span><input type="checkbox" id="hu-teams-enabled" ${teams.enabled ? 'checked' : ''}></label>${teams.enabled ? `<div class="hu-team-tables">${teams.members.map((list, index) => `<section class="hu-team-table" data-team="${index}"><h3>Équipe ${index + 1}<small>${teams.totals[index].points} pts</small></h3><ul>${list.map(name => `<li><span>${escape(name)}</span><button type="button" data-move-player="${escape(name)}" aria-label="Passer ${escape(name)} dans l’équipe ${2 - index}" ${list.length <= 1 ? 'disabled' : ''}>${index ? '←' : '→'}</button></li>`).join('')}</ul></section>`).join('')}</div><button class="hu-dice" data-act="shuffle-teams" type="button"><span aria-hidden="true">⚄</span> Mélanger les équipes</button>` : ''}</section>`;
+  }
+
+  function updateTeams() {
+    const box = root.querySelector('#hu-team-settings');
+    if (box) box.innerHTML = teamMarkup();
+  }
+
+  function teamCaption() {
+    return round.team ? `<span class="hu-live-team"><strong>${escape(round.team.label)}</strong><small>${round.team.members.map(escape).join(' · ')}</small></span>` : '';
   }
 
   function renderSetup() {
     setPhase('setup');
     const people = names();
+    syncTeams();
     const player = people.includes(store.nextPlayer) ? store.nextPlayer : people[0] || '';
+    store.nextPlayer = player;
     root.innerHTML = `${topbar('Jeu de devinettes')}
       <section class="hu-panel">
         ${windowBar('LE MOT EST SUR TA TÊTE')}
         <div class="hu-intro"><img src="image/home/mascotte.webp" alt="" width="1254" height="1254"><h1>Devine<br>Tête</h1></div>
         <form id="hu-config" class="hu-config">
-          <fieldset class="hu-player-picker"><legend>Qui devine ?</legend><div id="hu-player" class="hu-player-grid">${playerChoices(people, player)}</div><button class="hu-text-button" data-act="edit-players" type="button">Modifier les joueurs</button></fieldset>
+          <fieldset class="hu-player-picker"><legend>Qui devine ?</legend><div id="hu-player"></div></fieldset>
+          <div id="hu-team-settings">${teamMarkup()}</div>
           <button id="hu-start" class="hu-button" type="submit">Lancer la partie <span aria-hidden="true">↗</span></button>
         </form>
         ${round && !round.finished ? '<div class="hu-resume"><p>Une manche est en pause.</p><button class="hu-button hu-button--green" data-act="resume" type="button">Reprendre la manche</button></div>' : ''}
         <div class="hu-floor" aria-hidden="true"></div>
       </section>${store.history.length ? `<details class="hu-history-summary"><summary>Les scores de la bande</summary>${historyMarkup()}</details>` : ''}`;
+    playerEditor = global.JDDPlayerEditor.mount(root.querySelector('#hu-player'), {
+      getNames: names, addPlayer: options.addPlayer, removePlayer: options.removePlayer,
+      selected: player, onSelect(name) { store.nextPlayer = name; playerEditor.update(name); save(); },
+    });
     updateStartButton();
     window.scrollTo(0, 0);
   }
@@ -108,13 +147,15 @@
   }
 
   function onPlayersChanged() {
-    if (!opened || phase !== 'setup') return;
-    const picker = root.querySelector('#hu-player');
+    if (!store) return;
+    syncTeams();
+    if (!opened || phase !== 'setup') { save(); return; }
     const people = names();
     const previous = selectedPlayer();
     const selected = people.includes(previous) ? previous : people[0] || '';
-    picker.innerHTML = playerChoices(people, selected);
     store.nextPlayer = selected;
+    playerEditor.update(selected);
+    updateTeams();
     updateStartButton();
     save();
   }
@@ -123,7 +164,7 @@
     if (!store.history.length) return '';
     const totals = new Map();
     store.totals.forEach(t => totals.set(t.player, t));
-    return `<section class="hu-panel hu-history">${windowBar('LES MANCHES DE LA BANDE')}${totals.size ? `<h2>Les scores</h2><ul class="hu-score-list">${[...totals].sort((a, b) => b[1].points - a[1].points).map(([name, total]) => `<li><span>${escape(name)}<small>${total.rounds} manche${total.rounds > 1 ? 's' : ''}</small></span><strong>${total.points} pt${total.points > 1 ? 's' : ''}</strong></li>`).join('')}</ul>` : ''}<h2>Dernières manches</h2><ul class="hu-score-list">${store.history.slice(-5).reverse().map(r => `<li><span>${escape(r.player || 'Sans prénoms')}<small>${escape(r.themeLabel)} · ${r.duration} s</small></span><strong>${score(r.rows)} pt${score(r.rows) > 1 ? 's' : ''}</strong></li>`).join('')}</ul><button class="hu-text-button" data-act="clear-history" type="button">Effacer les scores</button></section>`;
+    return `<section class="hu-panel hu-history">${windowBar('LES MANCHES DE LA BANDE')}${store.teams.totals.some(t => t.rounds) ? `<h2>Les équipes</h2><ul class="hu-score-list">${store.teams.totals.map((t, i) => `<li><span>Équipe ${i + 1}</span><strong>${t.points} pts</strong></li>`).join('')}</ul>` : ''}${totals.size ? `<h2>Les scores</h2><ul class="hu-score-list">${[...totals].sort((a, b) => b[1].points - a[1].points).map(([name, total]) => `<li><span>${escape(name)}<small>${total.rounds} manche${total.rounds > 1 ? 's' : ''}</small></span><strong>${total.points} pt${total.points > 1 ? 's' : ''}</strong></li>`).join('')}</ul>` : ''}<h2>Dernières manches</h2><ul class="hu-score-list">${store.history.slice(-5).reverse().map(r => `<li><span>${r.team ? `${escape(r.team.label)} · ` : ''}${escape(r.player || 'Sans prénoms')}<small>${escape(r.themeLabel)} · ${r.duration} s</small></span><strong>${score(r.rows)} pt${score(r.rows) > 1 ? 's' : ''}</strong></li>`).join('')}</ul><button class="hu-text-button" data-act="clear-history" type="button">Effacer les scores</button></section>`;
   }
 
   function initializeAudio() {
@@ -284,6 +325,10 @@
       themes: decks().map(d => d.id), themeLabel: 'Tous les mots',
       clues: store.config.clues, pool: words, seen: [], rows: [], word: '',
       motion: store.config.controls === 'motion', armed: false, pending: null, finished: false, deadline: 0,
+      team: store.teams.enabled && names().length >= 4 ? (() => {
+        const index = store.teams.members.findIndex(list => list.includes(player));
+        return { index, label: `Équipe ${index + 1}`, members: store.teams.members[index].slice() };
+      })() : null,
     };
     resume = false;
     readyMessage = '';
@@ -345,7 +390,7 @@
 
   function renderPlay() {
     setPhase('playing');
-    root.innerHTML = `<section class="hu-live"><header class="hu-live-header">${menuButton(true)}<button class="hu-pill" data-act="pause" type="button" aria-label="Mettre la manche en pause"><span aria-hidden="true">Ⅱ</span><span class="hu-pause-label"> Pause</span></button><span class="hu-live-player">${escape(round.player || 'Devine Tête')}</span><span class="hu-pill hu-pill--pink"><span id="hu-points">${score(round.rows)}</span> pt</span><span id="hu-timer" class="hu-pill hu-pill--yellow" aria-label="Temps restant">${timeLabel(round.remaining)}</span></header><div class="hu-word-card" id="hu-word-card">${windowBar(round.clues === 'mime' ? 'MIME · SANS PARLER' : 'FAIS DEVINER SANS DIRE LE MOT')}<div class="hu-word-area"><h1 id="hu-word" aria-live="polite">${escape(round.word)}</h1><p id="hu-feedback-hint"></p></div><div class="hu-time-track" aria-hidden="true"><span id="hu-time-progress"></span></div><div class="hu-floor" aria-hidden="true"></div></div><footer class="hu-live-footer"><button class="hu-button hu-button--pink" data-act="pass" type="button"><span aria-hidden="true">↑</span> Passer</button><p>${round.motion ? 'Lève pour passer · baisse pour valider<br>Reviens au front entre deux mots.' : 'Un ami valide ou passe avec les boutons.'}</p><button class="hu-button hu-button--green" data-act="correct" type="button"><span aria-hidden="true">↓</span> Trouvé !</button></footer></section>`;
+    root.innerHTML = `<section class="hu-live"><header class="hu-live-header">${menuButton(true)}<button class="hu-pill" data-act="pause" type="button" aria-label="Mettre la manche en pause"><span aria-hidden="true">Ⅱ</span><span class="hu-pause-label"> Pause</span></button><span class="hu-live-player">${escape(round.player || 'Devine Tête')}</span>${teamCaption()}<span class="hu-pill hu-pill--pink"><span id="hu-points">${score(round.rows)}</span> pt</span><span id="hu-timer" class="hu-pill hu-pill--yellow" aria-label="Temps restant">${timeLabel(round.remaining)}</span></header><div class="hu-word-card" id="hu-word-card">${windowBar(round.clues === 'mime' ? 'MIME · SANS PARLER' : 'FAIS DEVINER SANS DIRE LE MOT')}<div class="hu-word-area"><h1 id="hu-word" aria-live="polite">${escape(round.word)}</h1><p id="hu-feedback-hint"></p></div><div class="hu-time-track" aria-hidden="true"><span id="hu-time-progress"></span></div><div class="hu-floor" aria-hidden="true"></div></div><footer class="hu-live-footer"><button class="hu-button hu-button--pink" data-act="pass" type="button"><span aria-hidden="true">↑</span> Passer</button><p>${round.motion ? 'Lève pour passer · baisse pour valider<br>Reviens au front entre deux mots.' : 'Un ami valide ou passe avec les boutons.'}</p><button class="hu-button hu-button--green" data-act="correct" type="button"><span aria-hidden="true">↓</span> Trouvé !</button></footer></section>`;
     fitWord();
     updateTimer();
   }
@@ -426,15 +471,22 @@
     round.finished = true;
     round.reason = reason;
     round.remaining = Math.max(0, round.remaining);
-    store.history.push({ id: round.id, player: round.player, themeLabel: round.themeLabel, duration: round.duration, rows: round.rows });
+    store.history.push({ id: round.id, player: round.player, team: round.team || null, themeLabel: round.themeLabel, duration: round.duration, rows: round.rows });
     store.history = store.history.slice(-30);
-    if (round.player) {
+    if (round.team) {
+      const total = store.teams.totals[round.team.index];
+      total.points += score(round.rows); total.rounds += 1;
+    } else if (round.player) {
       let total = store.totals.find(t => t.player === round.player);
       if (!total) { total = { player: round.player, points: 0, rounds: 0 }; store.totals.push(total); }
       total.points += score(round.rows); total.rounds += 1;
     }
     const people = names(), index = people.indexOf(round.player);
-    store.nextPlayer = people.length ? people[(index + 1) % people.length] : '';
+    if (round.team && store.teams.enabled && people.length >= 4) {
+      const other = store.teams.members[1 - round.team.index];
+      const last = store.history.slice().reverse().find(r => r.team && r.team.index === 1 - round.team.index);
+      store.nextPlayer = other[(other.indexOf(last?.player) + 1) % other.length];
+    } else store.nextPlayer = people.length ? people[(index + 1) % people.length] : '';
     stopSensors(); releaseAwake();
     save();
     beep(880, .15); beep(660, .15, .18); beep(440, .3, .36);
@@ -444,7 +496,7 @@
   function renderResults() {
     setPhase('results');
     const points = score(round.rows), passed = round.rows.filter(r => r.status === 'pass').length;
-    root.innerHTML = `${topbar('Bilan de la manche')}<section class="hu-panel hu-results">${windowBar('BIEN JOUÉ, LA BANDE !')}<h1>${escape(round.reason)}</h1><p>${escape(round.player || 'Votre manche')} · ${round.duration} secondes</p><div class="hu-result-score"><strong id="hu-result-points">${points}</strong><span>mot${points > 1 ? 's' : ''} trouvé${points > 1 ? 's' : ''}</span><small>${passed} passé${passed > 1 ? 's' : ''} · ${round.clues === 'mime' ? 'Mimes' : 'Indices'}</small></div><p class="hu-help">Une erreur de validation ? Touche « Corriger » à côté du mot.</p><ul class="hu-results-list">${round.rows.map((r, i) => `<li data-status="${r.status}"><span aria-hidden="true">${r.status === 'correct' ? '✓' : r.status === 'pass' ? '↑' : '—'}</span><span>${escape(r.word)}<small>${r.status === 'correct' ? 'Trouvé' : r.status === 'pass' ? 'Passé' : 'Temps écoulé'}</small></span>${r.status === 'unplayed' ? '' : `<button type="button" data-correct-row="${i}" aria-label="Corriger le résultat de ${escape(r.word)}">Corriger</button>`}</li>`).join('')}</ul><button class="hu-button" data-act="next-round" type="button">${store.nextPlayer ? `Au tour de ${escape(store.nextPlayer)}` : 'Nouvelle manche'} <span aria-hidden="true">↗</span></button><button class="hu-text-button" data-act="settings" type="button">Changer les thèmes et réglages</button><div class="hu-floor" aria-hidden="true"></div></section>${historyMarkup()}`;
+    root.innerHTML = `${topbar('Bilan de la manche')}<section class="hu-panel hu-results">${windowBar('BIEN JOUÉ, LA BANDE !')}<h1>${escape(round.reason)}</h1><p>${round.team ? `${escape(round.team.label)} · ` : ''}${escape(round.player || 'Votre manche')} · ${round.duration} secondes</p><div class="hu-result-score"><strong id="hu-result-points">${points}</strong><span>mot${points > 1 ? 's' : ''} trouvé${points > 1 ? 's' : ''}</span><small>${passed} passé${passed > 1 ? 's' : ''} · ${round.clues === 'mime' ? 'Mimes' : 'Indices'}</small></div><p class="hu-help">Une erreur de validation ? Touche « Corriger » à côté du mot.</p><ul class="hu-results-list">${round.rows.map((r, i) => `<li data-status="${r.status}"><span aria-hidden="true">${r.status === 'correct' ? '✓' : r.status === 'pass' ? '↑' : '—'}</span><span>${escape(r.word)}<small>${r.status === 'correct' ? 'Trouvé' : r.status === 'pass' ? 'Passé' : 'Temps écoulé'}</small></span>${r.status === 'unplayed' ? '' : `<button type="button" data-correct-row="${i}" aria-label="Corriger le résultat de ${escape(r.word)}">Corriger</button>`}</li>`).join('')}</ul><button class="hu-button" data-act="next-round" type="button">${store.nextPlayer ? `Au tour de ${escape(store.nextPlayer)}` : 'Nouvelle manche'} <span aria-hidden="true">↗</span></button><button class="hu-text-button" data-act="settings" type="button">Choisir le joueur</button><div class="hu-floor" aria-hidden="true"></div></section>${historyMarkup()}`;
     window.scrollTo(0, 0);
   }
 
@@ -510,15 +562,30 @@
       const recorded = store.history.find(r => r.id === round.id);
       if (recorded) {
         recorded.rows = round.rows;
-        const total = store.totals.find(t => t.player === round.player);
+        const total = round.team ? store.teams.totals[round.team.index] : store.totals.find(t => t.player === round.player);
         if (total) total.points += row.status === 'correct' ? 1 : -1;
       }
       save(); renderResults(); return;
     }
     const button = event.target.closest('[data-act]');
+    const move = event.target.closest('[data-move-player]');
+    if (move && phase === 'setup' && store.teams.enabled && !move.disabled) {
+      const name = move.dataset.movePlayer;
+      const index = store.teams.members.findIndex(list => list.includes(name));
+      if (index >= 0 && store.teams.members[index].length > 1) {
+        store.teams.members[index] = store.teams.members[index].filter(n => n !== name);
+        store.teams.members[1 - index].push(name); save(); updateTeams();
+      }
+      return;
+    }
     if (!button || button.disabled) return;
     switch (button.dataset.act) {
       case 'exit': exit(); break;
+      case 'shuffle-teams': {
+        const people = global.JDD.shuffle(names().slice());
+        store.teams.members = [people.filter((_, i) => i % 2 === 0), people.filter((_, i) => i % 2 === 1)];
+        save(); updateTeams(); break;
+      }
       case 'edit-players': options.editPlayers(onPlayersChanged); break;
       case 'settings': backToSettings(); break;
       case 'buttons': ++requestId; permissionPending = false; round.motion = false; stopSensors(); beginCountdown(); break;
@@ -532,16 +599,17 @@
       case 'finish': finish('Manche terminée'); break;
       case 'next-round': startRound(store.nextPlayer); break;
       case 'clear-history':
-        if (global.confirm('Effacer les scores de Devine Tête sur ce téléphone ?')) { store.history = []; store.totals = []; save(); if (phase === 'results') renderResults(); else renderSetup(); }
+        if (global.confirm('Effacer les scores de Devine Tête sur ce téléphone ?')) { store.history = []; store.totals = []; store.teams.totals = [{ points: 0, rounds: 0 }, { points: 0, rounds: 0 }]; save(); if (phase === 'results') renderResults(); else renderSetup(); }
         break;
     }
   }
 
   function onChange(event) {
     const el = event.target;
-    if (el.name !== 'hu-player' || !el.checked) return;
-    store.nextPlayer = el.value;
-    save();
+    if (el.id === 'hu-teams-enabled') {
+      store.teams.enabled = el.checked && names().length >= 4; syncTeams(); save(); updateTeams(); return;
+    }
+
   }
 
   function init(config) {

@@ -5,7 +5,7 @@
  */
 const APP_ROOT = new URL('./', self.location.href);
 const CACHE_PREFIX = `jeu-du-duc-${encodeURIComponent(APP_ROOT.pathname)}-`;
-const CACHE_NAME = `${CACHE_PREFIX}2026-10-06-v16`;
+const CACHE_NAME = `${CACHE_PREFIX}2026-10-06-v17`;
 const QUIZ_IMAGES_ORIGIN = 'https://quizimagescm.s3.eu-west-3.amazonaws.com';
 const SHELL_FILES = [
   './',
@@ -16,12 +16,18 @@ const SHELL_FILES = [
   'styles/pwa.css',
   'styles/questions.css',
   'styles/heads-up.css',
+  'styles/players.css',
+  'styles/geography.css',
+  'vendor/leaflet/leaflet.css',
+  'vendor/leaflet/leaflet.js',
   'scripts/core/init.js',
   'scripts/core/history.js',
   'scripts/core/showQuestion.js',
   'scripts/app/undercover.js',
   'scripts/app/main-game.js',
   'scripts/app/heads-up.js',
+  'scripts/app/player-editor.js',
+  'scripts/app/geography.js',
   'scripts/pwa.js',
   'data/debut.text.js',
   'data/hardcore.text.js',
@@ -32,6 +38,9 @@ const SHELL_FILES = [
   'data/rapidite.questions.js',
   'data/undercover.pairs.js',
   'data/heads.words.js',
+  'data/geography/countries.geojson',
+  'data/geography/departments.geojson',
+  'data/geography/cities.json',
   'image/icon.png',
   'image/duc-head.png',
   'image/home/hero.webp',
@@ -43,6 +52,7 @@ const SHELL_FILES = [
   'image/home/hardcore.webp',
   'image/home/lancer.webp',
   'image/home/personnalise.webp',
+  'image/home/geography.svg',
   'image/app/apple-touch-icon.png',
   'image/app/favicon-32.png',
   'image/app/icon-192.png',

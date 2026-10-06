@@ -58,9 +58,9 @@ body:has(#setup:not(.hidden)) {
 #setup #addBtn > span, #playersDialog #dialogAddBtn > span { font-size: 24px; line-height: 1; }
 #setup #playerList, #playersDialog #dialogPlayerList { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
 #setup #playerList:empty, #playersDialog #dialogPlayerList:empty { margin: 0; }
-:is(#setup, #playersDialog) .player-item { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-height: 44px; margin: 0; padding: 0 0 0 12px; border: 1px solid var(--home-ink); border-radius: 24px; background: var(--home-pink); box-shadow: none; color: var(--home-ink); font-family: Arial, sans-serif; font-size: 16px; font-weight: 700; }
+:is(#setup, #playersDialog) .player-item { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-height: 44px; margin: 0; padding: 0 0 0 12px; border: 2px solid var(--home-ink); border-radius: 10px; background: var(--home-cream); box-shadow: none; color: var(--home-ink); font-family: Arial, sans-serif; font-size: 16px; font-weight: 700; }
 :is(#setup, #playersDialog) .player-item > span { min-width: 0; overflow-wrap: anywhere; }
-:is(#setup, #playersDialog) .remove-btn { flex-shrink: 0; display: grid; place-items: center; width: 44px; min-height: 44px; padding: 0; border: 0; border-radius: 50%; font-size: 14px; }
+:is(#setup, #playersDialog) .remove-btn { flex-shrink: 0; display: grid; place-items: center; width: 44px; min-height: 44px; padding: 0; border: 0; border-left: 1px solid var(--home-ink); border-radius: 0; font-size: 24px; }
 :is(#setup, #playersDialog) .home-player-note { margin: 12px 0 0; color: #5a5154; font-family: Arial, sans-serif; font-size: 14px; }
 
 #setup .home-section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 14px; }

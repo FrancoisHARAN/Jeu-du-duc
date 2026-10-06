@@ -6,8 +6,8 @@ le lui font deviner pendant une manche chronométrée.
 
 ## Règles dans Jeu du duc
 
-- Inscrire au moins deux prénoms en haut de l’accueil : la liste sert à tous les jeux.
-  Le bouton « Modifier les joueurs » de Devine Tête permet aussi de compléter cette même liste.
+- Inscrire au moins deux prénoms à l'accueil ou directement dans « Qui devine ? » :
+  le champ et le bouton + ajoutent à la liste partagée ; le bouton − retire un joueur.
 - Choisir qui devine sur les cartes de joueurs, puis appuyer sur « Lancer la partie ».
 - Tous les mots sont mélangés automatiquement, sans sélection de thèmes.
 - Les nouvelles manches durent 60 secondes, avec l'inclinaison et les sons activés automatiquement.
@@ -30,6 +30,18 @@ Les mots personnalisés déjà enregistrés rejoignent le mélange automatiqueme
 Les trente dernières manches restent sur le téléphone ; les scores sont accessibles
 dans une section repliée sous le bouton de lancement. Une manche en pause conserve
 ses mots et sa durée jusqu'à sa fin.
+
+À partir de quatre joueurs, « Jouer en équipes » devient disponible sous
+« Qui devine ? ». Deux tableaux montrent les équipes ; les flèches déplacent
+un joueur et le dé répartit la bande aléatoirement, avec un écart maximum d'un
+joueur. Une équipe garde au moins un membre lors d'un transfert.
+Les mots trouvés et les corrections comptent pour l'équipe. Les équipes
+alternent et les joueurs qui devinent tournent au sein de chaque équipe.
+Les noms des équipiers apparaissent en petit au-dessus des cartes.
+Sous quatre joueurs, les nouvelles manches sont individuelles. Une manche
+en pause conserve ses équipiers, même si la bande est modifiée entre-temps.
+La composition et les scores des équipes restent sur le téléphone ; effacer
+les scores efface aussi les points des équipes.
 
 Une clochette aiguë à deux notes confirme un mot trouvé ; un souffle ascendant
 accompagne un mot passé. Ces sons originaux sont générés localement avec Web Audio,
@@ -78,5 +90,8 @@ Les captures fournies par le propriétaire confirment les gestes haut/bas.
 deux sens paysage, les permissions accordées/refusées, les capteurs absents,
 les pauses, les scores, le mélange des banques, les anciens réglages et les dimensions mobiles.
 `python3 tests/pwa_smoke.py` vérifie le cache et le hors connexion.
+`python3 tests/heads_teams_smoke.py` vérifie le seuil de quatre joueurs, l'édition
+partagée, les transferts, le mélange équilibré, les points et corrections par
+équipe, les tours alternés et les sauvegardes.
 Un essai sur de vrais iPhone/Android reste nécessaire pour confirmer le ressenti
 et le sens des gestes avec leur matériel.

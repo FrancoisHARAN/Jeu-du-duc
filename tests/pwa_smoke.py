@@ -138,10 +138,14 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           const cache = await caches.open(name);
           return (await cache.keys()).map(r => r.url);
         }''', cache)
-        assert len(shell) == 46, (len(shell), shell)
+        assert len(shell) == 56, (len(shell), shell)
         assert base + 'styles/questions.css' in shell
         assert base + 'data/culture.imported.js' in shell
-        for file in ['styles/heads-up.css', 'scripts/app/heads-up.js', 'data/heads.words.js']:
+        for file in ['styles/heads-up.css', 'scripts/app/heads-up.js', 'data/heads.words.js',
+                     'scripts/app/player-editor.js', 'styles/players.css', 'scripts/app/geography.js',
+                     'styles/geography.css', 'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css',
+                     'data/geography/countries.geojson', 'data/geography/departments.geojson',
+                     'data/geography/cities.json', 'image/home/geography.svg']:
             assert base + file in shell
         assert all(url.startswith(base) for url in shell)
         for name in ['Alice', 'Bob', 'Chloe']:
@@ -238,6 +242,20 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         assert feedback[0]['duration'] != feedback[1]['duration'], feedback
         page.locator('[data-act="pause"]').click()
         page.locator('#heads [data-act="exit"]').click()
+        # Les cartes et leurs données sont locales : les trois jeux marchent en mode avion.
+        for mode, expected in [('cities', 242), ('countries', 242), ('departments', 96)]:
+            page.locator('#geographyBtn').click()
+            page.locator(f'[data-geo-mode="{mode}"]').click()
+            page.locator('[data-geo="start"]').click()
+            expect(page.locator('#geography')).to_have_attribute('data-screen', 'playing')
+            assert page.locator('#geo-map path.leaflet-interactive').count() == expected
+            if mode == 'cities':
+                page.locator('#geo-map').click(position={'x': 120, 'y': 150})
+                page.locator('[data-geo="validate"]').click()
+                expect(page.locator('#geography')).to_have_attribute('data-screen', 'answer')
+                assert page.locator('.geo-pin--truth').count() == 1
+            page.locator('[data-geo="exit"]').click()
+        print('PASS: trois cartes vectorielles et données géographiques hors connexion', flush=True)
         expect(page.locator('#setup')).to_be_visible()
         for mode in ['debut', 'hardcore', 'alcool', 'culture', 'custom']:
             page.locator(f'[data-mode="{mode}"]').click()

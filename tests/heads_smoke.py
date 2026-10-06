@@ -148,7 +148,7 @@ try:
             setup(page)
             counts = page.evaluate('JDD.HEADS_DECKS.map(d => d.words.length)')
             assert counts == [60] * 7, counts
-            expect(page.locator('input[name="hu-player"]:checked')).to_have_value('Alice')
+            expect(page.locator('#hu-player .jdd-player-choice[aria-pressed="true"]')).to_contain_text('Alice')
             layout(page)
             if width == 393:
                 page.screenshot(path=str(OUT / 'setup.png'), full_page=True)

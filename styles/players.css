@@ -1,0 +1,20 @@
+/* Le même vocabulaire graphique pour les joueurs, dans chaque jeu. */
+.jdd-player-editor { font-family: 'Montserrat', Arial, sans-serif; color: #252124; text-align: left; }
+.jdd-player-editor * { box-sizing: border-box; min-width: 0; }
+.jdd-player-input { display: flex; gap: 8px; margin: 8px 0 14px; }
+.jdd-player-input label { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.jdd-player-editor .jdd-player-input input { flex: 1; width: 0; min-height: 48px; padding: 10px 12px; border: 2px solid #252124; border-radius: 10px; background: white; color: #252124; font: 16px Arial, sans-serif; }
+.jdd-player-editor .jdd-player-add { flex: 0 0 48px; min-height: 48px; padding: 0; border: 2px solid #252124; border-radius: 10px; box-shadow: 3px 3px 0 #252124; background: #6b62cc; color: #fff9e9; font-size: 30px; font-weight: 900; }
+.jdd-player-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(155px, 100%), 1fr)); gap: 10px; }
+.jdd-player-item { display: flex; align-items: stretch; overflow: hidden; border: 2px solid #252124; border-radius: 10px; background: #fff9e9; }
+.jdd-player-item:has([aria-pressed="true"]) { background: #ffd938; box-shadow: 3px 3px 0 #252124; }
+.jdd-player-editor .jdd-player-choice { display: flex; flex: 1; align-items: center; gap: 8px; min-height: 50px; margin: 0; padding: 8px; border: 0; border-radius: 0; background: transparent; text-align: left; color: #252124; font: 800 14px 'Montserrat', Arial, sans-serif; line-height: 1.35; }
+.jdd-player-choice > span:last-child { overflow-wrap: anywhere; }
+.jdd-player-avatar { display: grid; place-items: center; flex: 0 0 28px; height: 28px; border: 1px solid #252124; border-radius: 50%; background: #f7c3d0; font-weight: 900; }
+.jdd-player-choice[aria-pressed="true"] .jdd-player-avatar { background: #6b62cc; color: #fff9e9; }
+.jdd-player-editor .jdd-player-remove { flex: 0 0 44px; min-height: 44px; margin: 0; padding: 0; border: 0; border-left: 1px solid #252124; border-radius: 0; background: transparent; color: #252124; font-size: 24px; }
+.jdd-player-editor button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.jdd-player-editor button:hover { filter: none; transform: none; }
+.jdd-player-editor button:focus-visible, .jdd-player-editor input:focus-visible { outline: 3px solid #6b62cc; outline-offset: -3px; }
+.jdd-player-editor .jdd-player-error { margin: 8px 0; color: #962445; font: 14px Arial, sans-serif; }
+.jdd-player-editor [hidden] { display: none; }

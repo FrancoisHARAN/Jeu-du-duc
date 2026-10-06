@@ -56,6 +56,24 @@ body.hu-playing { overflow: hidden; }
 .hu-root .hu-help { margin: 4px 0 12px; color: #5a5154; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.45; }
 .hu-root .hu-player-picker { margin: 0 0 18px; padding: 14px; border: 2px solid var(--hu-ink); border-radius: 12px; background: #eee8f7; }
 .hu-root .hu-player-picker legend { padding: 0 8px; font-size: 20px; font-weight: 900; }
+.hu-root .hu-teams { margin: 0 0 20px; border: 2px solid var(--hu-ink); border-radius: 12px; background: #eee8f7; padding: 12px; }
+.hu-root .hu-team-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; font-size: 16px; font-weight: 800; cursor: pointer; }
+.hu-root .hu-team-toggle input { width: 24px; height: 24px; accent-color: #6b62cc; }
+.hu-root .hu-team-tables { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.hu-root .hu-team-table { overflow: hidden; border: 2px solid var(--hu-ink); border-radius: 10px; background: var(--hu-cream); }
+.hu-root .hu-team-table h3 { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px; margin: 0; padding: 10px 8px; background: var(--hu-pink); font-size: 14px; }
+.hu-root .hu-team-table:nth-child(2) h3 { background: var(--hu-green); }
+.hu-root .hu-team-table h3 small { font-size: 12px; }
+.hu-root .hu-team-table ul { margin: 0; padding: 0; list-style: none; }
+.hu-root .hu-team-table li { display: flex; align-items: center; gap: 4px; border-top: 1px solid var(--hu-ink); padding-left: 8px; }
+.hu-root .hu-team-table li span { flex: 1; font-size: 12px; font-weight: 700; overflow-wrap: anywhere; }
+.hu-root .hu-team-table li button { flex: 0 0 44px; min-height: 44px; padding: 0; border: 0; border-radius: 0; background: transparent; font-size: 22px; }
+.hu-root .hu-dice { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 48px; margin-top: 12px; border: 2px solid var(--hu-ink); border-radius: 10px; background: var(--hu-yellow); font-size: 13px; font-weight: 800; }
+.hu-root .hu-dice span { font-size: 26px; }
+.hu-root .hu-live-team { display: flex; flex: 1; flex-direction: column; gap: 2px; color: var(--hu-cream); text-align: left; line-height: 1.2; }
+.hu-root .hu-live-team strong { font-size: 12px; }
+.hu-root .hu-live-team small { font-size: 10px; overflow-wrap: anywhere; }
+.hu-root .hu-live-header:has(.hu-live-team) .hu-live-player { flex: 0 1 auto; }
 .hu-root .hu-player-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)); gap: 10px; }
 .hu-root .hu-player-choice { position: relative; display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 8px; border: 2px solid var(--hu-ink); border-radius: 10px; background: var(--hu-cream); cursor: pointer; }
 .hu-root .hu-player-choice input { position: absolute; width: 1px; height: 1px; margin: 0; padding: 0; opacity: 0; }

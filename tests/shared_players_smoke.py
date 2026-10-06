@@ -83,24 +83,22 @@ try:
         assert hero['y'] + hero['height'] <= people['y']
         page.screenshot(path=str(OUT / 'accueil.png'))
         page.locator('#headsBtn').click()
-        expect(page.locator('#playersDialogMode')).to_have_text('Devine Tête')
-        page.locator('#dialogPlayerInput').fill('Alice')
-        page.locator('#dialogAddBtn').click()
-        expect(page.locator('#dialogStartBtn')).to_be_disabled()
-        page.locator('#dialogPlayerInput').fill('Bob')
-        page.locator('#dialogStartBtn').click()
+        expect(page.locator('#playersDialog')).not_to_be_visible()
+        page.locator('#hu-player input').fill('Alice')
+        page.locator('#hu-player .jdd-player-add').click()
+        expect(page.locator('#hu-start')).to_be_disabled()
+        page.locator('#hu-player input').fill('Bob')
+        page.locator('#hu-player .jdd-player-add').click()
         expect(page.locator('#heads')).to_have_attribute('data-screen', 'setup')
-        assert page.locator('#hu-player .hu-player-name').all_text_contents() == ['Alice', 'Bob']
-        page.locator('#heads [data-act="edit-players"]').click()
-        expect(page.locator('#playersDialog')).to_be_visible()
-        page.locator('#dialogPlayerInput').fill('Chloé')
-        page.locator('#dialogStartBtn').click()
-        assert page.locator('#hu-player .hu-player-name').all_text_contents() == ['Alice', 'Bob', 'Chloé']
-        page.get_by_role('radio', name='Chloé', exact=True).check()
+        assert page.locator('#hu-player .jdd-player-choice > span:last-child').all_text_contents() == ['Alice', 'Bob']
+        page.locator('#hu-player input').fill('Chloé')
+        page.locator('#hu-player .jdd-player-add').click()
+        assert page.locator('#hu-player .jdd-player-choice > span:last-child').all_text_contents() == ['Alice', 'Bob', 'Chloé']
+        page.locator('#hu-player .jdd-player-choice').filter(has_text='Chloé').click()
         page.locator('#heads [data-act="exit"]').click()
         assert page.evaluate('JDD.players') == ['Alice', 'Bob', 'Chloé']
         page.locator('#undercoverBtn').click()
-        expect(page.locator('#uc-count-title')).to_contain_text('3 joueurs')
+        expect(page.locator('#uc-count-title')).to_contain_text('3 / 20 joueurs')
         assert [p['name'] for p in uc_store(page)['players']] == ['Alice', 'Bob', 'Chloé']
         page.screenshot(path=str(OUT / 'undercover-reglages.png'))
         distribute(page, True)
@@ -120,16 +118,15 @@ try:
             assert player['score'] == (2 if slot['role'] == 'civil' else 0)
         page.screenshot(path=str(OUT / 'undercover-resultats.png'))
         act(page, 'end-home')
-        expect(page.locator('#uc-count-title')).to_contain_text('4 joueurs')
+        expect(page.locator('#uc-count-title')).to_contain_text('4 / 20 joueurs')
         assert sum(p['score'] for p in uc_store(page)['players']) == 4
-        act(page, 'edit-players')
-        page.locator('#dialogPlayerInput').fill('Emma')
-        page.locator('#dialogStartBtn').click()
-        expect(page.locator('#uc-count-title')).to_contain_text('5 joueurs')
+        page.locator('#uc-players input').fill('Emma')
+        page.locator('#uc-players .jdd-player-add').click()
+        expect(page.locator('#uc-count-title')).to_contain_text('5 / 20 joueurs')
         act(page, 'exit-app')
         page.locator('#headsBtn').click()
-        assert page.locator('#hu-player .hu-player-name').all_text_contents() == ['Alice', 'Bob', 'Chloé', 'Dani', 'Emma']
-        expect(page.locator('input[name="hu-player"]:checked')).to_have_value('Chloé')
+        assert page.locator('#hu-player .jdd-player-choice > span:last-child').all_text_contents() == ['Alice', 'Bob', 'Chloé', 'Dani', 'Emma']
+        expect(page.locator('#hu-player .jdd-player-choice[aria-pressed="true"]')).to_contain_text('Chloé')
         page.locator('#heads [data-act="exit"]').click()
         page.reload(wait_until='load')
         expect(page.locator('#playerList .player-item')).to_have_count(5)
@@ -139,10 +136,10 @@ try:
         # Limite officielle d'Undercover : pas de suppression silencieuse de noms.
         context, page = home([f'Joueur {i}' for i in range(1, 22)])
         page.locator('#undercoverBtn').click()
-        expect(page.locator('#playersDialogStatus')).to_contain_text('20 joueurs maximum')
-        expect(page.locator('#dialogStartBtn')).to_be_disabled()
-        page.locator('#dialogPlayerList button[aria-label="Retirer Joueur 21"]').click()
-        page.locator('#dialogStartBtn').click()
+        expect(page.locator('#undercover [data-act="start"]')).to_be_disabled()
+        expect(page.locator('#uc-players .jdd-player-remove')).to_have_count(21)
+        page.locator('#uc-players button[aria-label="Retirer Joueur 21"]').click()
+        expect(page.locator('#undercover [data-act="start"]')).to_be_enabled()
         assert len(uc_store(page)['players']) == 20
         context.close()
 

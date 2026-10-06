@@ -406,7 +406,7 @@
     const max = maxInfiltrators(s.count);
     const title = root.querySelector('#uc-count-title');
     if (!title) return;
-    title.textContent = `${store.players.length} joueur${store.players.length > 1 ? 's' : ''} · La bande de l’accueil.`;
+    title.textContent = `${store.players.length} / 20 joueurs`;
 
     const plural = (n, word, pluralWord) => `${n} ${n > 1 ? pluralWord : word}`;
     const full = s.undercover + s.white >= max;
@@ -426,17 +426,20 @@
     const players = store.players;
     const playersBox = root.querySelector('#uc-players');
     const hasScores = players.some((p) => p.score > 0);
-    playersBox.innerHTML = `
-        <div class="uc-chips">
-          ${players.map((p, i) => `
-            <span class="uc-chip">
-              <span class="uc-mini" style="background:${AVATAR_COLORS[i % AVATAR_COLORS.length]}">${initial(p.name)}</span>
-              ${escapeHtml(p.name)}${p.score ? ` <span class="uc-chip-score">${p.score} pts</span>` : ''}
-            </span>`).join('')}
-        </div>
-        <button class="uc-link" data-act="edit-players" type="button">Modifier les joueurs</button>
-        ${hasScores ? '<button class="uc-link" data-act="reset-scores">Remettre les scores à zéro</button>' : ''}
-      `;
+    if (!playersBox._editor) {
+      playersBox._editor = global.JDDPlayerEditor.mount(playersBox, {
+        getNames: options.getSuggestedNames, addPlayer: options.addPlayer,
+        removePlayer: options.removePlayer, maximum: MAX_PLAYERS,
+      });
+    } else playersBox._editor.update();
+    let reset = playersBox.parentElement.querySelector('[data-act="reset-scores"]');
+    if (hasScores && !reset) {
+      reset = document.createElement('button'); reset.type = 'button'; reset.className = 'uc-link';
+      reset.dataset.act = 'reset-scores'; reset.textContent = 'Remettre les scores à zéro';
+      playersBox.after(reset);
+    } else if (!hasScores && reset) reset.remove();
+    const start = root.querySelector('[data-act="start"]');
+    if (start) start.disabled = players.length < MIN_PLAYERS || options.getSuggestedNames().length > MAX_PLAYERS;
   }
 
   function renderInfos() {
@@ -993,7 +996,7 @@
   function onPlayersChanged() {
     if (!root || game()) return;
     syncSharedPlayers();
-    if (!root.classList.contains('hidden')) render();
+    if (!root.classList.contains('hidden')) syncSetup();
   }
 
   global.JDDModules = global.JDDModules || {};
