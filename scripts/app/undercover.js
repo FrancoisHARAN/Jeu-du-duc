@@ -37,10 +37,13 @@
   let options = { onExit: function () {}, getSuggestedNames: function () { return []; }, editPlayers: function () {} };
   let store = null;
   let modal = null;
+  // « Éliminer » reste grisé un instant : le 2e tap d'un double tap sur une pastille ne valide pas l'élimination
+  const CONFIRM_DELAY = 400;
+  let confirmOpenedAt = 0;
   let toastTimer = null;
 
   function freshStore() {
-    return { players: [], settings: Object.assign({ count: 5, hard: false }, defaultRoles(5)), game: null, usedPairs: [] };
+    return { players: [], bench: [], settings: Object.assign({ count: 5, hard: false }, defaultRoles(5)), game: null, usedPairs: [] };
   }
 
   function load() {
@@ -50,6 +53,8 @@
       const base = freshStore();
       return {
         players: data.players.filter((p) => p && p.id && typeof p.name === 'string').map((p) => ({ id: p.id, name: p.name, score: Number(p.score) || 0 })),
+        // joueurs retirés de la bande : leurs points les attendent s'ils reviennent
+        bench: Array.isArray(data.bench) ? data.bench.filter((p) => p && p.id && typeof p.name === 'string').map((p) => ({ id: p.id, name: p.name, score: Number(p.score) || 0 })) : [],
         settings: Object.assign(base.settings, data.settings),
         game: data.game && Array.isArray(data.game.slots) ? data.game : null,
         usedPairs: Array.isArray(data.usedPairs) ? data.usedPairs : [],
@@ -168,9 +173,13 @@
       .toLowerCase()
       .normalize('NFD')
       .replace(/[̀-ͯ]/g, '')
-      .replace(/^(le|la|les|un|une|des|du|de la|l')\s*/, '')
-      .replace(/[^a-z0-9]+/g, '')
-      .replace(/(s|x)$/, '');
+      // un article n'est retiré que s'il est suivi d'un espace (Lapin, Dés restent entiers) ; ’ = apostrophe iPhone
+      .replace(/^(?:(?:les|le|la|une|un|des|du|de la)\s+|l['’]\s*)/, '')
+      // pluriel retiré mot par mot (Film X ≠ Film)
+      .split(/[^a-z0-9]+/)
+      .filter(Boolean)
+      .map((word) => (word.length > 2 ? word.replace(/[sx]$/, '') : word))
+      .join('');
   }
 
   // ---------------------------------------------------------------- partie
@@ -341,12 +350,13 @@
 
   function syncSharedPlayers() {
     if (game()) return;
-    const previous = store.players;
+    const previous = store.players.concat(store.bench || []);
     const names = options.getSuggestedNames().slice(0, MAX_PLAYERS);
     store.players = names.map((name) => {
       const existing = previous.find((player) => player.name.toLowerCase() === name.toLowerCase());
       return existing ? { ...existing, name } : { id: uid(), name, score: 0 };
     });
+    store.bench = previous.filter((p) => p.score > 0 && !store.players.some((q) => q.id === p.id)).slice(-30);
     const count = Math.max(MIN_PLAYERS, store.players.length);
     if (count !== store.settings.count) Object.assign(store.settings, defaultRoles(count));
     store.settings.count = count;
@@ -608,7 +618,7 @@
             <p>Éliminer ${escapeHtml(player.name)} ?</p>
             <div class="uc-dialog-actions">
               <button class="uc-dialog-cancel" data-act="close-modal">Annuler</button>
-              <button class="uc-dialog-ok" data-act="eliminate">Éliminer</button>
+              <button class="uc-dialog-ok" data-act="eliminate"${Date.now() - confirmOpenedAt < CONFIRM_DELAY ? ' disabled' : ''}>Éliminer</button>
             </div>
           </div>`);
 
@@ -678,13 +688,13 @@
       title = 'Mr. White a gagné !';
       heroRole = 'white';
     } else {
-      const whiteAlive = g.slots.some((slot) => slot.role === 'white' && slot.alive);
+      const hasWhite = g.slots.some((slot) => slot.role === 'white');
       const underCount = g.slots.filter((slot) => slot.role === 'undercover').length;
       if (!hasUnder) {
         title = 'Mr. White a gagné !';
         heroRole = 'white';
       } else {
-        title = whiteAlive ? 'Les Infiltrés ont gagné !' : underCount > 1 ? 'Les Undercovers ont gagné !' : "L'Undercover a gagné !";
+        title = hasWhite ? 'Les Infiltrés ont gagné !' : underCount > 1 ? 'Les Undercovers ont gagné !' : "L'Undercover a gagné !";
         heroRole = 'undercover';
       }
     }
@@ -821,6 +831,7 @@
       }
       case 'reset-scores':
         store.players.forEach((p) => { p.score = 0; });
+        store.bench = [];
         save();
         syncSetup();
         break;
@@ -873,10 +884,16 @@
       case 'vote':
         if (!modal) {
           modal = { type: 'confirmVote', slot: slotIndex };
+          confirmOpenedAt = Date.now();
           render();
+          setTimeout(() => {
+            const button = root.querySelector('[data-act="eliminate"]');
+            if (button) button.disabled = false;
+          }, CONFIRM_DELAY);
         }
         break;
       case 'eliminate':
+        if (!modal || modal.type !== 'confirmVote' || Date.now() - confirmOpenedAt < CONFIRM_DELAY) break;
         g.slots[modal.slot].alive = false;
         save();
         modal = { type: 'eliminated', slot: modal.slot };
@@ -966,7 +983,9 @@
   function onOpen() {
     if (!root) return;
     const g = game();
-    modal = g && g.modal ? g.modal : null;
+    const saved = g && g.modal ? g.modal : null;
+    // un mot secret ne se réaffiche jamais tout seul à la reprise : retour aux pastilles
+    modal = saved && saved.type === 'word' ? null : saved;
     render();
     root.scrollTop = 0;
   }

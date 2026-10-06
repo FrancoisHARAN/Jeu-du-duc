@@ -150,7 +150,8 @@ body:has(#game:not(.hidden))::before {
 #game .mcq-btn--image .quiz-image { height: clamp(120px, 32vw, 200px); }
 #game .mcq-grid--vf .mcq-btn { justify-content: center; text-align: center; }
 #game .mcq-grid--vf .mcq-btn::before { display: none; }
-#game .mcq-btn[disabled] { opacity: 1; filter: none; }
+/* une réponse déjà jouée (ou en chargement) laisse passer le tap « à droite pour continuer » */
+#game .mcq-btn[disabled] { opacity: 1; filter: none; pointer-events: none; }
 #game .mcq-correct { background: #a7d5bc !important; }
 #game .mcq-wrong { background: #f0a6a6 !important; }
 #game .mcq-correct::before { content: '✓'; }

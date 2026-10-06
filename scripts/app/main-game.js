@@ -65,6 +65,7 @@
       culture: 25,
     },
     cultureDrinkMode: false,
+    answerShownAt: -Infinity,
   };
   let playersDialogContext = null;
   let mediaRequest = 0;
@@ -153,8 +154,13 @@
     return false;
   }
 
+  // « Jean  Paul » et « Jean Paul », ou un « Zoé » copié-collé, sont le même prénom
+  function cleanName(value) {
+    return String(value).normalize('NFC').replace(/\s+/g, ' ').trim();
+  }
+
   function addPlayer(input = elements.playerInput) {
-    const name = input.value.trim();
+    const name = cleanName(input.value);
     if (!name) {
       return input === elements.dialogPlayerInput ? rejectPlayer(input, 'Entre un prénom pour ajouter un joueur.') : false;
     }
@@ -162,7 +168,7 @@
     if (players.length >= maximum) {
       return rejectPlayer(input, `La bande est complète : ${maximum} joueurs maximum.`);
     }
-    if (players.some((existing) => existing.toLowerCase() === name.toLowerCase())) {
+    if (players.some((existing) => cleanName(existing).toLowerCase() === name.toLowerCase())) {
       return rejectPlayer(input, 'Ce prénom est déjà dans la bande. Choisis-en un autre.');
     }
     players.push(name);
@@ -179,8 +185,13 @@
     renderPlayerList();
   }
 
+  // Après un retrait, les ❌ restent grisés un instant : le 2e tap d'un double tap
+  // tomberait sur le ❌ du joueur suivant, remonté sous le doigt.
+  const REMOVE_DELAY = 400;
+  let lastRemoveAt = 0;
   function renderPlayersInto(list) {
     list.innerHTML = '';
+    const wait = REMOVE_DELAY - (Date.now() - lastRemoveAt);
     players.forEach((name, index) => {
       const item = document.createElement('div');
       item.className = 'player-item';
@@ -193,8 +204,14 @@
       removeButton.className = 'remove-btn';
       removeButton.textContent = '❌';
       removeButton.setAttribute('aria-label', `Retirer ${name}`);
+      if (wait > 0) {
+        removeButton.disabled = true;
+        setTimeout(() => { removeButton.disabled = false; }, wait);
+      }
       removeButton.addEventListener('click', (event) => {
         event.stopPropagation();
+        if (Date.now() - lastRemoveAt < REMOVE_DELAY) return;
+        lastRemoveAt = Date.now();
         removePlayer(index);
         if (list === elements.dialogPlayerList) elements.dialogPlayerInput.focus();
       });
@@ -461,6 +478,7 @@
       event.stopPropagation();
       elements.answerText.textContent = `✅ Réponse : ${question.answer}${question.note ? ` — ${question.note}` : ''}`;
       elements.showAnswerButton.style.display = 'none';
+      state.answerShownAt = event.timeStamp;
     };
   }
 
@@ -554,7 +572,10 @@
   }
 
   function nextQuestion(event) {
-    if (event.target === elements.showAnswerButton || event.target.closest('.toggle-container')) {
+    if (event.target === elements.showAnswerButton || event.target.closest('.toggle-container .switch, .toggle-container .toggle-label')) {
+      return;
+    }
+    if (event.timeStamp - state.answerShownAt < 500) {
       return;
     }
     if (event.clientX <= window.innerWidth / 2) {
@@ -570,7 +591,15 @@
     showQuestion();
   }
 
+  // Tous les scripts « defer » ont été exécutés au DOMContentLoaded.
+  let dataReady = false;
+  document.addEventListener('DOMContentLoaded', () => { dataReady = true; }, { once: true });
+
   function startGame() {
+    if (!dataReady) {
+      document.addEventListener('DOMContentLoaded', startGame, { once: true });
+      return;
+    }
     if (players.length < minimumPlayers()) {
       openPlayersDialog();
       return;
@@ -591,6 +620,38 @@
     });
   }
 
+  const SETTINGS_KEY = 'jdd.settings';
+
+  function saveSettings() {
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+        mode: state.currentMode,
+        drink: state.cultureDrinkMode,
+        sliders: Object.fromEntries(Object.entries(sliderElements).map(([key, input]) => [key, Number(input.value)])),
+      }));
+    } catch (error) {
+      // navigation privée : réglages gardés en mémoire
+    }
+  }
+
+  function restoreSettings() {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null'); } catch (_) { /* réglages invalides */ }
+    if (!saved || typeof saved !== 'object') return false;
+    Object.entries(sliderElements).forEach(([key, input]) => {
+      const value = Number(saved.sliders && saved.sliders[key]);
+      if (Number.isFinite(value)) input.value = String(Math.min(100, Math.max(0, value)));
+    });
+    updateWeights();
+    state.cultureDrinkMode = saved.drink === true;
+    elements.cultureToggle.checked = state.cultureDrinkMode;
+    const card = typeof saved.mode === 'string'
+      && Array.from(document.querySelectorAll('.mode-card[data-mode]')).find((item) => item.dataset.mode === saved.mode);
+    if (!card) return false;
+    activateModeCard(card);
+    return true;
+  }
+
   function activateModeCard(selectedCard) {
     document.querySelectorAll('.mode-card[data-mode]').forEach((card) => {
       card.classList.remove('active');
@@ -603,6 +664,7 @@
       elements.selectedModeLabel.textContent = selectedCard.querySelector('.home-mode-label').innerText.replace(/\s+/g, ' ').trim();
     }
     elements.customWeightsBox.classList.toggle('hidden', state.currentMode !== 'custom');
+    saveSettings();
   }
 
   function openUndercover() {
@@ -676,7 +738,11 @@
       playersDialogContext = null;
     });
 
-    elements.gameScreen.addEventListener('click', nextQuestion);
+    document.addEventListener('click', (event) => {
+      // le clic qui lance la partie (accueil, fenêtre des joueurs) ne doit pas sauter la 1re carte
+      if (elements.gameScreen.classList.contains('hidden') || event.target.closest('#setup, dialog')) return;
+      nextQuestion(event);
+    });
     elements.backLogo.addEventListener('click', (event) => {
       event.stopPropagation();
       elements.gameScreen.classList.add('hidden');
@@ -687,10 +753,11 @@
 
     elements.cultureToggle.addEventListener('change', () => {
       state.cultureDrinkMode = elements.cultureToggle.checked;
+      saveSettings();
     });
 
     Object.values(sliderElements).forEach((input) => {
-      input.addEventListener('input', updateWeights);
+      input.addEventListener('input', () => { updateWeights(); saveSettings(); });
     });
 
     document.querySelectorAll('.mode-card[data-mode]').forEach((card) => {
@@ -724,7 +791,7 @@
     }
     attachEvents();
     const defaultCard = document.querySelector('.mode-card[data-mode="debut"]');
-    if (defaultCard) {
+    if (!restoreSettings() && defaultCard) {
       defaultCard.classList.add('active');
     }
     renderPlayerList();

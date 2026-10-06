@@ -8,10 +8,17 @@
   let reloadPending = false;
   let reloadStarted = false;
 
+  // Pas de rechargement pendant une saisie (fenêtre des joueurs ouverte, champ actif).
+  function busy() {
+    const active = document.activeElement;
+    return Boolean(document.querySelector('dialog[open]'))
+      || Boolean(active && active.matches && active.matches('input, textarea, select'));
+  }
+
   // Une mise à jour ne coupe jamais une partie en cours.
   function reloadOnHome() {
     const home = document.getElementById('setup');
-    if (!reloadStarted && reloadPending && document.visibilityState === 'visible' && home && !home.classList.contains('hidden')) {
+    if (!reloadStarted && reloadPending && document.visibilityState === 'visible' && home && !home.classList.contains('hidden') && !busy()) {
       // Le transfert de contrôle peut être signalé de nouveau pendant la
       // navigation : ne jamais annuler le rechargement déjà en cours.
       reloadStarted = true;
@@ -31,6 +38,10 @@
   if (home) {
     new MutationObserver(reloadOnHome).observe(home, { attributes: true, attributeFilter: ['class'] });
   }
+  // La saisie terminée, la mise à jour en attente peut s'appliquer (le délai laisse « Lancer la partie » masquer l'accueil).
+  const playersDialog = document.getElementById('playersDialog');
+  if (playersDialog) playersDialog.addEventListener('close', () => setTimeout(reloadOnHome, 0));
+  document.addEventListener('focusout', () => setTimeout(reloadOnHome, 0));
 
   function checkWorker() {
     if (registration && navigator.onLine) {
