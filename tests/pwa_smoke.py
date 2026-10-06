@@ -27,17 +27,23 @@ for icon in manifest['icons']:
     with Image.open(REPO / icon['src']) as im:
         assert icon['sizes'] == f'{im.width}x{im.height}'
         assert im.mode == 'RGB', 'Les icônes installées doivent avoir un fond opaque.'
-with Image.open(REPO / 'image/app/apple-touch-icon.png') as im:
+        for corner in [(0, 0), (im.width - 1, 0), (0, im.height - 1), (im.width - 1, im.height - 1)]:
+            red, green, blue = im.getpixel(corner)
+            assert blue > red + 60 and blue > green + 60, 'Le violet doit couvrir les coins, sans cadre extérieur.'
+with Image.open(REPO / 'image/app/apple-touch-icon-purple.png') as im:
     assert im.size == (180, 180) and im.mode == 'RGB'
+    for corner in [(0, 0), (179, 0), (0, 179), (179, 179)]:
+        red, green, blue = im.getpixel(corner)
+        assert blue > red + 60 and blue > green + 60, 'L’icône iPhone doit avoir son fond violet entier.'
 with Image.open(REPO / 'image/app/duc-cutout.png') as im:
     assert im.mode == 'RGBA' and im.getextrema()[3][0] == 0
-with Image.open(REPO / 'image/app/icon-maskable-512.png') as im:
-    bg = im.getpixel((0, 0))
+with Image.open(REPO / 'image/app/icon-purple-maskable-512.png') as im:
     for y in range(im.height):
         for x in range(im.width):
             if (x - 256) ** 2 + (y - 256) ** 2 > (512 * .4) ** 2:
-                assert im.getpixel((x, y)) == bg, 'Le dessin déborde de la zone maskable.'
-print('PASS: manifest, noms sans emoji, tailles PNG, détourage et zone maskable', flush=True)
+                red, green, blue = im.getpixel((x, y))
+                assert blue > red + 60 and blue > green + 60, 'Le dessin déborde de la zone maskable.'
+print('PASS: manifest, noms sans emoji, tailles PNG, fonds violets sans cadre et zone maskable', flush=True)
 
 with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
     site = Path(tmp) / 'site'

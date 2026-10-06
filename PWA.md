@@ -13,8 +13,17 @@ Un ancien raccourci avec la lettre « L » peut conserver son ancien nom et son
 icône. Le remplacer une seule fois par ce nouvel ajout. Il n'est ensuite pas
 nécessaire de supprimer l'application pour les mises à jour du jeu.
 
-iOS donne aux icônes un fond carré arrondi : la tête détourée est placée sur
-un fond crème, sans fond violet dans l'illustration elle-même.
+L'icône reprend le roi et son cocktail sur le fond violet du visuel fourni.
+Le violet couvre tout le carré, sans cadre noir extérieur ni fond crème ;
+iOS applique lui-même ses coins arrondis. La version Android maskable garde
+le dessin entier dans la zone protégée des découpes du lanceur.
+
+Les nouveaux noms de fichiers évitent de réutiliser les anciennes images
+beiges du navigateur. iOS peut toutefois conserver l'icône d'un ajout déjà
+installé : après le déploiement, ouvrir le site dans Safari et refaire
+**Ajouter à l'écran d'accueil** si l'ancienne icône reste affichée. Ce nouvel
+ajout n'est nécessaire que pour rafraîchir l'icône, pas pour les mises à jour
+du jeu.
 
 ## Android
 
@@ -52,8 +61,10 @@ le manifest et le worker fonctionnent sous `/Jeu-du-duc/` et à la racine.
 
 - `manifest.webmanifest` : nom, lancement standalone, chemins et icônes Android.
 - `index.html` : titre, icône Apple, balises iOS et chargement de la PWA.
-- `image/app/` : dessin détouré, icône Apple 180 px, icônes 192/512 px, icône
-  Android maskable et favicon.
+- `image/app/` : originaux violets `duc-purple-master.png` et
+  `duc-purple-maskable-master.png`, icône Apple 180 px, icônes 192/512 px,
+  icône Android maskable et favicon. L'ancien dessin détouré reste conservé
+  comme asset source.
 - `scripts/pwa.js` : enregistrement et vérification du worker.
 - `service-worker.js` : réseau prioritaire, cache de secours, audio hors ligne
   et suppression des anciennes versions des caches.

@@ -11,19 +11,19 @@
   "theme_color": "#6b62cc",
   "icons": [
     {
-      "src": "image/app/icon-192.png",
+      "src": "image/app/icon-purple-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "image/app/icon-512.png",
+      "src": "image/app/icon-purple-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "image/app/icon-maskable-512.png",
+      "src": "image/app/icon-purple-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
