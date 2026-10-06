@@ -72,6 +72,11 @@
     });
     const amount = () => String(2 + Math.floor(Math.random() * 3));
     const result = text
+      // « de Inès » → « d'Inès », « que Hugo » reste (h aspiré possible), seulement devant une voyelle
+      .replace(/\b(de|que|De|Que) \{p(\d)\}/g, (match, word, i) => {
+        const name = chosen[Number(i) - 1] || chosen[0] || '';
+        return /^[AEIOUÀÂÄÉÈÊËÎÏÔÖÙÛÜaeiou]/.test(name) ? `${word.slice(0, -1)}'${name}` : `${word} ${name}`;
+      })
       .replace(/\{p(\d)\}/g, (_, i) => chosen[Number(i) - 1] || chosen[0] || '')
       .replace(/\{team\}/g, context.team || '')
       .replace(/\{n\}/g, amount);
