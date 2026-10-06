@@ -31,6 +31,10 @@ Les trente dernières manches restent sur le téléphone ; les scores sont acces
 dans une section repliée sous le bouton de lancement. Une manche en pause conserve
 ses mots et sa durée jusqu'à sa fin.
 
+Une clochette aiguë à deux notes confirme un mot trouvé ; un souffle ascendant
+accompagne un mot passé. Ces sons originaux sont générés localement avec Web Audio,
+activé depuis le bouton de lancement, et fonctionnent aussi hors connexion.
+
 ## Capteurs et PWA
 
 `DeviceOrientationEvent.requestPermission()` est appelé directement depuis

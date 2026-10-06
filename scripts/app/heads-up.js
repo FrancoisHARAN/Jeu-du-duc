@@ -8,7 +8,7 @@
   const HOME_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9"/></svg>';
   let root, store, round = null, phase = 'setup', opened = false;
   let options = { onExit() {}, getSuggestedNames() { return []; }, editPlayers() {} };
-  let clock = null, audio = null, wakeLock = null, permissionPending = false;
+  let clock = null, audio = null, feedbackSounds = null, wakeLock = null, permissionPending = false;
   let sensor = null, neutralSince = 0, gesture = null, gestureSince = 0, readySince = 0;
   let countdownEnd = 0, lastCount = 0, requestId = 0, readyMessage = '', resume = false;
   const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -134,8 +134,56 @@
     try {
       const Audio = global.AudioContext || global.webkitAudioContext;
       if (!audio && Audio) audio = new Audio();
-      if (audio && audio.state === 'suspended') audio.resume().catch(() => {});
+      if (audio && ['suspended', 'interrupted'].includes(audio.state)) audio.resume().catch(() => {});
+      if (audio && !feedbackSounds) feedbackSounds = buildFeedbackSounds();
     } catch (_) { /* le son est facultatif */ }
+  }
+
+  function buildFeedbackSounds() {
+    // Sons originaux, calculés une fois : aucune ressource à télécharger.
+    const rate = audio.sampleRate;
+    const makeBuffer = (duration, sample) => {
+      const buffer = audio.createBuffer(1, Math.ceil(rate * duration), rate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = sample(i / rate);
+      return buffer;
+    };
+    const bell = (t, frequency, decay) => {
+      if (t < 0) return 0;
+      const phase = 2 * Math.PI * frequency * t;
+      const attack = Math.min(1, t / .004);
+      return attack * (Math.sin(phase) * Math.exp(-t / decay)
+        + .2 * Math.sin(phase * 2) * Math.exp(-t / .055)
+        + .08 * Math.sin(phase * 3.86) * Math.exp(-t / .035));
+    };
+    // Deux notes montantes, avec une attaque douce et une résonance de clochette.
+    const correct = makeBuffer(.55, t => Math.min(1, (.55 - t) / .04)
+      * (.16 * bell(t, 1318.51, .105) + .2 * bell(t - .065, 1975.53, .15)));
+
+    // Souffle qui monte : bruit filtré et petit mouvement tonal, sans son d'erreur.
+    let seed = 173, lower = 0, upper = 0;
+    const pass = makeBuffer(.28, t => {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      const noise = seed / 2147483648 - 1;
+      const progress = t / .28;
+      lower += (1 - Math.exp(-2 * Math.PI * (500 + 2200 * progress) / rate)) * (noise - lower);
+      upper += (1 - Math.exp(-2 * Math.PI * (2800 + 4200 * progress) / rate)) * (noise - upper);
+      const envelope = Math.pow(Math.sin(Math.PI * progress), 1.4);
+      const glide = Math.sin(2 * Math.PI * (480 * t + 2200 * t * t));
+      return envelope * (.45 * (upper - lower) + .035 * glide);
+    });
+    return { correct, pass };
+  }
+
+  function playFeedback(status) {
+    if (!store.config.sound || !audio || audio.state !== 'running' || !feedbackSounds) return;
+    try {
+      const source = audio.createBufferSource();
+      source.buffer = feedbackSounds[status];
+      source.connect(audio.destination);
+      source.onended = () => source.disconnect();
+      source.start();
+    } catch (_) { /* le jeu continue si la sortie audio est indisponible */ }
   }
 
   function beep(frequency, duration = .12, delay = 0) {
@@ -343,7 +391,7 @@
     root.querySelector('#hu-points').textContent = score(round.rows);
     root.querySelectorAll('[data-act="correct"], [data-act="pass"]').forEach(b => { b.disabled = true; });
     fitWord();
-    if (good) { beep(660); beep(880, .14, .1); } else beep(220, .18);
+    playFeedback(status);
     if (navigator.vibrate) navigator.vibrate(good ? 60 : [30, 30, 30]);
     save();
   }

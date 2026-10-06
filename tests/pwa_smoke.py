@@ -161,6 +161,18 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
             page.locator('#playerInput').fill(name)
             page.locator('#addBtn').click()
         print('PASS: ajout de joueurs et lancement depuis le popup en mode avion', flush=True)
+        page.evaluate('''() => {
+          window.offlineFeedback = [];
+          const start = AudioBufferSourceNode.prototype.start;
+          AudioBufferSourceNode.prototype.start = function(...args) {
+            if (this.buffer) {
+              const data = this.buffer.getChannelData(0);
+              offlineFeedback.push({duration: this.buffer.duration,
+                energy: data.reduce((sum, sample) => sum + sample * sample, 0)});
+            }
+            return start.apply(this, args);
+          };
+        }''')
         page.locator('#headsBtn').click()
         assert page.evaluate('JDD.HEADS_DECKS.reduce((n, d) => n + d.words.length, 0)') == 420
         page.locator('#hu-start').click()
@@ -169,6 +181,11 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         expect(page.locator('#hu-word')).not_to_be_empty()
         page.locator('[data-act="correct"]').click()
         expect(page.locator('#hu-points')).to_have_text('1')
+        expect(page.locator('[data-act="pass"]')).to_be_enabled()
+        page.locator('[data-act="pass"]').click()
+        feedback = page.evaluate('offlineFeedback')
+        assert len(feedback) == 2 and all(sound['energy'] > 0 for sound in feedback), feedback
+        assert feedback[0]['duration'] != feedback[1]['duration'], feedback
         page.locator('[data-act="pause"]').click()
         page.locator('#heads [data-act="exit"]').click()
         expect(page.locator('#setup')).to_be_visible()
@@ -182,7 +199,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         expect(page.locator('#undercover')).to_be_visible()
         page.locator('[data-act="exit-app"]').click()
         assert not errors, errors
-        print('PASS: mode avion, index.html et paramètres, 5 modes, Undercover, Devine Tête, images, polices et audio partiel', flush=True)
+        print('PASS: mode avion, 5 modes, Undercover, Devine Tête et ses 2 sons, images, polices et audio partiel', flush=True)
 
         context.set_offline(False)
         # Une mise à jour de HTML/CSS/JS/données doit fonctionner sans changer le worker.

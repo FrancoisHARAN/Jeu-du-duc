@@ -35,6 +35,19 @@ errors = []
 
 INIT = """(() => {
   localStorage.setItem('jdd.players', JSON.stringify(['Alice', 'Bob', 'Chloé']));
+  window.testSounds = [];
+  const Audio = window.AudioContext || window.webkitAudioContext;
+  if (Audio) {
+    const create = Audio.prototype.createBufferSource;
+    Audio.prototype.createBufferSource = function() {
+      const source = create.call(this), context = this, start = source.start;
+      source.start = function(...args) {
+        if (source.buffer) testSounds.push({buffer: source.buffer, state: context.state});
+        return start.apply(source, args);
+      };
+      return source;
+    };
+  }
   const originalNow = Date.now;
   window.testOffset = 0;
   Date.now = () => originalNow() + window.testOffset;
@@ -85,6 +98,15 @@ try:
 
         def click(page, action):
             page.locator(f'#heads [data-act="{action}"]').click()
+
+        def sounds(page):
+            return page.evaluate('''testSounds.map(({buffer, state}) => {
+              const data = buffer.getChannelData(0);
+              let energy = 0, peak = 0;
+              for (const sample of data) { energy += sample * sample; peak = Math.max(peak, Math.abs(sample)); }
+              return {duration: buffer.duration, rms: Math.sqrt(energy / data.length), peak,
+                      first: data[0], last: data[data.length - 1], state};
+            })''')
 
         def setup(page, controls='buttons'):
             page.locator('#headsBtn').click()
@@ -137,9 +159,18 @@ try:
             page.locator('[data-act="correct"]').evaluate('b => { b.click(); b.click(); }')
             expect(page.locator('#hu-points')).to_have_text('1')
             expect(page.locator('#hu-word')).to_have_text('Trouvé !')
+            assert len(sounds(page)) == 1, 'La double validation rejoue le son.'
             advance(page, 700)
             assert page.locator('#hu-word').inner_text() != first
             click(page, 'pass')
+            feedback = sounds(page)
+            assert len(feedback) == 2
+            for sound in feedback:
+                assert sound['state'] == 'running', sound
+                assert .15 < sound['duration'] < .65, sound
+                assert .01 < sound['rms'] < .2 and .05 < sound['peak'] < .65, sound
+                assert abs(sound['first']) < .001 and abs(sound['last']) < .001, 'Clic aux bords du son.'
+            assert abs(feedback[0]['duration'] - feedback[1]['duration']) > .1, 'Les deux retours sonores sont identiques.'
             advance(page, 700)
             if width in (393, 852):
                 page.screenshot(path=str(OUT / f'playing-{width}.png'), full_page=True)
@@ -256,6 +287,11 @@ try:
         expect(page.locator('#hu-points')).to_have_text('2')
         rows = page.evaluate("JSON.parse(localStorage.getItem('jdd.heads.v1')).active.rows")
         assert [r['status'] for r in rows] == ['pass', 'correct', 'pass', 'correct'], rows
+        gesture_sounds = sounds(page)
+        assert len(gesture_sounds) == len(rows), 'Un geste joue le son plusieurs fois.'
+        assert gesture_sounds[0]['duration'] == gesture_sounds[2]['duration']
+        assert gesture_sounds[1]['duration'] == gesture_sounds[3]['duration']
+        assert gesture_sounds[0]['duration'] != gesture_sounds[1]['duration']
         page.evaluate('clearInterval(testSensorLoop); testAngles = null')
         advance(page, 6000)
         phase(page, 'paused')
@@ -331,6 +367,19 @@ try:
         expect(page.locator('.hu-paused')).to_contain_text('horizontale')
         context.close()
         print('PASS: préparation en paysage, interruption du compte à rebours et pause en portrait', flush=True)
+
+        context, page = new_page()
+        page.evaluate('window.AudioContext = window.webkitAudioContext = undefined')
+        setup(page)
+        begin_manual(page)
+        click(page, 'correct')
+        expect(page.locator('#hu-points')).to_have_text('1')
+        advance(page, 700)
+        click(page, 'pass')
+        expect(page.locator('#hu-word')).to_have_text('Passé !')
+        assert not sounds(page)
+        context.close()
+        print('PASS: sons distincts sans saturation ni clic, une lecture par bouton/geste, jeu disponible sans audio', flush=True)
 
         assert not errors, errors
         browser.close()
