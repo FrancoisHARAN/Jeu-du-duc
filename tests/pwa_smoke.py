@@ -158,7 +158,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
                      'styles/geography.css', 'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css',
                      'data/geography/countries.geojson', 'data/geography/departments.geojson',
                      'data/geography/cities.json', 'image/home/geography.svg', 'styles/football.css',
-                     'scripts/app/football.js', 'data/football.questions.json', 'image/home/football.svg']:
+                     'scripts/app/football.js', 'data/football.questions.json', 'image/home/football.jpg']:
             assert base + file in shell
         assert all(url.startswith(base) for url in shell)
         for name in ['Alice', 'Bob', 'Chloe']:
