@@ -572,8 +572,7 @@
     elements.currentQuestion.textContent = '⚡ Question de rapidité pour tout le monde ! (Touchez pour révéler)';
     if (elements.rapiditeAudio) {
       elements.rapiditeAudio.currentTime = 0;
-      const playing = elements.rapiditeAudio.play();
-      if (playing && typeof playing.catch === 'function') playing.catch(() => {});
+      window.JDDSound.play(elements.rapiditeAudio);
     }
   }
 

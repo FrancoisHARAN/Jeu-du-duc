@@ -5,7 +5,7 @@
  */
 const APP_ROOT = new URL('./', self.location.href);
 const CACHE_PREFIX = `jeu-du-duc-${encodeURIComponent(APP_ROOT.pathname)}-`;
-const CACHE_NAME = `${CACHE_PREFIX}2026-10-06-v33`;
+const CACHE_NAME = `${CACHE_PREFIX}2026-10-06-v34`;
 const QUIZ_IMAGES_ORIGIN = 'https://quizimagescm.s3.eu-west-3.amazonaws.com';
 const SHELL_FILES = [
   './',
@@ -28,6 +28,7 @@ const SHELL_FILES = [
   'vendor/leaflet/leaflet.css',
   'vendor/leaflet/leaflet.js',
   'scripts/core/init.js',
+  'scripts/core/sound.js',
   'scripts/core/feedback-sounds.js',
   'scripts/core/history.js',
   'scripts/core/showQuestion.js',

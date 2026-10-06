@@ -170,35 +170,33 @@
   }
 
   function initializeAudio() {
-    if (!store.config.sound) return;
+    if (!store.config.sound || !global.JDDSound.isEnabled()) return;
     try {
-      const Audio = global.AudioContext || global.webkitAudioContext;
-      if (!audio && Audio) audio = new Audio();
-      if (audio && ['suspended', 'interrupted'].includes(audio.state)) audio.resume().catch(() => {});
+      audio = global.JDDSound.getContext();
       if (audio && !feedbackSounds) feedbackSounds = global.JDDFeedbackSounds.build(audio);
     } catch (_) { /* le son est facultatif */ }
   }
 
   function playFeedback(status) {
-    if (!store.config.sound || !audio || audio.state !== 'running' || !feedbackSounds) return;
+    if (!store.config.sound || !global.JDDSound.isEnabled() || !audio || audio.state !== 'running' || !feedbackSounds) return;
     try {
       const source = audio.createBufferSource();
       source.buffer = feedbackSounds[status];
-      source.connect(audio.destination);
+      source.connect(global.JDDSound.destination()); global.JDDSound.track(source);
       source.onended = () => source.disconnect();
       source.start();
     } catch (_) { /* le jeu continue si la sortie audio est indisponible */ }
   }
 
   function beep(frequency, duration = .12, delay = 0) {
-    if (!store.config.sound || !audio || audio.state !== 'running') return;
+    if (!store.config.sound || !global.JDDSound.isEnabled() || !audio || audio.state !== 'running') return;
     try {
       const osc = audio.createOscillator(), gain = audio.createGain();
       const start = audio.currentTime + delay;
       osc.frequency.value = frequency;
       gain.gain.setValueAtTime(.12, start);
       gain.gain.exponentialRampToValueAtTime(.001, start + duration);
-      osc.connect(gain); gain.connect(audio.destination);
+      osc.connect(gain); gain.connect(global.JDDSound.destination()); global.JDDSound.track(osc);
       osc.start(start); osc.stop(start + duration);
       osc.onended = () => { osc.disconnect(); gain.disconnect(); };
     } catch (_) { /* pas de son, le chrono continue */ }

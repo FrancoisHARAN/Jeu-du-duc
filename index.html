@@ -16,7 +16,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="image/app/favicon-purple-32.png?v=20261006i">
   <link rel="stylesheet" href="styles/main.css?v=20261005o">
   <link rel="stylesheet" href="styles/undercover.css?v=20261005q">
-  <link rel="stylesheet" href="styles/home.css?v=20261006f">
+  <link rel="stylesheet" href="styles/home.css?v=20261006g">
   <link rel="stylesheet" href="styles/pwa.css?v=20261005i">
   <link rel="stylesheet" href="styles/questions.css?v=20261006h">
   <link rel="stylesheet" href="styles/heads-up.css?v=20261006e">
@@ -29,9 +29,10 @@
 <body>
   <main id="setup" class="home">
     <header class="home-topbar">
-      <a class="home-brand" href="#setup" aria-label="Le Jeu du Duc, accueil">
-        <img class="home-brand-mascot" src="image/home/mascotte.webp" alt="" width="1254" height="1254" decoding="async"> LE JEU DU DUC
-      </a>
+      <button id="soundToggle" class="home-sound-toggle" type="button" aria-label="Couper le son du jeu" aria-pressed="true">
+        <svg data-sound-icon="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></svg>
+        <svg data-sound-icon="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="m3 3 18 18"/></svg>
+      </button>
       <span class="home-edition">LES BONNES SOIRÉES COMMENCENT ICI</span>
       <button id="accountButton" class="home-stamp account-entry" type="button" aria-haspopup="dialog"><span>Se connecter</span></button>
     </header>
@@ -249,6 +250,7 @@
 
   <!-- CORE -->
   <script src="scripts/core/init.js?v=20261005a" defer></script>
+  <script src="scripts/core/sound.js?v=20261006a" defer></script>
   <script src="scripts/core/feedback-sounds.js?v=20261006a" defer></script>
   <script src="scripts/core/history.js?v=20261005a" defer></script>
   <script src="scripts/core/showQuestion.js?v=20261006d" defer></script>
@@ -263,9 +265,9 @@
   <script src="vendor/leaflet/leaflet.js?v=1.9.4" defer></script>
   <script src="scripts/app/player-editor.js?v=20261006f" defer></script>
   <script src="scripts/app/undercover.js?v=20261006f" defer></script>
-  <script src="scripts/app/heads-up.js?v=20261006h" defer></script>
+  <script src="scripts/app/heads-up.js?v=20261006i" defer></script>
   <script src="scripts/app/geography.js?v=20261006f" defer></script>
-  <script src="scripts/app/football.js?v=20261006e" defer></script>
+  <script src="scripts/app/football.js?v=20261006f" defer></script>
 
   <!-- DATA -->
   <script src="data/debut.text.js?v=20261006a" defer></script>
@@ -278,7 +280,7 @@
   <script src="data/undercover.pairs.js?v=20261005k" defer></script>
   <script src="data/heads.words.js?v=20261006g" defer></script>
   <script src="data/heads.imported.js?v=20261006g" defer></script>
-  <script src="scripts/app/main-game.js?v=20261006i" defer></script>
+  <script src="scripts/app/main-game.js?v=20261006j" defer></script>
   <script src="data/culture.imported.js?v=20261006b" defer></script>
   <script src="data/culture.quiz360.js?v=20261006h" defer></script>
   <script src="scripts/pwa.js?v=20261006e" defer></script>

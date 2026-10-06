@@ -33,9 +33,13 @@ body:has(#setup:not(.hidden)) {
 }
 
 #setup .home-topbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-#setup .home-brand, #setup .home-stamp { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 5px 12px; border: 2px solid var(--home-ink); border-radius: 30px; background: var(--home-cream); color: var(--home-ink); font-size: 12px; font-weight: 900; line-height: 1.2; text-decoration: none; }
-#setup .home-brand { padding-left: 5px; }
-#setup .home-brand-mascot { flex-shrink: 0; width: 32px; height: 32px; border: 1px solid var(--home-ink); border-radius: 50%; object-fit: cover; }
+#setup .home-stamp { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 5px 12px; border: 2px solid var(--home-ink); border-radius: 30px; background: var(--home-cream); color: var(--home-ink); font-size: 12px; font-weight: 900; line-height: 1.2; text-decoration: none; }
+#setup .home-sound-toggle { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; margin: 0; padding: 8px; border: 2px solid var(--home-ink); border-radius: 14px; background: var(--home-cream); color: var(--home-ink); box-shadow: 2px 2px 0 var(--home-ink); cursor: pointer; touch-action: manipulation; }
+#setup .home-sound-toggle svg { width: 24px; height: 24px; }
+#setup .home-sound-toggle svg[hidden] { display: none; }
+#setup .home-sound-toggle[data-muted=true] { background: var(--home-pink); }
+#setup .home-sound-toggle:hover { transform: none; filter: none; }
+#setup .home-sound-toggle:focus-visible { outline: 3px solid var(--home-yellow); outline-offset: 3px; }
 #setup .home-stamp { background: var(--home-yellow); font-size: 11px; }
 #setup .home-edition { display: none; }
 #setup .home-overview { display: contents; }
@@ -200,7 +204,6 @@ html:has(#playersDialog[open]) { overflow: hidden; }
 /* Les grands écrans ont leur composition ; la pile mobile reste la base. */
 @media (min-width: 1000px) {
   #setup { width: min(1240px, calc(100% - 64px)); padding: 28px 0 40px; }
-  #setup .home-brand { font-size: 13px; }
   #setup #accountButton { max-width: 280px; padding: 8px 12px; font-size: 13px; }
   #setup .home-overview { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 24px; margin: 24px 0 28px; align-items: stretch; }
   #setup .home-hero { display: flex; align-items: center; justify-content: center; min-height: 280px; margin: 0; padding: 18px 18px 36px; }

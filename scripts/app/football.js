@@ -35,20 +35,19 @@
   }
   function stopClock() { clearInterval(clock); clock = null; }
   function initializeAudio() {
+    if (!global.JDDSound.isEnabled()) return;
     try {
-      const Audio = global.AudioContext || global.webkitAudioContext;
-      if (!audio && Audio) audio = new Audio();
-      if (audio && ['suspended', 'interrupted'].includes(audio.state)) audio.resume().catch(() => {});
+      audio = global.JDDSound.getContext();
       if (audio && !feedbackSounds) feedbackSounds = global.JDDFeedbackSounds.build(audio);
     } catch (_) { /* Le jeu continue sans sortie audio. */ }
   }
   function playFeedback(reason) {
     initializeAudio();
-    if (!audio || audio.state === 'closed' || !feedbackSounds?.[reason]) return;
+    if (!global.JDDSound.isEnabled() || !audio || audio.state === 'closed' || !feedbackSounds?.[reason]) return;
     try {
       const source = audio.createBufferSource();
       source.buffer = feedbackSounds[reason];
-      source.connect(audio.destination);
+      source.connect(global.JDDSound.destination()); global.JDDSound.track(source);
       source.onended = () => source.disconnect();
       source.start();
     } catch (_) { /* Le chrono reste indépendant du son. */ }

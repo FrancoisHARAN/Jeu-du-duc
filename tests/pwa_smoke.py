@@ -145,7 +145,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           return (await cache.keys()).map(r => r.url);
         }''', cache)
         quiz360_images = json.loads((site / 'data/culture.quiz360.images.json').read_text())
-        assert len(shell) == 72 + len(quiz360_images), len(shell)
+        assert len(shell) == 73 + len(quiz360_images), len(shell)
         for file in ['styles/accounts.css','vendor/supabase/supabase.js','scripts/supabase-config.js',
                      'scripts/core/participants.js','scripts/core/cloud.js','scripts/app/accounts.js']:
             assert any(url.endswith('/' + file) for url in shell), file
@@ -153,7 +153,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
             assert base + file in shell
         assert base + 'styles/questions.css' in shell
         assert base + 'data/culture.imported.js' in shell
-        for file in ['scripts/core/feedback-sounds.js', 'styles/heads-up.css', 'scripts/app/heads-up.js', 'data/heads.words.js', 'data/heads.imported.js',
+        for file in ['scripts/core/sound.js', 'scripts/core/feedback-sounds.js', 'styles/heads-up.css', 'scripts/app/heads-up.js', 'data/heads.words.js', 'data/heads.imported.js',
                      'scripts/app/player-editor.js', 'styles/players.css', 'scripts/app/geography.js',
                      'styles/geography.css', 'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css',
                      'data/geography/countries.geojson', 'data/geography/departments.geojson',
@@ -330,6 +330,13 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         page.locator('[data-act="exit-app"]').click()
         assert not errors, errors
         print('PASS: mode avion, 5 modes, Undercover, Devine Tête et ses 2 sons, images, polices et audio partiel', flush=True)
+        page.locator('#soundToggle').click()
+        page.reload(wait_until='load')
+        expect(page.locator('#soundToggle')).to_have_attribute('aria-pressed','false')
+        expect(page.locator('[data-sound-icon="off"]')).to_be_visible()
+        assert page.evaluate('JDDSound.getContext()===null')
+        page.locator('#soundToggle').click()
+        print('PASS: interrupteur sonore et choix muet conservé au relancement de la PWA en mode avion',flush=True)
 
         context.set_offline(False)
         # Une mise à jour de HTML/CSS/JS/données doit fonctionner sans changer le worker.
