@@ -24,21 +24,17 @@
 #setup .home-statistics { margin-top: 30px; overflow: hidden; border: 2px solid #252124; border-radius: 14px; background: #fff9e9; color: #252124; box-shadow: 4px 4px 0 #252124; }
 #setup .home-statistics .home-player-window h2 { font-size: 19px; }
 .account-statistics-content { padding: 16px; }
-.account-stats-label { display: block; margin-bottom: 8px; font: 800 14px/1.3 'Montserrat', Arial, sans-serif; }
-#statisticsPlayer { width: 100%; min-height: 48px; padding: 8px 12px; border: 2px solid #252124; border-radius: 8px; background: #fff; color: #252124; font: 16px/1.3 Arial, sans-serif; }
-.account-stats-player { display: flex; align-items: center; gap: 10px; margin: 18px 0 8px; }
-.account-stats-player strong { min-width: 0; font-size: 19px; }
 .account-stat-total { margin: 0 0 16px; font: 700 14px/1.4 Arial, sans-serif; }
 .account-mode-stats { margin-top: 10px; overflow: hidden; border: 2px solid #252124; border-radius: 9px; background: #fff; }
 .account-mode-stats summary { min-height: 46px; padding: 12px; background: #c9b3ef; cursor: pointer; font: 800 14px/1.4 'Montserrat', Arial, sans-serif; }
-.account-mode-stats--undercover summary { background: #aac7e4; }
+.account-mode-stats--undercover summary, .account-mode-stats--football summary { background: #aac7e4; }
 .account-mode-stats--heads summary, .account-mode-stats--hardcore summary { background: #f7c3d0; }
 .account-mode-stats--geography summary, .account-mode-stats--culture summary { background: #a7d5bc; }
 .account-mode-stats--debut summary, .account-mode-stats--rapidite summary { background: #ffd938; }
 .account-mode-stats--alcool summary { background: #f49e73; }
 .account-metrics { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; margin: 0; padding: 14px; font: 14px/1.4 Arial, sans-serif; }
 .account-metrics dd { margin: 0; font-weight: 800; font-variant-numeric: tabular-nums; }
-.account-sync { margin: 0; padding: 0 16px 16px; color: #5a5154; font: 13px/1.45 Arial, sans-serif; }
+.account-sync { margin: 18px 0 0; padding: 14px 16px; border: 2px solid #252124; border-radius: 12px; background: #fff9e9; color: #5a5154; font: 13px/1.45 Arial, sans-serif; }
 .account-sync button { display: block; }
 .account-dialog { width: min(420px, calc(100vw - 28px)); max-width: none; max-height: calc(100dvh - 28px); margin: auto; padding: 0; overflow-y: auto; border: 2px solid #252124; border-radius: 14px; background: #fff9e9; color: #252124; box-shadow: 4px 4px 0 #252124; font-family: 'Montserrat', Arial, sans-serif; text-align: left; }
 .account-dialog::backdrop { background: rgb(37 33 36 / .65); }
@@ -64,5 +60,37 @@
 #accountActions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-top: 10px; }
 .account-dialog button, .account-profile { cursor: pointer; touch-action: manipulation; }
 .account-dialog button:disabled { opacity: .55; cursor: wait; }
-.account-dialog :is(button,input):focus-visible, .account-directory button:focus-visible, #statisticsPlayer:focus-visible { outline: 3px solid #6b62cc; outline-offset: 3px; }
+.account-dialog :is(button,input):focus-visible, .account-directory button:focus-visible, .account-exploit-filters button:focus-visible, .account-exploit-rule summary:focus-visible { outline: 3px solid #6b62cc; outline-offset: 3px; }
 @media (max-height: 450px) { .account-dialog { max-height: calc(100dvh - 12px); } .account-dialog-content { padding: 12px; } }
+
+#setup .home-statistics[hidden], .account-personal-statistics[hidden], .account-sync[hidden] { display: none; }
+.account-personal-statistics { margin-top: 22px; padding-top: 18px; border-top: 2px solid #252124; }
+.account-personal-statistics h3 { margin: 0 0 12px; font: 900 18px/1.35 'Montserrat', Arial, sans-serif; }
+.account-metrics dt { min-width: 0; }
+.account-metrics dd { text-align: right; }
+.account-metric-detail { display: block; max-width: 100px; margin-top: 3px; color: #5a5154; font: 11px/1.35 Arial, sans-serif; }
+.account-exploit-filters { display: flex; gap: 8px; margin: 0 0 16px; padding: 0 0 5px; overflow-x: auto; scrollbar-width: thin; }
+#setup .account-exploit-filter { flex: 0 0 auto; min-height: 44px; margin: 0; padding: 8px 12px; border: 2px solid #252124; border-radius: 9px; background: #fff9e9; color: #252124; box-shadow: none; white-space: nowrap; text-transform: none; font: 800 12px/1.3 'Montserrat', Arial, sans-serif; cursor: pointer; }
+#setup .account-exploit-filter[aria-pressed="true"] { background: #7160ca; color: #fff9e9; }
+.account-exploit-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; }
+.account-exploit { min-width: 0; overflow: hidden; border: 2px solid #252124; border-radius: 11px; background: #fff9e9; }
+.account-exploit h3 { margin: 0; padding: 12px; border-bottom: 2px solid #252124; background: #ffd938; font: 900 15px/1.35 'Montserrat', Arial, sans-serif; }
+.account-exploit--undercover h3, .account-exploit--football h3 { background: #aac7e4; }
+.account-exploit--heads h3, .account-exploit--hardcore h3 { background: #f7c3d0; }
+.account-exploit--geography h3, .account-exploit--culture h3 { background: #a7d5bc; }
+.account-exploit--custom h3 { background: #c9b3ef; }
+.account-exploit--alcool h3 { background: #f49e73; }
+.account-podium { margin: 0; padding: 0 10px; list-style: none; }
+.account-podium-row { display: grid; grid-template-columns: 24px 28px minmax(0, 1fr) auto; align-items: center; gap: 7px; min-height: 66px; padding: 9px 0; }
+.account-podium-row + .account-podium-row { border-top: 1px solid #ddd3c5; }
+.account-podium-rank { display: grid; place-items: center; width: 24px; height: 28px; border: 1px solid #252124; border-radius: 6px; background: #eee7fa; font: 900 13px/1 Arial, sans-serif; }
+.account-podium-row[data-rank="1"] .account-podium-rank { background: #ffd938; }
+.account-podium .account-avatar { width: 28px; height: 28px; border-width: 1px; border-radius: 8px; font-size: 16px; }
+.account-podium-player { min-width: 0; font: 800 13px/1.25 'Montserrat', Arial, sans-serif; }
+.account-podium-player small { display: block; margin-top: 4px; color: #5a5154; font: 11px/1.35 Arial, sans-serif; }
+.account-podium-value { font: 900 13px/1.3 'Montserrat', Arial, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.account-exploit-rule { border-top: 1px solid #ddd3c5; }
+.account-exploit-rule summary { min-height: 44px; padding: 13px 12px; cursor: pointer; font: 700 12px/1.4 Arial, sans-serif; }
+.account-exploit-rule p { margin: 0; padding: 0 12px 12px; color: #5a5154; font: 12px/1.5 Arial, sans-serif; }
+@media (min-width: 700px) { .account-exploit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .account-exploit-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

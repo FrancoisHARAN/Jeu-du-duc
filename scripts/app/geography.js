@@ -283,16 +283,21 @@
   }
   function recordCloudMatch() {
     if (!match.cloud) return;
-    const best = Math.max(...match.scores);
+    const best = Math.max(...match.scores), cityMeasurements = {};
     global.JDDCloud.record(match.cloud, match.players.map((name, index) => {
       const rows = match.rows.filter(r => r.player === name);
-      return { participant: match.cloud.participants.find(p => p.label === name), metrics: {
+      const participant = match.cloud.participants.find(p => p.label === name);
+      if (match.mode === 'cities' && participant?.kind === 'account') {
+        const measured = rows.filter(row => Number.isFinite(row.km));
+        cityMeasurements[participant.id] = { distance_turns: measured.length, measured_distance_km: Math.round(measured.reduce((sum,row) => sum + row.km,0)) };
+      }
+      return { participant, metrics: {
         games: 1, wins: Number(match.players.length > 1 && best > 0 && match.scores[index] === best), points: match.scores[index],
         turns: rows.length, correct_places: rows.filter(r => r.correct).length,
         perfect_places: rows.filter(r => r.rating.startsWith('PARFAIT')).length,
         distance_km: Math.round(rows.reduce((sum, r) => sum + (r.km || 0), 0)),
       } };
-    }), { map_mode: match.mode, zone: match.zone, rows: match.rows });
+    }), { map_mode: match.mode, zone: match.zone, rows: match.rows, city_measurements: cityMeasurements });
   }
   function renderResults() {
     disposeMap(); setPhase('results');

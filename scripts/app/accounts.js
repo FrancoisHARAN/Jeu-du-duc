@@ -3,7 +3,7 @@
   'use strict';
   const cloud = global.JDDCloud, client = cloud.client;
   const config = global.JDD_SUPABASE_CONFIG || {};
-  let user = null, profiles = [], statistics = [], directories = [], selectedStats = '', generation = 0;
+  let user = null, profiles = [], statistics = [], directories = [], generation = 0, exploitFilter = 'all', exploitLimit = 6;
   let dialog, accountForm, formMode = 'login', loading = false, directoryError = false, statsError = false, refreshTimer;
   let confirmationEmail = '', recoveryEmail = '';
   // Brouillons non secrets, conservés seulement tant que cette page reste ouverte.
@@ -104,7 +104,7 @@
   }
   function fitNames(container) {
     requestAnimationFrame(() => {
-      container.querySelectorAll('.account-profile-name, .account-entry > span:last-child, .account-stats-player strong').forEach(node => {
+      container.querySelectorAll('.account-profile-name, .account-entry > span:last-child').forEach(node => {
         node.style.fontSize = '';
         let size = parseFloat(getComputedStyle(node).fontSize);
         while (node.scrollWidth > node.clientWidth + 1 && size > 7) { size -= .5; node.style.fontSize = `${size}px`; }
@@ -179,52 +179,82 @@
     button.setAttribute('aria-label', user ? 'Ouvrir mon compte' : 'Se connecter');
     fitNames(button.parentElement);
   }
-  const modeLabels = { undercover: 'Undercover', heads: 'Devine Tête', geography: 'Géographie', football: 'Grand Quiz Foot', culture: 'Culture G.',
-    debut: 'Apéro chiantos', hardcore: 'Sexy pas raffiné', alcool: 'Torgnole express', custom: 'Personnalisé', rapidite: 'Rapidité' };
-  const metricLabels = { games: 'Parties jouées', wins: 'Victoires', points: 'Points', white_games: 'Parties en Mr. White', white_wins: 'Victoires en Mr. White',
-    undercover_games: 'Parties en Undercover', undercover_wins: 'Victoires en Undercover', civil_games: 'Parties en civil', civil_wins: 'Victoires en civil',
-    questions_answered: 'Questions répondues', correct_answers: 'Bonnes réponses', answers_revealed: 'Réponses dévoilées', cards_seen: 'Cartes jouées',
-    words_found: 'Mots trouvés', words_passed: 'Mots passés', turns: 'Tours joués', correct_places: 'Zones trouvées', distance_km: 'Kilomètres à côté', perfect_places: 'Placements parfaits' };
-  function renderStatistics() {
-    const root = document.getElementById('accountStatistics'); if (!root) return;
-    root.replaceChildren();
-    if (!user) {
-      root.append(el('p', 'account-help', 'Connecte-toi pour retrouver les statistiques de la bande.'));
-      const login = el('button', 'account-button', 'Se connecter'); login.type = 'button'; login.addEventListener('click', () => open('login')); root.append(login); return;
-    }
-    if (statsError || (directoryError && !profiles.length)) {
+  function appendStatisticsState(root) {
+    if (statsError) {
       root.append(el('p', 'account-help', 'Les statistiques ne sont pas disponibles.'));
-      const retry = el('button', 'account-text-button', 'Réessayer'); retry.type = 'button'; retry.addEventListener('click', refresh); root.append(retry); return;
-    }
-    if (!profiles.length || !hasSnapshot) {
-      root.append(el('p', 'account-help', directoryLoaded && !profiles.length ? 'Aucun compte confirmé disponible.' : 'Chargement des statistiques…')); return;
-    }
-    if (!profiles.some(p => p.id === selectedStats)) selectedStats = user.id;
-    const label = el('label', 'account-stats-label', 'Les stats de qui ?'); label.htmlFor = 'statisticsPlayer';
-    const select = el('select'); select.id = 'statisticsPlayer';
-    orderedProfiles().forEach(p => { const option = el('option', '', p.display_name); option.value = p.id; select.append(option); });
-    select.value = selectedStats; select.addEventListener('change', () => { selectedStats = select.value; renderStatistics(); });
-    const profile = profiles.find(p => p.id === selectedStats);
-    const heading = el('div', 'account-stats-player'); heading.append(avatar(profile), el('strong', '', profile?.display_name || 'Joueur'));
-    root.append(label, select, heading);
-    fitNames(root);
+      const retry = el('button', 'account-text-button', 'Réessayer'); retry.type = 'button';
+      retry.addEventListener('click', refresh); root.append(retry);
+    } else root.append(el('p', 'account-help', 'Chargement des statistiques…'));
+  }
+  function renderStatistics() {
+    const model = global.JDDStatistics.model(profiles, statistics);
+    renderPersonalStatistics(model); renderExploits(model);
+  }
+  function renderPersonalStatistics(model) {
+    const root = document.getElementById('profileStatistics'); if (!root) return;
+    const opened = new Set([...root.querySelectorAll('details[open]')].map(node => node.dataset.mode));
+    root.replaceChildren(); root.hidden = !user || formMode !== 'profile';
+    if (root.hidden) return;
+    root.append(el('h3', '', 'Mes statistiques'));
+    if (!hasSnapshot) { appendStatisticsState(root); return; }
     if (usingCached || !navigator.onLine) root.append(el('p', 'account-help', 'Dernières statistiques synchronisées.'));
-    const rows = statistics.filter(r => r.player_id === selectedStats);
-    const total = rows.filter(r => r.metric === 'games').reduce((n, r) => n + Number(r.total), 0);
-    root.append(el('p', 'account-stat-total', `${total.toLocaleString('fr-FR')} partie${total > 1 ? 's' : ''} jouée${total > 1 ? 's' : ''}`));
-    Object.entries(modeLabels).forEach(([mode, name]) => {
-      const details = el('details', `account-mode-stats account-mode-stats--${mode}`); details.append(el('summary', '', name));
+    const data = model.personal(user.id);
+    if (!data.modes.length) { root.append(el('p', 'account-help', 'Aucune partie enregistrée.')); return; }
+    if (data.games > 0) root.append(el('p', 'account-stat-total', global.JDDStatistics.plural(data.games, 'partie jouée')));
+    data.modes.forEach(({mode,title,rows}) => {
+      const details = el('details', `account-mode-stats account-mode-stats--${mode}`);
+      details.dataset.mode = mode; details.open = opened.has(mode); details.append(el('summary', '', title));
       const list = el('dl', 'account-metrics');
-      const relevant = mode === 'undercover' ? ['games','wins','white_wins','undercover_wins','civil_wins','points']
-        : mode === 'heads' ? ['games','words_found','words_passed','points']
-        : mode === 'geography' ? ['games','wins','turns','correct_places','perfect_places','points','distance_km']
-        : mode === 'football' ? ['games','wins','points','turns','questions_answered','correct_answers']
-        : mode === 'culture' ? ['games','questions_answered','correct_answers','answers_revealed'] : ['games','cards_seen'];
-      relevant.forEach(metric => {
-        const value = rows.find(r => r.mode === mode && r.metric === metric)?.total || 0;
-        list.append(el('dt', '', metricLabels[metric]), el('dd', '', Number(value).toLocaleString('fr-FR')));
+      rows.forEach(row => {
+        const value = el('dd', '', row.value);
+        if (row.detail) value.append(el('small', 'account-metric-detail', row.detail));
+        list.append(el('dt', '', row.label), value);
       }); details.append(list); root.append(details);
     });
+  }
+  function renderExploits(model) {
+    const root = document.getElementById('accountStatistics'); if (!root) return;
+    const section = root.closest('.home-statistics');
+    const focusedFilter = document.activeElement?.dataset.exploitFilter;
+    const openedRules = new Set([...root.querySelectorAll('.account-exploit-rule[open]')].map(node => node.dataset.exploit));
+    root.replaceChildren(); section.hidden = !user || !hasSnapshot || !model.cards.length;
+    if (section.hidden) return;
+    if (usingCached || statsError || !navigator.onLine) root.append(el('p', 'account-help', 'Derniers exploits synchronisés.'));
+    const filters = el('div', 'account-exploit-filters'); filters.setAttribute('role', 'group'); filters.setAttribute('aria-label', 'Filtrer les exploits par jeu');
+    const available = new Set(model.cards.map(card => card.mode));
+    if (!available.has(exploitFilter)) exploitFilter = 'all';
+    const choices = [['all','Tous'], ...Object.entries(global.JDDStatistics.modes).filter(([mode]) => available.has(mode))];
+    choices.forEach(([mode,name]) => {
+      const button = el('button', 'account-exploit-filter', name); button.type = 'button'; button.dataset.exploitFilter = mode;
+      button.setAttribute('aria-pressed', String(mode === exploitFilter));
+      button.addEventListener('click', () => { exploitFilter = mode; exploitLimit = 6; renderExploits(model); });
+      filters.append(button);
+    }); root.append(filters);
+    const cards = model.cards.filter(card => exploitFilter === 'all' || card.mode === exploitFilter);
+    const grid = el('div', 'account-exploit-grid');
+    cards.slice(0,exploitLimit).forEach(card => {
+      const panel = el('section', `account-exploit account-exploit--${card.mode}`); panel.dataset.exploit = card.id;
+      const title = el('h3', '', card.title); title.id = `exploit-${card.id}`; panel.setAttribute('aria-labelledby', title.id); panel.append(title);
+      const list = el('ol', 'account-podium'); list.setAttribute('aria-label', `Top 3 · ${card.title}`);
+      card.rows.forEach(row => {
+        const item = el('li', 'account-podium-row'); item.dataset.accountId = row.profile.id;
+        item.dataset.rank = row.rank;
+        const rank = el('span', 'account-podium-rank', String(row.rank)); rank.setAttribute('aria-label', `Place ${row.rank}${row.tied ? ', ex æquo' : ''}`);
+        const text = el('span', 'account-podium-player'); text.append(el('strong', 'account-profile-name', row.profile.display_name));
+        text.append(el('small', '', `${row.detail}${row.tied ? ' · ex æquo' : ''}`));
+        item.append(rank, avatar(row.profile), text, el('b', 'account-podium-value', row.value)); list.append(item);
+      }); panel.append(list);
+      if (card.rule) {
+        const rule = el('details', 'account-exploit-rule'); rule.dataset.exploit = card.id; rule.open = openedRules.has(card.id);
+        rule.append(el('summary', '', 'Calcul du classement'), el('p', '', card.rule)); panel.append(rule);
+      }
+      grid.append(panel);
+    }); root.append(grid); fitNames(root);
+    if (cards.length > exploitLimit) {
+      const more = el('button', 'account-text-button', 'Afficher plus'); more.type = 'button';
+      more.addEventListener('click', () => { exploitLimit += 6; renderExploits(model); }); root.append(more);
+    }
+    if (focusedFilter) [...filters.children].find(node => node.dataset.exploitFilter === focusedFilter)?.focus({preventScroll:true});
   }
   function renderSync() {
     const node = document.getElementById('accountSync'); if (!node) return;
@@ -270,6 +300,7 @@
     const verification = ['confirm', 'verify-reset'].includes(formMode);
     document.getElementById('accountDialogTitle').textContent = profileMode ? 'Mon compte' : signup ? 'Créer mon compte' : verification ? 'Confirmer mon email' : recovery ? 'Nouveau mot de passe' : reset ? 'Retrouver mon compte' : 'Se connecter';
     accountForm.replaceChildren(); status('');
+    renderStatistics();
     accountForm.name = `account-${formMode}`;
     accountForm.method = 'post'; accountForm.autocomplete = 'on';
     const formUrl = new URL(redirectUrl()); formUrl.searchParams.set('account', formMode);
@@ -452,7 +483,7 @@
   function applySession(session, recovery = false) {
     const previous = user?.id; user = session?.user || null;
     if (previous !== user?.id) {
-      ++generation; profiles = []; statistics = []; selectedStats = ''; directoryError = statsError = false;
+      ++generation; profiles = []; statistics = []; exploitFilter = 'all'; exploitLimit = 6; directoryError = statsError = false;
       hasSnapshot = usingCached = directoryLoaded = directoryCached = false;
       try {
         const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');

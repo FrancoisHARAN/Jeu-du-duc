@@ -145,12 +145,13 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           return (await cache.keys()).map(r => r.url);
         }''', cache)
         quiz360_images = json.loads((site / 'data/culture.quiz360.images.json').read_text())
-        assert len(shell) == 73 + len(quiz360_images), len(shell)
+        assert len(shell) == 74 + len(quiz360_images), len(shell)
         for file in ['styles/accounts.css','vendor/supabase/supabase.js','scripts/supabase-config.js',
                      'scripts/core/participants.js','scripts/core/cloud.js','scripts/app/accounts.js']:
             assert any(url.endswith('/' + file) for url in shell), file
         for file in ['data/culture.quiz360.js', 'data/culture.quiz360.images.json', *quiz360_images]:
             assert base + file in shell
+        assert base + 'scripts/core/statistics.js' in shell
         assert base + 'styles/questions.css' in shell
         assert base + 'data/culture.imported.js' in shell
         for file in ['scripts/core/sound.js', 'scripts/core/feedback-sounds.js', 'styles/heads-up.css', 'scripts/app/heads-up.js', 'data/heads.words.js', 'data/heads.imported.js',

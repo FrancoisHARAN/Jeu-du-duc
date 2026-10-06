@@ -65,9 +65,9 @@ await db.query('insert into auth.users(id,raw_user_meta_data,email) values ($1,$
 assert.equal((await db.query('select is_confirmed from public.profiles where id=$1',[immediate])).rows[0].is_confirmed,true);
 await db.query('delete from auth.users where id=$1',[immediate]);
 console.log('PASS: anciens et nouveaux profils non confirmés masqués, confirmation par UUID et impossible à usurper');
-async function record(host, id = event, revision = 1, people = participants, mode = 'undercover') {
+async function record(host, id = event, revision = 1, people = participants, mode = 'undercover', payload = {result:'white'}) {
   return (await db.query('select public.record_game_event($1,$2,$3,$4,now(),$5,$6) as written',
-    [host,id,mode,revision,people,{result:'white'}])).rows[0].written;
+    [host,id,mode,revision,people,payload])).rows[0].written;
 }
 await as('anon', null, async () => {
   for (const table of ['profiles','game_events','game_results','player_statistics']) await rejects(() => db.query(`select * from public.${table}`),'42501');
@@ -127,6 +127,55 @@ console.log('PASS: migration foot, statistiques sans doublon et protections exis
 const initialResults = (await db.query('select * from public.game_results order by event_id,player_id')).rows;
 await db.exec(confirmationMigration);
 assert.deepEqual((await db.query('select * from public.game_results order by event_id,player_id')).rows,initialResults);
+// Compatibilité avant activation, puis reprise par UUID et corrections atomiques.
+const geoEvent = '20000000-0000-4000-8000-000000000004';
+const oldGeo = '20000000-0000-4000-8000-000000000005';
+const geoPeople = [{account_id:a,metrics:{games:1,turns:8,distance_km:70}}, {account_id:b,metrics:{games:1,turns:8,distance_km:0}}];
+const geoPayload = {map_mode:'cities',zone:'france',city_measurements:{
+  [a]:{distance_turns:5,measured_distance_km:70},[b]:{distance_turns:3,measured_distance_km:0}}};
+await as('authenticated', a, async () => {
+  assert.equal(await record(a,geoEvent,1,geoPeople,'geography',geoPayload),true);
+  assert.equal(await record(a,oldGeo,1,geoPeople,'geography',{map_mode:'cities',zone:'france',rows:[]}),true);
+});
+const averagesMigration = await readFile(new URL('../supabase/migrations/202610060004_geography_averages.sql', import.meta.url),'utf8');
+await db.exec(averagesMigration); await db.exec(averagesMigration);
+const geoMetrics = async (id, player=a) => (await db.query('select metrics from public.game_results where event_id=$1 and player_id=$2',[id,player])).rows[0].metrics;
+assert.deepEqual(await geoMetrics(geoEvent),{games:1,turns:8,distance_km:70,distance_turns:5,measured_distance_km:70,city_france_turns:5,city_france_km:70});
+assert.equal((await geoMetrics(geoEvent,b)).distance_turns,3);
+assert.equal((await geoMetrics(geoEvent,b)).measured_distance_km,0);
+assert.deepEqual(await geoMetrics(oldGeo),geoPeople[0].metrics);
+for (const row of initialResults) assert.deepEqual((await db.query('select * from public.game_results where event_id=$1 and player_id=$2',[row.event_id,row.player_id])).rows[0],row);
+await as('anon', null, async () => {
+  await rejects(()=>record(a,geoEvent,2,geoPeople,'geography',geoPayload),'42501');
+  await rejects(()=>db.query('select * from public.player_statistics'),'42501');
+});
+await as('authenticated', a, async () => {
+  await rejects(()=>db.query('select public.geography_measurement_metrics($1,$2,$3,$4)',['geography',a,geoPayload,geoPeople[0].metrics]),'42501');
+  await rejects(()=>record(a,geoEvent,2,[{account_id:a,metrics:{games:1,city_france_turns:5}}],'geography',geoPayload),'22023');
+  for (const measurement of [{distance_turns:9,measured_distance_km:70},{distance_turns:0,measured_distance_km:70},
+    {distance_turns:5,measured_distance_km:71},{distance_turns:-1,measured_distance_km:70},{distance_turns:0.5,measured_distance_km:70},
+    {distance_turns:'5',measured_distance_km:70},{distance_turns:5,measured_distance_km:null}]) {
+    await rejects(()=>record(a,geoEvent,2,geoPeople,'geography',{...geoPayload,city_measurements:{[a]:measurement}}),'22023');
+  }
+  await rejects(()=>record(a,geoEvent,2,geoPeople,'geography',{...geoPayload,zone:'invalid'}),'22023');
+  assert.equal((await db.query('select revision from public.game_events where id=$1',[geoEvent])).rows[0].revision,1);
+  assert.equal((await geoMetrics(geoEvent)).city_france_turns,5);
+  const corrected=[{account_id:a,metrics:{games:1,turns:8,distance_km:40}}];
+  const correctedPayload={map_mode:'cities',zone:'world',city_measurements:{[a]:{distance_turns:4,measured_distance_km:40}}};
+  assert.equal(await record(a,geoEvent,2,corrected,'geography',correctedPayload),true);
+  assert.equal(await record(a,geoEvent,2,corrected,'geography',correctedPayload),false);
+  assert.deepEqual(await geoMetrics(geoEvent),{games:1,turns:8,distance_km:40,distance_turns:4,measured_distance_km:40,city_world_turns:4,city_world_km:40});
+  assert.equal((await db.query('select player_id from public.game_results where event_id=$1',[geoEvent])).rows.length,1);
+  const metric = (await db.query("select total from public.player_statistics where player_id=$1 and mode='geography' and metric='distance_turns'",[a])).rows;
+  assert.equal(Number(metric[0].total),4);
+});
+await as('authenticated', b, async () => {
+  await rejects(()=>record(b,geoEvent,3,geoPeople,'geography',geoPayload),'42501');
+});
+await db.exec(averagesMigration);
+assert.equal((await geoMetrics(geoEvent)).city_world_km,40);
+console.log('PASS: moyennes activables après les parties, migration relançable, UUID, zéro mesuré et anciens résultats conservés');
+console.log('PASS: mesures validées côté serveur, correction atomique par révision, droits et organisateur protégés');
 await db.query('delete from auth.users where id=$1',[b]);
 assert.equal((await db.query('select id from public.profiles where id=$1',[b])).rows.length,0);
 assert.equal((await db.query('select player_id from public.game_results where player_id=$1',[b])).rows.length,0);

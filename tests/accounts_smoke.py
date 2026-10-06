@@ -102,7 +102,15 @@ def backend(route):
         totals = {}
         for event in events.values():
             for p in event['p_participants']:
-                for metric, value in p['metrics'].items():
+                metrics = dict(p['metrics'])
+                payload = event.get('p_payload',{})
+                measured = payload.get('city_measurements',{}).get(p['account_id'])
+                if event['p_mode']=='geography' and payload.get('map_mode')=='cities' and measured:
+                    prefix='city_'+payload['zone']
+                    metrics.update(measured)
+                    metrics[prefix+'_turns']=measured['distance_turns']
+                    metrics[prefix+'_km']=measured['measured_distance_km']
+                for metric, value in metrics.items():
                     key = (p['account_id'], event['p_mode'], metric)
                     totals[key] = totals.get(key, 0) + value
         reply([{'player_id': p, 'mode': mode, 'metric': metric, 'total': value} for (p, mode, metric), value in totals.items()])
@@ -441,7 +449,10 @@ try:
         control['hold_stats']=True
         context,page=home(signed=True)
         expect(page.locator('#accountPlayers .account-profile')).to_have_count(6)
-        expect(page.locator('#accountStatistics')).to_contain_text('Chargement des statistiques')
+        page.locator('#accountButton').click()
+        expect(page.locator('#profileStatistics')).to_contain_text('Chargement des statistiques')
+        expect(page.locator('.home-statistics')).to_be_hidden()
+        page.locator('#closeAccountDialog').click()
         page.wait_for_function('() => JSON.parse(localStorage.getItem("jdd.account-cache.v1")).profiles.length===8')
         assert page.evaluate('JSON.parse(localStorage.getItem("jdd.account-cache.v1")).hasSnapshot') is False
         add_account(page,A)
@@ -517,9 +528,8 @@ try:
         assert len(attempts) == 2 and attempts[0]['p_revision'] == attempts[1]['p_revision']
         assert events[queued['id']]['p_participants'] == [{'account_id':B,'metrics':{'questions_answered':1,'correct_answers':1}}]
         page.locator('#backLogo').click()
-        page.locator('#statisticsPlayer').select_option(B)
-        page.locator('.account-mode-stats--culture summary').click()
-        expect(page.locator('.account-mode-stats--culture')).to_contain_text('Bonnes réponses')
+        expect(page.locator('[data-exploit="culture-correct"] .account-podium-row[data-account-id="'+B+'"] .account-podium-value')).to_have_text('1')
+        assert page.locator('#statisticsPlayer').count()==0
         print('PASS: Culture G. attribuée au bon compte, mode avion, réessai du même ID sans double statistique', flush=True)
 
         # Undercover garde les identités du début même si la bande change.
@@ -589,6 +599,7 @@ try:
         settled(page)
         geo=next(e for e in events.values() if e['p_mode']=='geography')
         assert geo['p_participants'][0]['account_id']==A and geo['p_participants'][0]['metrics']['points']==1000
+        assert geo['p_payload']['city_measurements']=={}
         page.locator('#geography [data-geo="exit"]').click()
         print('PASS: partie Géographie reprise et points du bon compte',flush=True)
 
@@ -643,10 +654,10 @@ try:
         page.locator('[data-foot="close-var"]').click()
         page.evaluate('Date.now=footNow')
         page.locator('[data-foot="exit"]').click()
-        page.locator('#statisticsPlayer').select_option(B)
-        page.locator('.account-mode-stats--football summary').click()
-        expect(page.locator('.account-mode-stats--football')).to_contain_text('Bonnes réponses')
-        expect(page.locator('.account-mode-stats--football dd').nth(2)).to_have_text('5')
+        page.locator('#accountButton').click()
+        page.locator('#profileStatistics .account-mode-stats--football summary').click()
+        expect(page.locator('#profileStatistics .account-mode-stats--football dt').get_by_text('Bonnes réponses',exact=True).locator('xpath=following-sibling::dd[1]')).to_have_text('5')
+        page.locator('#closeAccountDialog').click()
         add_account(page,A); add_account(page,B)
         print('PASS: foot 60 s en équipes, identités du départ, invité homonyme exclu et VAR synchronisée sans doubler les parties',flush=True)
 
@@ -689,7 +700,7 @@ try:
         page.reload(wait_until='load')
         expect(page.locator('#accountButton')).to_contain_text('François')
         expect(page.locator('#accountPlayers .account-profile')).to_have_count(6)
-        expect(page.locator('#accountStatistics')).to_contain_text('Dernières statistiques synchronisées')
+        expect(page.locator('#accountStatistics')).to_contain_text('Derniers exploits synchronisés')
         add_account(page,A)
         add_account(page,B)
         page.locator('#playerInput').fill('Alice')

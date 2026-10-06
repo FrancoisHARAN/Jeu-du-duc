@@ -188,6 +188,43 @@ L'application sur les téléphones n'utilise pas le proxy de développement.
   perdus. Le jeu signale une sauvegarde locale indisponible ou une attente de
   synchronisation. Ne pas nettoyer le stockage avant d'avoir synchronisé.
 
+## Profil et exploits
+
+Le profil contient les statistiques du compte connecté, par jeu. Les modes
+sans résultat et les compteurs à zéro sont masqués. En bas de l'accueil, les
+exploits partagés montrent jusqu'à trois joueurs par statistique disponible,
+avec filtres par jeu et affichage progressif. Les invités ne sont pas classés.
+Une correction synchronisée remplace les compteurs précédents et actualise
+le profil et les classements. Hors ligne, la dernière lecture cloud est indiquée.
+
+Les totaux (parties, victoires de Mr. White, bonnes réponses, mots trouvés)
+sont classés directement. Les taux de victoire nécessitent cinq parties ;
+le taux de bonnes réponses de Culture G. nécessite vingt questions. Le tri
+utilise la borne basse de Wilson à 95 % : le nombre d'essais est pris en compte,
+avec le pourcentage réel affiché. Les ex æquo restent indiqués comme tels.
+
+### Moyennes de distance en géographie
+
+Dans **SQL Editor**, après les migrations précédentes, exécuter le fichier
+`supabase/migrations/202610060004_geography_averages.sql`. Il est relançable
+et conserve les comptes, résultats, RLS et appels des anciennes versions.
+L'environnement actuel ne permet pas de l'appliquer au projet distant.
+
+Les nouvelles parties de villes capturent par UUID le nombre de placements
+mesurés et leur distance totale. Ces informations restent sauvegardées dans
+les résultats même avant l'application de cette migration ; le script les
+reprend ensuite. Les anciennes parties sans ces mesures ne sont pas utilisées
+pour inventer une moyenne à partir des prénoms ou de tous les tours joués.
+Les pays, départements et tours sans placement ne diminuent pas la moyenne.
+Une distance réellement nulle reste un placement mesuré valable.
+
+Le profil affiche la moyenne brute et le nombre de mesures, avec séparation
+France/monde. Les exploits de précision demandent cinq placements par zone ;
+le tri utilise `(distance totale + 5 × moyenne de la bande) / (placements + 5)`.
+Le nombre affiché reste la moyenne réelle en kilomètres ; moins est meilleur.
+La mesure dérivée est validée côté serveur, sans nouveau droit d'écriture
+directe sur les résultats ni exposition des emails.
+
 ## Droits et données
 
 Les comptes connectés voient les prénoms, photos et statistiques de tous les
@@ -221,6 +258,8 @@ Protéger le compte administrateur Supabase avec une authentification multifacte
 ## Vérifications reproductibles
 
 ```sh
+node tests/statistics.mjs
+python tests/achievements_smoke.py
 python tests/accounts_smoke.py
 python tests/pwa_smoke.py
 ```
