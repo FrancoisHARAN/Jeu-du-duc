@@ -6,18 +6,22 @@
   const startedControlled = Boolean(navigator.serviceWorker.controller);
   let registration;
   let reloadPending = false;
+  let reloadStarted = false;
 
   // Une mise à jour ne coupe jamais une partie en cours.
   function reloadOnHome() {
     const home = document.getElementById('setup');
-    if (reloadPending && document.visibilityState === 'visible' && home && !home.classList.contains('hidden')) {
+    if (!reloadStarted && reloadPending && document.visibilityState === 'visible' && home && !home.classList.contains('hidden')) {
+      // Le transfert de contrôle peut être signalé de nouveau pendant la
+      // navigation : ne jamais annuler le rechargement déjà en cours.
+      reloadStarted = true;
       reloadPending = false;
       window.location.reload();
     }
   }
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (startedControlled) {
+    if (startedControlled && !reloadStarted) {
       reloadPending = true;
       reloadOnHome();
     }

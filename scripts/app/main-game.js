@@ -29,6 +29,8 @@
     playerCount: document.getElementById('homePlayerCount'),
     typeBox: document.getElementById('typeBox'),
     currentQuestion: document.getElementById('currentQuestion'),
+    questionMedia: document.getElementById('questionMedia'),
+    questionMediaStatus: document.getElementById('questionMediaStatus'),
     answerBox: document.getElementById('answerBox'),
     showAnswerButton: document.getElementById('showAnswerBtn'),
     answerText: document.getElementById('answerText'),
@@ -65,6 +67,7 @@
     cultureDrinkMode: false,
   };
   let playersDialogContext = null;
+  let mediaRequest = 0;
 
   const MODE_BACKGROUNDS = {
     'VÉRITÉ': 'var(--yellow)',
@@ -290,6 +293,11 @@
   }
 
   function hideQuestionArea() {
+    mediaRequest += 1;
+    elements.questionMedia.replaceChildren();
+    elements.questionMedia.classList.add('hidden');
+    elements.questionMediaStatus.replaceChildren();
+    elements.questionMediaStatus.classList.add('hidden');
     elements.mcqBox.style.display = 'none';
     elements.mcqGrid.innerHTML = '';
     elements.answerBox.style.display = 'none';
@@ -306,20 +314,91 @@
     }
   }
 
+  function renderQuizImages(question, options, buttons) {
+    const request = mediaRequest;
+    const images = [];
+    const addImage = (parent, url, alt, credit) => {
+      const figure = document.createElement('figure');
+      figure.className = 'quiz-image-figure';
+      const image = document.createElement('img');
+      image.className = 'quiz-image';
+      image.alt = alt;
+      image.decoding = 'async';
+      figure.appendChild(image);
+      if (credit && credit !== 'null') {
+        const caption = document.createElement('figcaption');
+        caption.textContent = credit.replace(/§/g, ' · ');
+        figure.appendChild(caption);
+      }
+      parent.appendChild(figure);
+      images.push({ image, url, loaded: false, failed: false });
+    };
+    if (question.image) {
+      elements.questionMedia.classList.remove('hidden');
+      addImage(elements.questionMedia, question.image, 'Image de la question', question.imageCredit);
+    }
+    options.forEach((option, index) => {
+      if (option.image) addImage(buttons[index], option.image, `Proposition ${String.fromCharCode(65 + index)}`, option.credit);
+    });
+    if (!images.length) return;
+
+    const update = () => {
+      if (request !== mediaRequest) return;
+      const failed = images.some(item => item.failed);
+      const ready = images.every(item => item.loaded);
+      buttons.forEach(button => { button.disabled = !ready; });
+      elements.questionMediaStatus.replaceChildren();
+      elements.questionMediaStatus.classList.toggle('hidden', ready);
+      if (ready) return;
+      const text = document.createElement('p');
+      text.textContent = failed ? 'Une image n’a pas pu être chargée. Réessaie ou passe à la question suivante.' : 'Chargement des images…';
+      elements.questionMediaStatus.appendChild(text);
+      if (failed) {
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.textContent = 'Réessayer';
+        retry.addEventListener('click', event => {
+          event.stopPropagation();
+          images.filter(item => item.failed).forEach(item => {
+            item.failed = false;
+            item.image.removeAttribute('src');
+            item.image.src = item.url;
+          });
+          update();
+        });
+        const next = document.createElement('button');
+        next.type = 'button';
+        next.textContent = 'Question suivante';
+        next.addEventListener('click', event => { event.stopPropagation(); showQuestion(); });
+        elements.questionMediaStatus.append(retry, next);
+      }
+    };
+    update();
+    images.forEach(item => {
+      item.image.addEventListener('load', () => { item.loaded = true; item.failed = false; update(); });
+      item.image.addEventListener('error', () => { item.loaded = false; item.failed = true; update(); });
+      item.image.src = item.url;
+    });
+  }
+
   function renderMcq(question, playerName) {
     const isTrueFalse = question.vf === true;
+    const prompt = question.image ? question.imageTitle || 'Quelle est la bonne réponse pour cette image ?' : question.question;
     elements.typeBox.textContent = 'CULTURE G.';
     setBackground('CULTURE G.');
     elements.currentQuestion.textContent = isTrueFalse
       ? `${playerName ? `${playerName}, v` : 'V'}rai ou faux : ${question.question}`
-      : addressPlayer(playerName, question.question);
+      : addressPlayer(playerName, prompt);
 
     elements.answerBox.style.display = 'block';
     elements.mcqBox.style.display = 'block';
     elements.mcqGrid.innerHTML = '';
     elements.mcqGrid.classList.toggle('mcq-grid--vf', isTrueFalse);
+    elements.mcqGrid.classList.toggle('mcq-grid--images', Boolean(question.choiceImages));
 
-    const options = question.choices.map((label, index) => ({ label, correct: index === question.answerIndex }));
+    const credits = (question.imageCredit || '').split('±');
+    const options = question.choices.map((label, index) => ({ label, correct: index === question.answerIndex,
+      image: question.choiceImages && question.choiceImages[index], credit: credits[index] }));
     if (!isTrueFalse) {
       window.JDD.shuffle(options);
     }
@@ -328,7 +407,15 @@
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'mcq-btn';
-      button.textContent = option.label;
+      if (option.image) {
+        button.classList.add('mcq-btn--image');
+        button.setAttribute('aria-label', `Proposition ${String.fromCharCode(65 + elements.mcqGrid.children.length)}`);
+      } else {
+        const label = document.createElement('span');
+        label.className = 'mcq-label';
+        label.textContent = option.label;
+        button.appendChild(label);
+      }
       button.addEventListener(
         'click',
         (event) => {
@@ -344,6 +431,23 @@
       );
       elements.mcqGrid.appendChild(button);
       return button;
+    });
+    renderQuizImages(question, options, buttons);
+  }
+
+  function fitCultureText() {
+    requestAnimationFrame(() => {
+      if (elements.gameScreen.classList.contains('hidden') || elements.gameScreen.dataset.category !== 'culture') return;
+      // Garder les mots entiers, même pour une URL ou un nom très long du classeur.
+      const labels = [elements.currentQuestion, ...elements.mcqGrid.querySelectorAll('.mcq-label')];
+      labels.forEach(label => {
+        label.style.fontSize = '';
+        let size = parseFloat(getComputedStyle(label).fontSize);
+        while (size > 8 && label.scrollWidth > label.clientWidth + 1) {
+          size -= .5;
+          label.style.fontSize = `${size}px`;
+        }
+      });
     });
   }
 
@@ -397,6 +501,7 @@
     } else {
       renderOpenQuestion(window.JDD.drawCard('culture-open', open), player);
     }
+    fitCultureText();
   }
 
   function showPartyCard(mode, pool) {
@@ -534,6 +639,8 @@
   }
 
   function attachEvents() {
+    window.addEventListener('resize', fitCultureText);
+    if (document.fonts) document.fonts.ready.then(fitCultureText);
     document.getElementById('playerForm').addEventListener('submit', (event) => {
       event.preventDefault();
       addPlayer();

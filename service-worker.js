@@ -5,7 +5,8 @@
  */
 const APP_ROOT = new URL('./', self.location.href);
 const CACHE_PREFIX = `jeu-du-duc-${encodeURIComponent(APP_ROOT.pathname)}-`;
-const CACHE_NAME = `${CACHE_PREFIX}2026-10-06-v10`;
+const CACHE_NAME = `${CACHE_PREFIX}2026-10-06-v11`;
+const QUIZ_IMAGES_ORIGIN = 'https://quizimagescm.s3.eu-west-3.amazonaws.com';
 const SHELL_FILES = [
   './',
   'manifest.webmanifest',
@@ -27,6 +28,7 @@ const SHELL_FILES = [
   'data/alcool.text.js',
   'data/culture.text.js',
   'data/culture.mcq.js',
+  'data/culture.imported.js',
   'data/rapidite.questions.js',
   'data/undercover.pairs.js',
   'data/heads.words.js',
@@ -113,14 +115,14 @@ async function offlineResponse(cached, range) {
   return new Response(bytes.slice(start, end + 1), { status: 206, headers });
 }
 
-async function networkFirst(event) {
+async function networkFirst(event, allowOpaque = false) {
   const request = event.request;
   const key = cacheKey(request.url);
   const range = request.headers.get('range');
   const cachePromise = caches.open(CACHE_NAME).catch(() => null);
   const network = fetch(new Request(request, { cache: 'no-store' })).then(async (response) => {
     const cache = await cachePromise;
-    if (cache && response.status === 200 && !range) {
+    if (cache && (response.status === 200 || (allowOpaque && response.type === 'opaque')) && !range) {
       try {
         await cache.put(key, response.clone());
       } catch (error) {
@@ -144,6 +146,11 @@ async function networkFirst(event) {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
+  // Les photos du classeur sont externes : garder celles déjà consultées hors ligne.
+  if (event.request.method === 'GET' && event.request.destination === 'image' && url.origin === QUIZ_IMAGES_ORIGIN) {
+    event.respondWith(networkFirst(event, true));
+    return;
+  }
   if (event.request.method !== 'GET' || url.origin !== APP_ROOT.origin
       || !url.pathname.startsWith(APP_ROOT.pathname) || url.href === self.location.href) return;
   event.respondWith(networkFirst(event).then(browserResponse));

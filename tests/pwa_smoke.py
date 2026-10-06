@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Integration PWA : Python, Playwright, Pillow et Chromium ; le dépôt reste intact."""
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -119,8 +120,9 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           const cache = await caches.open(name);
           return (await cache.keys()).map(r => r.url);
         }''', cache)
-        assert len(shell) == 45, (len(shell), shell)
+        assert len(shell) == 46, (len(shell), shell)
         assert base + 'styles/questions.css' in shell
+        assert base + 'data/culture.imported.js' in shell
         for file in ['styles/heads-up.css', 'scripts/app/heads-up.js', 'data/heads.words.js']:
             assert base + file in shell
         assert all(url.startswith(base) for url in shell)
@@ -129,8 +131,38 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
             page.locator('#addBtn').click()
         assert page.evaluate("JSON.parse(localStorage.getItem('jdd.players'))") == ['Alice', 'Bob', 'Chloe']
 
+        # Contrôler le cache des photos externes avec une vraie image de test,
+        # sans dépendre du serveur indiqué dans le classeur.
+        fixture = io.BytesIO()
+        Image.new('RGB', (240, 160), '#a7d5bc').save(fixture, format='PNG')
+        context.route('https://quizimagescm.s3.eu-west-3.amazonaws.com/**',
+                      lambda route: route.fulfill(content_type='image/png', body=fixture.getvalue(),
+                                                  headers={'Cache-Control': 'no-store'}))
+        image_urls = page.evaluate('''() => {
+          const bank = JDD.DATA.cultureMcq;
+          return [bank.find(q => q.image).image, bank.find(q => q.choiceImages).choiceImages[0]];
+        }''')
+        load_images = '''async urls => Promise.all(urls.map(url => new Promise((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => resolve(image.naturalWidth);
+          image.onerror = () => reject(new Error('Image indisponible : ' + url));
+          image.src = url;
+        })))'''
+        assert page.evaluate(load_images, image_urls) == [240, 240]
+        for url in image_urls:
+            wait_async('''async ({name, url}) => Boolean(await (await caches.open(name)).match(url))''',
+                       {'name': cache, 'url': url})
+        context.unroute('https://quizimagescm.s3.eu-west-3.amazonaws.com/**')
+
         context.set_offline(True)
         page.goto(base + 'index.html?offline=1', wait_until='load')
+        assert page.evaluate(load_images, [url + '?offline-check=1' for url in image_urls]) == [240, 240]
+        imported = page.evaluate('JDD.DATA.cultureMcq.filter(q => q.id && q.id.startsWith("classeur-")).length')
+        assert imported == 7632, imported
+        # Les autres photos n'ont pas encore été vues : les questions sans photo
+        # permettent de vérifier les modes hors ligne sans requête externe aléatoire.
+        page.evaluate('JDD.DATA.cultureMcq = JDD.DATA.cultureMcq.filter(q => !q.image && !q.choiceImages)')
+        print('PASS: 7 632 nouvelles questions disponibles hors ligne, photos déjà chargées retrouvées sans réseau', flush=True)
         expect(page.locator('.player-item')).to_have_count(3)
         counts = page.evaluate('''() => ({...Object.fromEntries(Object.entries(JDD.DATA).map(([k,v])=>[k,v.length])),
           undercover:JDD.UNDERCOVER_PAIRS.length, rapidity:JDD.RAPIDITY.length})''')
@@ -265,10 +297,18 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         expect(page.locator('#currentQuestion')).to_have_text(question)
         names = page.evaluate('caches.keys()')
         assert prefix + 'ancien' not in names and 'autre-site-a-conserver' in names, names
-        page.locator('#backLogo').click()
+        page.evaluate("() => { for (let i = 0; i < 3; i++) navigator.serviceWorker.dispatchEvent(new Event('controllerchange')); }")
+        expect(page.locator('#game')).to_be_visible()
+        navigations = []
+        page.on('request', lambda request: navigations.append(request.url) if request.is_navigation_request() else None)
+        # Le retour au menu déclenche volontairement le rechargement de la
+        # nouvelle version : attendre explicitement cette navigation.
+        with page.expect_navigation(wait_until='domcontentloaded'):
+            page.locator('#backLogo').click(no_wait_after=True)
+        assert navigations == [base], navigations
         expect(page.locator('#setup')).to_be_visible()
         expect(page.locator('.player-item')).to_have_count(3)
-        print('PASS: nouveau worker, anciens caches supprimés, autres sites préservés, partie non interrompue et joueurs conservés', flush=True)
+        print('PASS: nouveau worker, anciens caches supprimés, partie préservée, un seul rechargement au menu et joueurs conservés', flush=True)
 
         # La même application fonctionne également à la racine d'un hébergement.
         root_context = pw.chromium.launch_persistent_context(
