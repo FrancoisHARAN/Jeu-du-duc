@@ -7,7 +7,7 @@ aux utilisateurs connectés ; les emails restent dans Supabase Auth.
 
 ## Activation sur le projet Supabase
 
-La migration est préparée et vérifiée localement. Elle n'a pas été exécutée
+Les migrations sont préparées et vérifiées localement. Elles n'ont pas été exécutées
 sur le projet distant : l'environnement ne dispose d'aucun accès SQL ou
 d'administration Supabase, et le domaine du projet n'est pas autorisé par
 sa politique réseau actuelle.
@@ -18,6 +18,9 @@ sa politique réseau actuelle.
    des statistiques et le bucket privé `avatars`. Elle reprend aussi les
    comptes éventuellement déjà présents. Ne pas réexécuter une migration
    déjà appliquée ; conserver son historique pour les évolutions suivantes.
+   Exécuter ensuite `supabase/migrations/202610060002_football.sql` pour
+   autoriser les résultats du Grand Quiz Foot. Si la première migration est
+   déjà appliquée, exécuter uniquement cette deuxième migration.
 2. Dans **Authentication → URL Configuration**, définir le Site URL sur
    `https://francoisharan.github.io/Jeu-du-duc/` et ajouter cette même URL aux
    Redirect URLs. Pour une prévisualisation, autoriser explicitement son URL
@@ -74,10 +77,15 @@ L'application sur les téléphones n'utilise pas le proxy de développement.
   Les homonymes sont distingués dans les libellés des parties.
 - Les comptes sont proposés six par six, avec le compte connecté en premier
   puis les profils le plus souvent ajoutés depuis ce téléphone.
-- Les nouvelles parties Undercover et Géographie sont comptées à leur fin.
+- Les nouvelles parties Undercover, Géographie et Grand Quiz Foot sont comptées à leur fin.
   Devine Tête compte une manche comme une partie ; en équipes, les points et
   mots de la manche reviennent aux membres de l'équipe qui devine. Une
   correction remplace son résultat précédent.
+- Grand Quiz Foot compte les parties, victoires, points, tours et bonnes
+  réponses. En équipes, chaque membre reçoit les statistiques de son équipe.
+  Les ex æquo avec au moins un point sont tous gagnants ; une partie sans
+  point n'attribue aucune victoire. Aucun nom d'invité n'est envoyé dans le
+  résultat cloud. Voir `GRAND-QUIZ-FOOT.md` pour les règles d'arbitrage.
 - Questions et défis comptent une partie au lancement. Culture G. compte
   séparément les QCM/vrai-faux répondus et les réponses ouvertes dévoilées.
   Une réponse dévoilée n'est jamais supposée correcte. Le mode personnalisé

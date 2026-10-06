@@ -5,7 +5,7 @@
  */
 const APP_ROOT = new URL('./', self.location.href);
 const CACHE_PREFIX = `jeu-du-duc-${encodeURIComponent(APP_ROOT.pathname)}-`;
-const CACHE_NAME = `${CACHE_PREFIX}2026-10-06-v22`;
+const CACHE_NAME = `${CACHE_PREFIX}2026-10-06-v23`;
 const QUIZ_IMAGES_ORIGIN = 'https://quizimagescm.s3.eu-west-3.amazonaws.com';
 const SHELL_FILES = [
   './',
@@ -18,6 +18,7 @@ const SHELL_FILES = [
   'styles/heads-up.css',
   'styles/players.css',
   'styles/geography.css',
+  'styles/football.css',
   'styles/accounts.css',
   'vendor/supabase/supabase.js',
   'scripts/supabase-config.js',
@@ -34,6 +35,7 @@ const SHELL_FILES = [
   'scripts/app/heads-up.js',
   'scripts/app/player-editor.js',
   'scripts/app/geography.js',
+  'scripts/app/football.js',
   'scripts/pwa.js',
   'data/debut.text.js',
   'data/hardcore.text.js',
@@ -50,6 +52,7 @@ const SHELL_FILES = [
   'data/geography/countries.geojson',
   'data/geography/departments.geojson',
   'data/geography/cities.json',
+  'data/football.questions.json',
   'image/icon.png',
   'image/duc-head.png',
   'image/home/hero.webp',
@@ -62,6 +65,7 @@ const SHELL_FILES = [
   'image/home/lancer.webp',
   'image/home/personnalise.webp',
   'image/home/geography.svg',
+  'image/home/football.svg',
   'image/app/apple-touch-icon-purple.png',
   'image/app/favicon-purple-32.png',
   'image/app/icon-purple-192.png',

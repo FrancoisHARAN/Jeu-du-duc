@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs><pattern id="floor" width="60" height="60" patternUnits="userSpaceOnUse"><rect width="60" height="60" fill="#fff9e9"/><path d="M0 0h30v30H0zM30 30h30v30H30z" fill="#f7c3d0"/></pattern></defs>
+  <rect width="400" height="400" rx="24" fill="#aac7e4"/>
+  <path d="M0 305h400v95H0z" fill="url(#floor)"/><path d="M0 305h400" stroke="#252124" stroke-width="4"/>
+  <g stroke="#252124" stroke-width="5" stroke-linejoin="round">
+    <path d="M95 205V95h215v150" fill="none"/><path d="M95 95l-30 20v130m30-150 25 25h190M120 120v120m40-120v135m40-135v140m40-140v140m40-140v135M95 155h215M95 195h215M95 235h215" fill="none" stroke-width="2" opacity=".6"/>
+    <ellipse cx="208" cy="323" rx="118" ry="22" fill="#c9b3ef" stroke="none"/>
+    <circle cx="200" cy="233" r="89" fill="#fff9e9"/>
+    <path d="m200 197 35 25-14 41h-43l-14-41z" fill="#252124"/>
+    <path d="m127 183 20 18-13 36-22 6m60-94 6 27 40 2 17-27m50 33-30 11 1 39 29 11m-30 61-13-31-38 11-7 34m-76-27 28-14-4-37-34-11" fill="#252124"/>
+    <path d="m178 176 22 21m-53 4 17 21m-30 15 44 26m-10 8 10-8m37 11 6-11m35-29-21-12m20-27-20 27" fill="none" stroke-width="3"/>
+    <path d="m286 64 9-18 7 18 20 5-16 12 1 20-15-12-19 7 7-18-12-13z" fill="#ffd938"/>
+    <path d="m57 224 7-15 6 15 16 4-13 10 1 17-12-10-16 6 6-15-10-11z" fill="#ffd938"/>
+  </g>
+</svg>

@@ -134,7 +134,7 @@
     button.setAttribute('aria-label', user ? 'Ouvrir mon compte' : 'Se connecter');
     fitNames(button.parentElement);
   }
-  const modeLabels = { undercover: 'Undercover', heads: 'Devine Tête', geography: 'Géographie', culture: 'Culture G.',
+  const modeLabels = { undercover: 'Undercover', heads: 'Devine Tête', geography: 'Géographie', football: 'Grand Quiz Foot', culture: 'Culture G.',
     debut: 'Apéro chiantos', hardcore: 'Sexy pas raffiné', alcool: 'Torgnole express', custom: 'Personnalisé', rapidite: 'Rapidité' };
   const metricLabels = { games: 'Parties jouées', wins: 'Victoires', points: 'Points', white_games: 'Parties en Mr. White', white_wins: 'Victoires en Mr. White',
     undercover_games: 'Parties en Undercover', undercover_wins: 'Victoires en Undercover', civil_games: 'Parties en civil', civil_wins: 'Victoires en civil',
@@ -171,6 +171,7 @@
       const relevant = mode === 'undercover' ? ['games','wins','white_wins','undercover_wins','civil_wins','points']
         : mode === 'heads' ? ['games','words_found','words_passed','points']
         : mode === 'geography' ? ['games','wins','turns','correct_places','perfect_places','points','distance_km']
+        : mode === 'football' ? ['games','wins','points','turns','correct_answers']
         : mode === 'culture' ? ['games','questions_answered','correct_answers','answers_revealed'] : ['games','cards_seen'];
       relevant.forEach(metric => {
         const value = rows.find(r => r.mode === mode && r.metric === metric)?.total || 0;

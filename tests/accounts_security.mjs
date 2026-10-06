@@ -24,6 +24,7 @@ await db.exec(`
     $$ select (string_to_array($1, '/'))[1:array_length(string_to_array($1, '/'),1)-1] $$;
 `);
 await db.exec(await readFile(new URL('../supabase/migrations/202610060001_accounts_and_statistics.sql', import.meta.url), 'utf8'));
+await db.exec(await readFile(new URL('../supabase/migrations/202610060002_football.sql', import.meta.url), 'utf8'));
 await db.query('insert into auth.users values ($1,$2,$3),($4,$5,$6),($7,$8,$9)',
   [a,{display_name:'François'},'private-francois@example.test',b,{display_name:'Axel'},'private-axel@example.test',c,{display_name:'Nico'},'private-nico@example.test']);
 async function as(role, id, fn) {
@@ -81,4 +82,14 @@ await as('authenticated', b, async () => {
   assert.equal((await db.query('update storage.objects set name=$1 where name=$2 returning id',[`${b}/stolen.webp`,`${a}/photo.webp`])).rows.length,0);
 });
 console.log('PASS: photos privées ; écriture, remplacement et suppression limités au propriétaire');
+await as('authenticated', a, async () => {
+  const id = '20000000-0000-4000-8000-000000000002';
+  const people = [{account_id:a,metrics:{games:1,wins:1,points:4,turns:5,correct_answers:4}}];
+  assert.equal(await record(a,id,1,people,'football'),true);
+  assert.equal(await record(a,id,1,people,'football'),false);
+  assert.equal(Number((await db.query("select total from public.player_statistics where player_id=$1 and mode='football' and metric='games'",[a])).rows[0].total),1);
+  await rejects(() => record(b,id,2,people,'football'),'42501');
+  await rejects(() => record(a,'20000000-0000-4000-8000-000000000003',1,people,'invalid-mode'),'22023');
+});
+console.log('PASS: migration foot, statistiques sans doublon et protections existantes conservées');
 await db.close();

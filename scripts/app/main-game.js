@@ -18,6 +18,7 @@
     undercoverScreen: document.getElementById('undercover'),
     headsScreen: document.getElementById('heads'),
     geographyScreen: document.getElementById('geography'),
+    footballScreen: document.getElementById('football'),
     playerInput: document.getElementById('playerInput'),
     playerError: document.getElementById('playerError'),
     playerList: document.getElementById('playerList'),
@@ -49,6 +50,7 @@
     undercoverButton: document.getElementById('undercoverBtn'),
     headsButton: document.getElementById('headsBtn'),
     geographyButton: document.getElementById('geographyBtn'),
+    footballButton: document.getElementById('footballBtn'),
     rapiditeAudio: document.getElementById('rapidite-audio'),
   };
 
@@ -783,6 +785,19 @@
     window.scrollTo(0, 0);
   }
 
+  function openFootball() {
+    elements.setupScreen.classList.add('hidden');
+    elements.gameScreen.classList.add('hidden');
+    elements.footballScreen.classList.remove('hidden');
+    modules.football.onOpen();
+  }
+
+  function closeFootball() {
+    elements.footballScreen.classList.add('hidden');
+    elements.setupScreen.classList.remove('hidden');
+    window.scrollTo(0, 0);
+  }
+
   function attachEvents() {
     window.addEventListener('jdd:profiles', () => {
       renderPlayersInto(elements.playerList);
@@ -855,6 +870,7 @@
     elements.undercoverButton.addEventListener('click', openUndercover);
     elements.headsButton.addEventListener('click', openHeads);
     elements.geographyButton.addEventListener('click', openGeography);
+    elements.footballButton.addEventListener('click', openFootball);
   }
 
   function init() {
@@ -884,6 +900,10 @@
       modules.geography.init({ onExit: closeGeography, getSuggestedNames: () => players.slice(),
         addPlayer, removePlayer: removeSharedPlayer });
     } catch (error) { console.error('Géographie indisponible', error); }
+    try {
+      modules.football.init({ onExit: closeFootball, getSuggestedNames: () => players.slice(),
+        addPlayer, removePlayer: removeSharedPlayer });
+    } catch (error) { console.error('Grand Quiz Foot indisponible', error); }
     attachEvents();
     const defaultCard = document.querySelector('.mode-card[data-mode="debut"]');
     if (!restoreSettings() && defaultCard) {

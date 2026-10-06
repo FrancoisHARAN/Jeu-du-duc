@@ -145,7 +145,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           return (await cache.keys()).map(r => r.url);
         }''', cache)
         quiz360_images = json.loads((site / 'data/culture.quiz360.images.json').read_text())
-        assert len(shell) == 65 + len(quiz360_images), len(shell)
+        assert len(shell) == 69 + len(quiz360_images), len(shell)
         for file in ['styles/accounts.css','vendor/supabase/supabase.js','scripts/supabase-config.js',
                      'scripts/core/participants.js','scripts/core/cloud.js','scripts/app/accounts.js']:
             assert any(url.endswith('/' + file) for url in shell), file
@@ -157,7 +157,8 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
                      'scripts/app/player-editor.js', 'styles/players.css', 'scripts/app/geography.js',
                      'styles/geography.css', 'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css',
                      'data/geography/countries.geojson', 'data/geography/departments.geojson',
-                     'data/geography/cities.json', 'image/home/geography.svg']:
+                     'data/geography/cities.json', 'image/home/geography.svg', 'styles/football.css',
+                     'scripts/app/football.js', 'data/football.questions.json', 'image/home/football.svg']:
             assert base + file in shell
         assert all(url.startswith(base) for url in shell)
         for name in ['Alice', 'Bob', 'Chloe']:
@@ -287,6 +288,24 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
                 assert page.locator('.geo-pin--truth').count() == 1
             page.locator('[data-geo="exit"]').click()
         print('PASS: trois cartes vectorielles et données géographiques hors connexion', flush=True)
+        # Banque du classeur et les deux variantes du quiz disponibles en mode avion.
+        for mode in ['classic', 'shotgun']:
+            page.locator('#footballBtn').click()
+            expect(page.locator('#football')).to_have_attribute('data-screen', 'setup')
+            page.locator(f'[name="foot-mode"][value="{mode}"]').check()
+            page.locator('[data-foot="start"]').click()
+            page.locator('[data-foot="begin"]').click()
+            expect(page.locator('#football')).to_have_attribute('data-screen', 'playing')
+            assert page.locator('.foot-question').inner_text().strip()
+            page.locator('[data-foot="reveal"]').click()
+            assert page.locator('.foot-answer').inner_text().strip()
+            if mode == 'classic':
+                page.locator('[data-foot="correct"]').click()
+            else:
+                page.locator('[data-foot-award="1"]').click()
+            expect(page.locator('#football')).to_have_attribute('data-screen', 'answer')
+            page.locator('[data-foot="exit"]').click()
+        print('PASS: quiz foot classique et Shotgun avec réponses et scores hors connexion', flush=True)
         expect(page.locator('#setup')).to_be_visible()
         for mode in ['debut', 'hardcore', 'alcool', 'culture', 'custom']:
             page.locator(f'[data-mode="{mode}"]').click()
