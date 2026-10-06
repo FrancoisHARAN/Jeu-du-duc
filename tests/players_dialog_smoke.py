@@ -51,7 +51,7 @@ try:
         expect(page.locator('#dialogPlayerInput')).to_be_focused()
         page.keyboard.press('Shift+Tab')
         assert page.evaluate('document.activeElement.closest("#playersDialog") !== null')
-        expect(page.locator('#playersDialogMode')).to_have_text('CULTURE G.')
+        expect(page.locator('#playersDialogMode')).to_have_text('Culture G.')
         expect(page.locator('#dialogStartBtn')).to_be_disabled()
         page.locator('#dialogPlayerInput').fill(' Alice ')
         expect(page.locator('#dialogStartBtn')).to_be_enabled()

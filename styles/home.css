@@ -237,3 +237,5 @@ html:has(#playersDialog[open]) { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   #setup *, #setup *::before, #setup *::after { animation: none !important; transition: none !important; }
 }
+#setup .player-error { margin: 8px 0 0; color: #d50032; font-weight: 700; }
+#setup .player-error[hidden] { display: none; }

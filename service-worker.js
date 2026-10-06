@@ -5,7 +5,7 @@
  */
 const APP_ROOT = new URL('./', self.location.href);
 const CACHE_PREFIX = `jeu-du-duc-${encodeURIComponent(APP_ROOT.pathname)}-`;
-const CACHE_NAME = `${CACHE_PREFIX}2026-10-06-v15`;
+const CACHE_NAME = `${CACHE_PREFIX}2026-10-06-v16`;
 const QUIZ_IMAGES_ORIGIN = 'https://quizimagescm.s3.eu-west-3.amazonaws.com';
 const SHELL_FILES = [
   './',
@@ -59,7 +59,7 @@ const SHELL_FILES = [
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
-    await cache.addAll(SHELL_FILES.map((file) => new Request(new URL(file, APP_ROOT), { cache: 'reload' })));
+    await cache.addAll(SHELL_FILES.map((file) => new Request(new URL(file, APP_ROOT), { cache: 'no-cache' })));
     await self.skipWaiting();
   })());
 });
@@ -84,6 +84,8 @@ function cacheKey(url) {
 // Le cache HTTP du navigateur ne doit pas court-circuiter le worker lors du
 // lancement suivant. CacheStorage garde le secours hors ligne séparément.
 function browserResponse(response) {
+  // une redirection (ou réponse opaque) de statut 0 ne peut pas être recréée : le navigateur la suit lui-même
+  if (response.type === 'opaqueredirect' || response.type === 'opaque') return response;
   const headers = new Headers(response.headers);
   headers.set('Cache-Control', 'no-store');
   headers.delete('Expires');
@@ -120,7 +122,8 @@ async function networkFirst(event, allowOpaque = false) {
   const key = cacheKey(request.url);
   const range = request.headers.get('range');
   const cachePromise = caches.open(CACHE_NAME).catch(() => null);
-  const network = fetch(new Request(request, { cache: 'no-store' })).then(async (response) => {
+  // « no-cache » : le serveur est toujours interrogé, mais un fichier inchangé répond 304 sans être retéléchargé.
+  const network = fetch(new Request(request, { cache: 'no-cache' })).then(async (response) => {
     const cache = await cachePromise;
     if (cache && (response.status === 200 || (allowOpaque && response.type === 'opaque')) && !range) {
       try {

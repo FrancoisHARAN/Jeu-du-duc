@@ -17,6 +17,7 @@
     undercoverScreen: document.getElementById('undercover'),
     headsScreen: document.getElementById('heads'),
     playerInput: document.getElementById('playerInput'),
+    playerError: document.getElementById('playerError'),
     playerList: document.getElementById('playerList'),
     playersDialog: document.getElementById('playersDialog'),
     dialogPlayerInput: document.getElementById('dialogPlayerInput'),
@@ -109,7 +110,11 @@
     'environ', 'lors', 'pendant', 'sous', 'hors', 'juste', 'ton', 'ta', 'tes', 'génétiquement', 'techniquement',
     'officiellement', 'historiquement', 'morte', 'mort', 'capturé', 'recalé', 'déroulé', 'partie', 'champions',
     'allemand', 'français', 'française', 'né', 'née', 'âgé', 'âgée', 'surnommé', 'surnommée', 'parmi', 'voici',
+    'lorsque', 'lorsqu', 'deux', 'douze', 'aucun', 'chaque', 'nous', 'toutes', 'durant', 'comparé', 'contrairement',
+    'au-delà', 'au-dessus', 'grâce', 'plus', 'vers', 'puisqu',
   ]);
+  // Premier mot écrit sans son accent dans certaines questions (« A quelle… », « Ou se trouve… »)
+  const ACCENTED_STARTERS = { a: 'à', ou: 'où' };
 
   function loadPlayers() {
     try {
@@ -150,8 +155,20 @@
     if (input === elements.dialogPlayerInput) {
       input.setAttribute('aria-invalid', 'true');
       updatePlayersDialog(message);
+    } else if (elements.playerError) {
+      input.setAttribute('aria-invalid', 'true');
+      elements.playerError.textContent = message;
+      elements.playerError.hidden = false;
     }
     return false;
+  }
+
+  function clearPlayerError() {
+    if (elements.playerError) {
+      elements.playerError.hidden = true;
+      elements.playerError.textContent = '';
+    }
+    elements.playerInput.removeAttribute('aria-invalid');
   }
 
   // « Jean  Paul » et « Jean Paul », ou un « Zoé » copié-collé, sont le même prénom
@@ -172,6 +189,7 @@
       return rejectPlayer(input, 'Ce prénom est déjà dans la bande. Choisis-en un autre.');
     }
     players.push(name);
+    if (input === elements.playerInput) clearPlayerError();
     input.value = '';
     input.classList.remove('input-error');
     input.removeAttribute('aria-invalid');
@@ -305,7 +323,9 @@
   function addressPlayer(playerName, sentence) {
     const text = String(sentence || '').trim();
     const firstWord = text.split(/[\s,:;!?«»"'’]/)[0].toLowerCase();
-    const body = LOWERCASE_STARTERS.has(firstWord) ? text.charAt(0).toLowerCase() + text.slice(1) : text;
+    const accented = ACCENTED_STARTERS[firstWord];
+    const body = accented ? accented + text.slice(firstWord.length)
+      : LOWERCASE_STARTERS.has(firstWord) ? text.charAt(0).toLowerCase() + text.slice(1) : text;
     return playerName ? `${playerName}, ${body}` : text;
   }
 
@@ -661,7 +681,9 @@
     selectedCard.setAttribute('aria-pressed', 'true');
     state.currentMode = selectedCard.dataset.mode;
     if (elements.selectedModeLabel) {
-      elements.selectedModeLabel.textContent = selectedCard.querySelector('.home-mode-label').innerText.replace(/\s+/g, ' ').trim();
+      const label = selectedCard.querySelector('.home-mode-label');
+      elements.selectedModeLabel.textContent = Array.from(label.childNodes, (node) => (node.nodeName === 'BR' ? ' ' : node.textContent))
+        .join('').replace(/\s+/g, ' ').trim();
     }
     elements.customWeightsBox.classList.toggle('hidden', state.currentMode !== 'custom');
     saveSettings();
@@ -707,6 +729,7 @@
       event.preventDefault();
       addPlayer();
     });
+    elements.playerInput.addEventListener('input', clearPlayerError);
     document.getElementById('startBtn').addEventListener('click', startGame);
     document.getElementById('dialogPlayerForm').addEventListener('submit', (event) => {
       event.preventDefault();

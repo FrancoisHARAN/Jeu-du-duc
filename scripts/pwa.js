@@ -23,6 +23,10 @@
       // navigation : ne jamais annuler le rechargement déjà en cours.
       reloadStarted = true;
       reloadPending = false;
+      // L'ancienne page reste affichée jusqu'à l'arrivée de la nouvelle (jusqu'à 4 s) :
+      // plus rien ne doit y être lancé, la partie serait coupée par le rechargement.
+      document.body.inert = true;
+      document.body.style.pointerEvents = 'none';
       window.location.reload();
     }
   }

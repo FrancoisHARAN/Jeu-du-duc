@@ -52,9 +52,27 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
                 path = path[len('/Jeu-du-duc'):]
             return super().translate_path(path)
 
+        def send_head(self):
+            # ETag calculé sur le contenu, comme GitHub Pages et Vercel : le worker revalide
+            # chaque fichier (304 s'il est inchangé), même modifié deux fois dans la même seconde.
+            path = self.translate_path(self.path)
+            self._etag = None
+            if os.path.isfile(path):
+                self._etag = '"' + hashlib.sha1(Path(path).read_bytes()).hexdigest() + '"'
+                if self.headers.get('If-None-Match') == self._etag:
+                    self.send_response(304)
+                    self.end_headers()
+                    return None
+            # La date de modification n'a qu'une précision d'une seconde : le test modifie
+            # des fichiers plus vite que ça, seule l'empreinte du contenu fait foi.
+            del self.headers['If-Modified-Since']
+            return super().send_head()
+
         def end_headers(self):
             # Une longue durée de cache HTTP révèle les mises à jour mal conçues.
             self.send_header('Cache-Control', 'public, max-age=86400')
+            if getattr(self, '_etag', None):
+                self.send_header('ETag', self._etag)
             super().end_headers()
 
         def log_message(self, *args):
