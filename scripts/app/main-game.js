@@ -273,7 +273,8 @@
     document.getElementById('dialogRosterCount').textContent = window.JDDPlayerEditor.countLabel(players.length);
     const note = players.length > maximum ? `${maximum} joueurs maximum : retire quelques prénoms pour ce jeu.` : !remaining ? ''
       : `Ajoute encore ${remaining} joueur${remaining > 1 ? 's' : ''} pour lancer.`;
-    elements.dialogStatus.textContent = error || note;
+    document.getElementById('playersDialogRequirement').textContent = note;
+    elements.dialogStatus.textContent = error;
     elements.dialogStatus.dataset.error = String(Boolean(error));
     const draft = elements.dialogPlayerInput.value.trim();
     const canAddDraft = draft && players.length < maximum
@@ -317,7 +318,9 @@
     if (!elements.playersDialog.open) elements.playersDialog.showModal();
     renderPlayersInto(elements.dialogPlayerList);
     updatePlayersDialog();
-    elements.dialogPlayerInput.focus();
+    elements.playersDialog.scrollTop = 0;
+    elements.playersDialog.querySelector('.home-dialog-content').scrollTop = 0;
+    elements.dialogMode.focus({ preventScroll: true });
   }
 
   function setBackground(type) {
@@ -842,6 +845,15 @@
       context.onConfirm();
     });
     document.getElementById('closePlayersDialog').addEventListener('click', () => elements.playersDialog.close());
+    elements.playersDialog.addEventListener('keydown', (event) => {
+      if (event.key !== 'Tab') return;
+      const controls = [...elements.playersDialog.querySelectorAll('button, input, [tabindex="0"]')]
+        .filter(node => !node.disabled && node.tabIndex >= 0 && node.getClientRects().length);
+      const first = controls[0], last = controls[controls.length - 1], active = document.activeElement;
+      if (first && (active === elements.dialogMode || (event.shiftKey ? active === first : active === last))) {
+        event.preventDefault(); (event.shiftKey ? last : first).focus();
+      }
+    });
     elements.playersDialog.addEventListener('click', (event) => {
       if (event.target !== elements.playersDialog) return;
       const bounds = elements.playersDialog.getBoundingClientRect();

@@ -16,7 +16,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="image/app/favicon-purple-32.png?v=20261006i">
   <link rel="stylesheet" href="styles/main.css?v=20261005o">
   <link rel="stylesheet" href="styles/undercover.css?v=20261005q">
-  <link rel="stylesheet" href="styles/home.css?v=20261006j">
+  <link rel="stylesheet" href="styles/home.css?v=20261006k">
   <link rel="stylesheet" href="styles/pwa.css?v=20261005i">
   <link rel="stylesheet" href="styles/questions.css?v=20261006h">
   <link rel="stylesheet" href="styles/heads-up.css?v=20261006e">
@@ -149,26 +149,31 @@
     <p id="accountSync" class="account-sync" role="status" hidden></p>
   </main>
 
-    <dialog id="playersDialog" class="home-player-dialog" aria-labelledby="playersDialogTitle">
+    <dialog id="playersDialog" class="home-player-dialog" aria-labelledby="playersDialogMode">
       <header class="home-player-window">
-        <div class="home-dialog-player-heading"><h2 id="playersDialogTitle">Qui joue ?</h2><span id="dialogRosterCount" class="jdd-player-count" aria-live="polite">0 joueur</span></div>
+        <div class="home-dialog-mode">
+          <img id="playersDialogArt" src="image/home/apero.webp" alt="" width="1254" height="1254" decoding="async">
+          <h2 id="playersDialogMode" tabindex="-1">Apéro chiantos</h2>
+        </div>
         <button id="closePlayersDialog" class="home-dialog-close" type="button" aria-label="Fermer et revenir au menu">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"/></svg>
         </button>
       </header>
       <div class="home-dialog-content">
-        <div id="dialogPlayerList" class="jdd-player-list" aria-label="Joueurs inscrits"></div>
-        <div class="home-dialog-mode">
-          <img id="playersDialogArt" src="image/home/apero.webp" alt="" width="1254" height="1254" decoding="async">
-          <div><strong id="playersDialogMode">Apéro chiantos</strong></div>
-        </div>
-        <label class="home-visually-hidden" for="dialogPlayerInput">Prénom du joueur</label>
-        <form id="dialogPlayerForm" class="player-input-container">
-          <input type="text" id="dialogPlayerInput" placeholder="Prénom d’un invité" maxlength="40" autocomplete="off" autocapitalize="words" enterkeyhint="done" spellcheck="false" aria-describedby="playersDialogStatus" autofocus>
-          <button id="dialogAddBtn" class="action-btn" type="submit" aria-label="Ajouter le joueur"><span aria-hidden="true">+</span></button>
+        <section class="home-dialog-roster" aria-labelledby="playersDialogTitle">
+          <div class="home-dialog-player-heading"><h3 id="playersDialogTitle">Qui joue ?</h3><span id="dialogRosterCount" class="jdd-player-count" aria-live="polite">0 joueur</span></div>
+          <p id="playersDialogRequirement" class="home-player-note" role="status" aria-live="polite"></p>
+          <div id="dialogPlayerList" class="jdd-player-list" aria-label="Joueurs inscrits"></div>
+        </section>
+        <form id="dialogPlayerForm" class="home-dialog-guest" aria-labelledby="dialogGuestLabel">
+          <label id="dialogGuestLabel" for="dialogPlayerInput">Ajouter un invité</label>
+          <div class="player-input-container">
+            <input type="text" id="dialogPlayerInput" placeholder="Prénom" maxlength="40" autocomplete="off" autocapitalize="words" enterkeyhint="done" spellcheck="false" aria-describedby="playersDialogStatus">
+            <button id="dialogAddBtn" class="action-btn" type="submit" aria-label="Ajouter l’invité"><span aria-hidden="true">+</span> Ajouter</button>
+          </div>
+          <p id="playersDialogStatus" class="home-player-note" role="status" aria-live="polite"></p>
         </form>
         <div id="dialogAccountPlayers"></div>
-        <p id="playersDialogStatus" class="home-player-note" role="status" aria-live="polite"></p>
       </div>
       <footer class="home-dialog-footer">
         <button id="dialogStartBtn" class="action-btn" type="button">Lancer la partie<span class="home-start-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></button>
@@ -250,7 +255,7 @@
   <script src="scripts/supabase-config.js?v=20261006a" defer></script>
   <script src="scripts/core/cloud.js?v=20261006a" defer></script>
   <script src="scripts/core/statistics.js?v=20261006a" defer></script>
-  <script src="scripts/app/accounts.js?v=20261006i" defer></script>
+  <script src="scripts/app/accounts.js?v=20261006j" defer></script>
 
   <!-- FEATURE MODULES -->
   <script src="vendor/leaflet/leaflet.js?v=1.9.4" defer></script>
@@ -271,7 +276,7 @@
   <script src="data/undercover.pairs.js?v=20261005k" defer></script>
   <script src="data/heads.words.js?v=20261006g" defer></script>
   <script src="data/heads.imported.js?v=20261006g" defer></script>
-  <script src="scripts/app/main-game.js?v=20261006l" defer></script>
+  <script src="scripts/app/main-game.js?v=20261006m" defer></script>
   <script src="data/culture.imported.js?v=20261006b" defer></script>
   <script src="data/culture.quiz360.js?v=20261006h" defer></script>
   <script src="scripts/pwa.js?v=20261006e" defer></script>

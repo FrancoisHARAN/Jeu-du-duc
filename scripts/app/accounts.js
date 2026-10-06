@@ -57,15 +57,17 @@
   }
   function renderDirectory(entry) {
     const { container, maximum } = entry;
+    const preparingGame = container.id === 'dialogAccountPlayers';
     container.replaceChildren(); container.className = 'account-directory';
     if (!user) {
-      container.append(el('p', 'account-help', 'Connecte-toi sur cet appareil pour retrouver les comptes de la bande.'));
-      const connect = el('button', 'account-text-button', 'Ajouter des comptes'); connect.type = 'button';
+      if (preparingGame) container.append(el('h3', '', 'Ajouter un compte'));
+      container.append(el('p', 'account-help', preparingGame ? 'Connecte-toi sur cet appareil pour retrouver la bande.' : 'Connecte-toi sur cet appareil pour retrouver les comptes de la bande.'));
+      const connect = el('button', preparingGame ? 'home-dialog-connect' : 'account-text-button', preparingGame ? 'Se connecter' : 'Ajouter des comptes'); connect.type = 'button';
       connect.addEventListener('click', () => open('login')); container.append(connect); return;
     }
     const heading = el('div', 'account-directory-heading');
     const retry = el('button', 'account-text-button', directoryError ? 'Réessayer' : 'Actualiser'); retry.type = 'button';
-    retry.addEventListener('click', refresh); heading.append(el('h3', '', 'Les comptes de la bande'), retry); container.append(heading);
+    retry.addEventListener('click', refresh); heading.append(el('h3', '', preparingGame ? 'Ajouter un compte' : 'Les comptes de la bande'), retry); container.append(heading);
     if (directoryError) container.append(el('p', 'account-help', navigator.onLine ? 'Impossible de charger les comptes. Vérifie ta connexion et réessaie.' : 'Connecte cet appareil à Internet pour charger les comptes.'));
     else if (directoryCached || !navigator.onLine) container.append(el('p', 'account-help', 'Derniers comptes synchronisés sur cet appareil.'));
     if (!profiles.length) {

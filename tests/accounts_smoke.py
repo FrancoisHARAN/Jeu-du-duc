@@ -411,7 +411,8 @@ try:
         widths=page.locator('#playerList .player-item').evaluate_all('nodes=>nodes.map(n=>n.getBoundingClientRect().width)')
         assert max(widths)-min(widths)<1
         assert page.locator('#playerList .jdd-player-remove').first.bounding_box()['height']>=44
-        assert page.locator('#accountPlayers .account-profile').first.bounding_box()['height']<70
+        expect(page.locator('#accountPlayers .account-profile').first).to_be_visible()
+        assert page.locator('#accountPlayers .account-profile').first.evaluate('el=>el.getBoundingClientRect().height')<70
         page.screenshot(path=str(OUT/'bande-mobile.png'),full_page=True)
         pc.locator('#playerInput').fill('Invité');pc.locator('#addBtn').click();add_account(pc,A)
         pc.screenshot(path=str(OUT/'bande-pc.png'),full_page=True)

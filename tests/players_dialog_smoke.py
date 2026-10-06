@@ -48,10 +48,12 @@ try:
         page.locator('[data-mode="culture"]').click()
         page.locator('#startBtn').click()
         expect(page.locator('#playersDialog')).to_be_visible()
-        expect(page.locator('#dialogPlayerInput')).to_be_focused()
+        expect(page.locator('#playersDialogMode')).to_be_focused()
         page.keyboard.press('Shift+Tab')
         assert page.evaluate('document.activeElement.closest("#playersDialog") !== null')
         expect(page.locator('#playersDialogMode')).to_have_text('Culture G.')
+        expect(page.locator('#playersDialog')).to_have_attribute('aria-labelledby','playersDialogMode')
+        expect(page.locator('#playersDialogRequirement')).to_have_text('Ajoute encore 1 joueur pour lancer.')
         expect(page.locator('#dialogStartBtn')).to_be_disabled()
         page.locator('#dialogPlayerInput').fill(' Alice ')
         expect(page.locator('#dialogStartBtn')).to_be_enabled()
@@ -136,7 +138,7 @@ try:
         print('PASS: saisie vide, retrait, synchronisation, fermeture/Escape et prénoms conservés après rechargement', flush=True)
 
         # Petits écrans, paysage et clavier simulé : bouton accessible en défilant.
-        for width, height in [(320, 568), (375, 667), (393, 852), (430, 932), (844, 390), (393, 400)]:
+        for width, height in [(320, 568), (375, 667), (393, 852), (430, 932), (844, 390), (393, 400), (1280, 800)]:
             context, page = open_home(width, height)
             page.locator('#startBtn').click()
             dialog = page.locator('#playersDialog')
@@ -145,15 +147,20 @@ try:
             assert bounds['y'] + bounds['height'] <= height
             assert dialog.evaluate('el => el.scrollWidth <= el.clientWidth')
             assert page.locator('#dialogPlayerInput').evaluate('el => parseFloat(getComputedStyle(el).fontSize)') >= 16
+            expect(page.locator('#playersDialogMode')).to_be_focused()
+            if screenshot_dir:
+                page.screenshot(path=str(Path(screenshot_dir)/f'joueurs-vide-{width}-{height}.png'))
             page.locator('#dialogPlayerInput').fill('Alice')
             page.locator('#dialogAddBtn').click()
             page.locator('#dialogPlayerInput').fill('Bob')
+            if screenshot_dir:
+                page.screenshot(path=str(Path(screenshot_dir)/f'joueurs-remplis-{width}-{height}.png'))
             page.locator('#dialogStartBtn').click()
             expect(page.locator('#game')).to_be_visible()
             context.close()
         assert not errors, errors
         browser.close()
-        print('PASS: 6 formats mobiles dont paysage et hauteur réduite, sans erreur JavaScript ni alerte native', flush=True)
+        print('PASS: 7 formats téléphone/PC dont paysage et hauteur réduite, sans erreur JavaScript ni alerte native', flush=True)
 finally:
     server.shutdown()
     server.server_close()
