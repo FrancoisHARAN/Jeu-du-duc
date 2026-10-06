@@ -32,6 +32,13 @@ Leaflet 1.9.4 est conservé dans `vendor/leaflet/` avec sa licence BSD-2-Clause.
 Les cartes sont des couches GeoJSON vectorielles projetées depuis leurs
 coordonnées WGS84. Les frontières répondent aux clics ; les cartes acceptent
 le déplacement, les boutons de zoom et les gestes tactiles à deux doigts.
+À la validation d'une ville, la caméra rejoint la réponse en 450 ms, avec
+apparition de l'épingle verte et tracé progressif de la distance. Le score
+est calculé et enregistré immédiatement ; on peut passer au tour suivant
+sans attendre. Une reprise de réponse et le réglage « réduire les animations »
+affichent directement le résultat. La transition ne s'applique pas aux pays
+ou aux départements.
+
 Les villes utilisent des marqueurs déplaçables et une ligne suivant le plus
 court arc terrestre. Aucun fond en image, serveur de tuiles ni clé d'API.
 

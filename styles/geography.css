@@ -75,3 +75,26 @@ body.geo-open { justify-content: flex-start; padding: 0; background: #6b62cc !im
 .geo-root [hidden] { display: none; }
 @media (max-width: 359px) { .geo-intro { gap: 10px; padding: 14px; } .geo-intro img { width: 65px; height: 65px; } .geo-intro h1 { font-size: 25px; } .geo-settings, .geo-menu { padding: 14px; } .geo-player-picker { padding: 8px; } }
 @media (orientation: landscape) and (max-height: 550px) { .geo-root { padding-top: max(10px, env(safe-area-inset-top)); } .geo-topbar { margin-bottom: 10px; } .geo-root .geo-map { height: 65dvh; } }
+
+/* Les contours sortent du SVG pendant le vol ; le conteneur Leaflet masque hors carte. */
+.geo-map--cities .leaflet-overlay-pane > svg { overflow: visible; }
+.geo-map--cities .leaflet-overlay-pane path { vector-effect: non-scaling-stroke; }
+
+/* Révélation unique de 450 ms ; les positions Leaflet restent sur le marqueur parent. */
+.geo-pin--reveal span { animation: geo-city-arrive 450ms cubic-bezier(.2, .8, .3, 1) both; }
+.geo-pin--reveal::before { content: ''; position: absolute; top: 17px; left: -6px; width: 44px; height: 44px; border: 3px solid #18714a; border-radius: 50%; pointer-events: none; animation: geo-city-pulse 450ms ease-out both; }
+.geo-map .geo-route--reveal { stroke-dasharray: 1; animation: geo-route-draw 450ms cubic-bezier(.2, .8, .3, 1) both; }
+#geo-result.geo-result--reveal { animation: geo-result-arrive 280ms ease-out both; }
+@keyframes geo-city-arrive {
+  0% { opacity: 0; transform: translateY(-9px) rotate(-45deg) scale(.6); }
+  65% { opacity: 1; transform: rotate(-45deg) scale(1.12); }
+  100% { opacity: 1; transform: rotate(-45deg) scale(1); }
+}
+@keyframes geo-city-pulse { from { opacity: .65; transform: scale(.4); } to { opacity: 0; transform: scale(1.5); } }
+@keyframes geo-route-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes geo-result-arrive { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .geo-pin--reveal span, .geo-pin--reveal::before, .geo-map .geo-route--reveal, #geo-result.geo-result--reveal { animation: none; }
+  .geo-pin--reveal::before { display: none; }
+  .geo-map .geo-route--reveal { stroke-dasharray: 7 5; stroke-dashoffset: 0; }
+}

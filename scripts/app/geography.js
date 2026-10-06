@@ -3,6 +3,7 @@
   'use strict';
   const STORE_KEY = 'jdd.geography.v1';
   const TURN_MS = 30000;
+  const REVEAL_SECONDS = .45;
   const MODES = { cities: 'Où est la ville ?', countries: 'Trouve le pays', departments: 'Trouve le département' };
   const HOME = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9"/></svg>';
   const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -112,9 +113,11 @@
     map = L.map(root.querySelector('#geo-map'), { zoomControl: false, attributionControl: false, minZoom: 0, maxZoom: 12,
       zoomSnap: .25, zoomAnimation: false, fadeAnimation: false, markerZoomAnimation: false, touchZoom: true, scrollWheelZoom: true, doubleClickZoom: false,
       maxBounds: [[-86, -180], [86, 180]], maxBoundsViscosity: 1 });
+    if (isCity()) map.getContainer().classList.add('geo-map--cities');
     L.control.zoom({ position: 'topright', zoomInTitle: 'Zoomer', zoomOutTitle: 'Dézoomer' }).addTo(map);
     const countries = match.mode !== 'departments';
     regions = L.geoJSON(countries ? data.countries : data.departments, {
+      noClip: isCity(), // Garder les contours complets pendant le déplacement/zoom des villes.
       style: f => isCity() ? baseStyle() : answerStyle(f),
       onEachFeature(feature, layer) {
         if (isCity()) return;
@@ -203,10 +206,11 @@
     match.result = { km, correct, rating, points, timedOut };
     match.scores[match.index % match.players.length] += points;
     match.rows.push({ target: target().id, player: player(), guess: match.guess, ...match.result });
-    match.deadline = 0; setPhase('answer'); save(); reveal();
+    match.deadline = 0; setPhase('answer'); save(); reveal(true);
   }
-  function reveal() {
+  function reveal(animate = false) {
     const L = global.L, result = match.result;
+    const motion = animate && isCity() && !global.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (isCity()) {
       if (guessMarker) guessMarker.dragging.disable();
       let truthLng = target().lng;
@@ -222,17 +226,26 @@
         // Répéter les vraies côtes au passage du méridien, avec la même projection.
         L.geoJSON({ type: 'FeatureCollection', features: data.countries.features.map(feature => ({
           ...feature, geometry: { ...feature.geometry, coordinates: shift(feature.geometry.coordinates) },
-        })) }, { style: baseStyle, interactive: false }).addTo(map);
+        })) }, { style: baseStyle, interactive: false, noClip: true }).addTo(map);
       }
-      const truth = L.marker([target().lat, truthLng], { icon: icon('truth'), title: target().name }).addTo(map);
+      const truthIcon = icon('truth');
+      if (motion) truthIcon.options.className += ' geo-pin--reveal';
+      const truth = L.marker([target().lat, truthLng], { icon: truthIcon, title: target().name }).addTo(map);
       truth.bindTooltip(escape(target().name), { permanent: true, direction: 'top', offset: [0, -35] });
       if (match.guess) {
         if (!guessMarker) guessMarker = L.marker(match.guess, { icon: icon('guess'), title: 'Ton épingle' }).addTo(map);
         // Plus court arc terrestre ; longitude déroulée pour traverser correctement l'antiméridien.
         const line = greatCircle(match.guess, target());
-        L.polyline(line, { color: '#6b36ad', weight: 3, dashArray: '7 5', interactive: false }).addTo(map);
-        map.fitBounds(L.latLngBounds(line), { padding: [45, 45], maxZoom: match.zone === 'france' ? 9 : 6, animate: false });
-      } else map.setView([target().lat, target().lng], match.zone === 'france' ? 7 : 4, { animate: false });
+        const route = L.polyline(line, { color: '#6b36ad', weight: 3, dashArray: '7 5', interactive: false, noClip: true }).addTo(map);
+        if (motion) drawRoute(route.getElement());
+        const bounds = L.latLngBounds(line), options = { padding: [45, 45], maxZoom: match.zone === 'france' ? 9 : 6 };
+        if (motion) map.flyToBounds(bounds, { ...options, duration: REVEAL_SECONDS });
+        else map.fitBounds(bounds, { ...options, animate: false });
+      } else {
+        const point = [target().lat, target().lng], zoom = match.zone === 'france' ? 7 : 4;
+        if (motion) map.flyTo(point, zoom, { duration: REVEAL_SECONDS });
+        else map.setView(point, zoom, { animate: false });
+      }
     } else {
       regions.setStyle(answerStyle);
       const bounds = L.latLngBounds([]);
@@ -249,9 +262,21 @@
     root.querySelector('#geo-selection').innerHTML = isCity() ? '<span class="geo-key-guess">● Ton épingle</span> · <span class="geo-key-truth">✓ La ville</span>'
       : result.correct ? 'Bonne réponse !' : `Ton choix : ${escape(regionName(match.guess))}. En vert : ${escape(target().name)}.`;
     root.querySelector('#geo-result').innerHTML = `<strong>${escape(result.rating)}</strong>${result.timedOut ? '<span>Temps écoulé</span>' : ''}${isCity() ? `<span>${result.km === null ? 'Aucune épingle placée' : `${result.km.toLocaleString('fr-FR', { maximumFractionDigits: result.km < 10 ? 1 : 0 })} km de la ville`}</span>` : ''}<b>+${result.points} pts</b>`;
+    if (motion) root.querySelector('#geo-result').classList.add('geo-result--reveal');
     const button = root.querySelector('[data-geo="validate"]');
     button.dataset.geo = 'next'; button.disabled = false;
     button.textContent = match.index === match.targets.length - 1 ? 'Voir le classement' : `Au tour de ${match.players[(match.index + 1) % match.players.length]} ↗`;
+  }
+  function drawRoute(path) {
+    if (!path) return;
+    // La longueur normalisée suit le zoom SVG pendant le mouvement de caméra.
+    // Retirer ensuite la normalisation pour retrouver les pointillés en pixels.
+    path.setAttribute('pathLength', '1'); path.classList.add('geo-route--reveal');
+    const finish = () => {
+      path.classList.remove('geo-route--reveal'); path.removeAttribute('pathLength');
+      path.removeEventListener('animationend', finish); path.removeEventListener('animationcancel', finish);
+    };
+    path.addEventListener('animationend', finish); path.addEventListener('animationcancel', finish);
   }
   function regionName(code) {
     const features = match.mode === 'countries' ? data.countries.features : data.departments.features;

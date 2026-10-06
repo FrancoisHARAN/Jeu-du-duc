@@ -76,7 +76,7 @@ try:
             context = browser.new_context(viewport={'width': width, 'height': height}, has_touch=True,
                                           is_mobile=width < 900, service_workers='block')
             context.add_init_script('localStorage.setItem("jdd.players", ' + json.dumps(json.dumps(people)) + ');'
-                'window.offset = 0; const now = Date.now(); Date.now = () => now + offset;')
+                'window.offset = 0; const now = Date.now; Date.now = () => now() + offset;')
             page = context.new_page()
             page.on('pageerror', lambda err: errors.append(str(err)))
             page.on('console', lambda msg: errors.append(msg.text) if msg.type == 'error' else None)
@@ -142,6 +142,9 @@ try:
         page.wait_for_timeout(100)
         assert state(page)['guess'] != guess
         guess = state(page)['guess']
+        page.evaluate('''() => { window.revealFrames=[]; window.revealDone=0;
+          testMap.on('move',()=>revealFrames.push({time:performance.now(),zoom:testMap.getZoom(),center:testMap.getCenter()}));
+          testMap.on('moveend',()=>{window.revealDone=performance.now()}); }''')
         action(page, 'validate')
         expect(page.locator('#geography')).to_have_attribute('data-screen', 'answer')
         result = state(page)['result']
@@ -152,11 +155,21 @@ try:
         assert 0 < result['points'] < 1000
         assert page.locator('.geo-pin--guess').count() == page.locator('.geo-pin--truth').count() == 1
         assert page.locator('#geo-map path[stroke-dasharray]').count() == 1
+        page.wait_for_function('() => revealDone && !document.querySelector(".geo-route--reveal")')
+        frames=page.evaluate('revealFrames')
+        assert len(frames)>=4, frames
+        assert len({round(f['zoom'],3) for f in frames})>=3, frames
+        assert 350 <= frames[-1]['time']-frames[0]['time'] <= 950, frames
+        assert page.locator('#geo-map path[stroke-dasharray]').get_attribute('pathLength') is None
         points = state(page)['scores']
         click_coordinate(page, [first['lat'], first['lng']], True)
         assert state(page)['scores'] == points
         layout(page)
         page.screenshot(path=str(OUT / 'ville-reponse.png'), full_page=True)
+        action(page, 'exit');page.locator('#geographyBtn').click();action(page, 'resume')
+        expect(page.locator('#geography')).to_have_attribute('data-screen','answer')
+        assert state(page)['scores']==points
+        assert page.locator('.geo-pin--reveal, .geo-route--reveal, .geo-result--reveal').count()==0
         action(page, 'next')
         page.evaluate('offset += 31000')
         expect(page.locator('#geography')).to_have_attribute('data-screen', 'answer')
@@ -229,6 +242,7 @@ try:
         action(page, 'validate')
         assert state(page)['result']['km'] < 1000
         assert page.locator('#geo-map path').count() > 242, 'Les côtes sont répétées après le passage de l’antiméridien.'
+        page.wait_for_function('() => !document.querySelector(".geo-route--reveal")')
         map_box = page.locator('#geo-map').bounding_box()
         for kind in ['guess', 'truth']:
             box = page.locator(f'.geo-pin--{kind}').bounding_box()
@@ -236,6 +250,26 @@ try:
             assert map_box['y'] <= box['y'] + box['height'] / 2 <= map_box['y'] + map_box['height']
         context.close()
         print('PASS: ligne et épingles de part et d’autre de l’antiméridien', flush=True)
+
+        # Le mouvement réduit garde la réponse et les points immédiatement lisibles.
+        context,page=home(['Alice']);page.emulate_media(reduced_motion='reduce')
+        start(page,'cities')
+        city=state(page)['targets'][0]
+        click_coordinate(page,[city['lat'],city['lng']],True);action(page,'validate')
+        assert page.locator('.geo-pin--reveal, .geo-route--reveal, .geo-result--reveal').count()==0
+        assert state(page)['scores']==[1000]
+        action(page,'next');expect(page.locator('#geography')).to_have_attribute('data-screen','playing')
+        context.close()
+        # Quitter pendant le mouvement ne laisse aucun rappel vers une carte supprimée.
+        context,page=home(['Alice']);start(page,'cities')
+        city=state(page)['targets'][0]
+        click_coordinate(page,[city['lat']+.5,city['lng']],True);action(page,'validate')
+        action(page,'exit');page.wait_for_timeout(600)
+        expect(page.locator('#setup')).to_be_visible()
+        page.locator('#geographyBtn').click();action(page,'resume')
+        assert len(state(page)['rows'])==1
+        context.close()
+        print('PASS: caméra et zoom continus en moins d’une seconde, mouvement réduit, reprise et sortie pendant la révélation',flush=True)
 
         for width, height in [(320, 568), (360, 640), (393, 852), (430, 932), (852, 393), (1440, 900)]:
             context, page = home(['Alice'], width, height)
