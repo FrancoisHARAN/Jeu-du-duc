@@ -5,7 +5,7 @@
  */
 const APP_ROOT = new URL('./', self.location.href);
 const CACHE_PREFIX = `jeu-du-duc-${encodeURIComponent(APP_ROOT.pathname)}-`;
-const CACHE_NAME = `${CACHE_PREFIX}2026-10-06-v17`;
+const CACHE_NAME = `${CACHE_PREFIX}2026-10-06-v18`;
 const QUIZ_IMAGES_ORIGIN = 'https://quizimagescm.s3.eu-west-3.amazonaws.com';
 const SHELL_FILES = [
   './',
@@ -38,6 +38,7 @@ const SHELL_FILES = [
   'data/rapidite.questions.js',
   'data/undercover.pairs.js',
   'data/heads.words.js',
+  'data/heads.imported.js',
   'data/geography/countries.geojson',
   'data/geography/departments.geojson',
   'data/geography/cities.json',

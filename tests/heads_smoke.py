@@ -147,7 +147,7 @@ try:
             assert not page.evaluate('document.documentElement.scrollWidth > innerWidth')
             setup(page)
             counts = page.evaluate('JDD.HEADS_DECKS.map(d => d.words.length)')
-            assert counts == [60] * 7, counts
+            assert counts == [60] * 7 + [250, 50, 300, 160, 320, 300, 230, 120, 210, 60], counts
             expect(page.locator('#hu-player .jdd-player-choice[aria-pressed="true"]')).to_contain_text('Alice')
             layout(page)
             if width == 393:
@@ -232,10 +232,14 @@ try:
 
         context, page = new_page()
         # Les anciens filtres ne doivent pas laisser une partie des mots inaccessible.
-        page.evaluate("""localStorage.setItem('jdd.heads.v1', JSON.stringify({
+        page.evaluate("""(() => {
+          window.importPreviouslyUsed = Array.from(new Set(JDD.HEADS_DECKS.flatMap(d => d.words)
+            .map(w => w.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLocaleLowerCase('fr').trim()))).slice(0, 1100);
+          localStorage.setItem('jdd.heads.v1', JSON.stringify({
           config:{themes:['animaux'], duration:120, controls:'buttons', clues:'mime', sound:false, custom:'Souvenir de la bande'},
-          history:[], totals:[{player:'Alice', points:12, rounds:3}], used:[]
-        }))""")
+          history:[], totals:[{player:'Alice', points:12, rounds:3}], used:importPreviouslyUsed
+          }));
+        })()""")
         setup(page)
         assert page.locator('#heads .hu-rules, #heads [data-theme], #heads #hu-duration, #heads #hu-custom, #heads .hu-radio-row, #heads .hu-sound').count() == 0
         expect(page.locator('#hu-start')).to_have_text('Lancer la partie ↗')
@@ -244,10 +248,14 @@ try:
         assert active['duration'] == 60 and active['clues'] == 'describe'
         assert set(active['themes']) == set(page.evaluate('JDD.HEADS_DECKS.map(d=>d.id)'))
         assert 'Souvenir de la bande' in active['pool']
+        assert len(active['pool']) == 2196
         assert set(page.evaluate('JDD.HEADS_DECKS.flatMap(d=>d.words)')).issubset(set(active['pool']))
+        assert page.evaluate("JSON.parse(localStorage.getItem('jdd.heads.v1')).used.length") == 1101
+        assert page.evaluate("""!importPreviouslyUsed.includes(JSON.parse(localStorage.getItem('jdd.heads.v1')).active.word
+          .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLocaleLowerCase('fr').trim())""")
         assert page.evaluate("JSON.parse(localStorage.getItem('jdd.heads.v1')).totals[0].points") == 12
         context.close()
-        print('PASS: anciens réglages remplacés pour les nouvelles manches, anciens mots et scores conservés', flush=True)
+        print('PASS: 2 000 mots importés, 2 195 distincts, catégories, mots personnels et scores conservés ; mémoire au-delà de 1 000 mots', flush=True)
 
         context, page = new_page(852, 393)
         setup(page, 'motion')

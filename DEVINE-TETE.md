@@ -23,10 +23,16 @@ le lui font deviner pendant une manche chronométrée.
 - Le bilan permet de corriger une validation. Les prénoms de l’accueil
   servent à proposer le joueur suivant et à afficher les scores.
 
-Les 420 mots des sept thèmes sont une sélection propre à ce projet, sans
-modification des banques des autres jeux. Ils ne se répètent pas dans une
-manche ; le tirage privilégie aussi les mots non vus dans les manches précédentes.
+Les 420 mots originaux des sept thèmes restent conservés. La liste fournie
+`devine_tete_2000.json` ajoute 2 000 mots répartis dans dix catégories,
+conservées dans `data/heads.imported.js`. Les 225 mots communs sont proposés
+une seule fois : le mélange contient 2 195 mots distincts, sans modification
+des banques des autres jeux. Les mots ne se répètent pas dans une manche ;
+la mémoire des tirages couvre désormais tout le mélange afin de privilégier
+les mots non vus avant de recommencer un cycle.
 Les mots personnalisés déjà enregistrés rejoignent le mélange automatiquement.
+Les nouvelles listes s'appliquent aux nouvelles manches ; une manche déjà
+en pause conserve ses mots, les joueurs et les scores.
 Les trente dernières manches restent sur le téléphone ; les scores sont accessibles
 dans une section repliée sous le bouton de lancement. Une manche en pause conserve
 ses mots et sa durée jusqu'à sa fin.

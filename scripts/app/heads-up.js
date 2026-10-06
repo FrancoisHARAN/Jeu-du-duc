@@ -13,6 +13,8 @@
   let countdownEnd = 0, lastCount = 0, requestId = 0, readyMessage = '', resume = false;
   const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const decks = () => global.JDD.HEADS_DECKS || [];
+  // Garder un cycle complet, même quand la banque dépasse les 1 000 mots.
+  const rememberedWordsLimit = () => Math.max(1000, decks().reduce((count, deck) => count + deck.words.length, 0) + 200);
   const key = word => word.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('fr').trim();
   const timeLabel = ms => `${Math.floor(Math.ceil(ms / 1000) / 60)}:${String(Math.ceil(ms / 1000) % 60).padStart(2, '0')}`;
   const score = rows => rows.filter(row => row.status === 'correct').length;
@@ -36,7 +38,7 @@
     }
     return {
       config,
-      used: saved && Array.isArray(saved.used) ? saved.used.filter(w => typeof w === 'string').slice(-1000) : [],
+      used: saved && Array.isArray(saved.used) ? saved.used.filter(w => typeof w === 'string').slice(-rememberedWordsLimit()) : [],
       history, totals,
       active: saved && saved.active,
       nextPlayer: saved && typeof saved.nextPlayer === 'string' ? saved.nextPlayer : '',
@@ -368,7 +370,7 @@
     round.word = fresh[Math.floor(Math.random() * fresh.length)];
     round.seen.push(key(round.word));
     store.used.push(key(round.word));
-    store.used = store.used.slice(-1000);
+    store.used = store.used.slice(-rememberedWordsLimit());
     round.pending = null;
     round.armed = !round.motion || Boolean(neutralSince && Date.now() - neutralSince >= 250);
     save();

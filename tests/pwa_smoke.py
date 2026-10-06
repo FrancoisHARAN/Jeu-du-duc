@@ -138,10 +138,10 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           const cache = await caches.open(name);
           return (await cache.keys()).map(r => r.url);
         }''', cache)
-        assert len(shell) == 56, (len(shell), shell)
+        assert len(shell) == 57, (len(shell), shell)
         assert base + 'styles/questions.css' in shell
         assert base + 'data/culture.imported.js' in shell
-        for file in ['styles/heads-up.css', 'scripts/app/heads-up.js', 'data/heads.words.js',
+        for file in ['styles/heads-up.css', 'scripts/app/heads-up.js', 'data/heads.words.js', 'data/heads.imported.js',
                      'scripts/app/player-editor.js', 'styles/players.css', 'scripts/app/geography.js',
                      'styles/geography.css', 'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css',
                      'data/geography/countries.geojson', 'data/geography/departments.geojson',
@@ -228,10 +228,11 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           };
         }''')
         page.locator('#headsBtn').click()
-        assert page.evaluate('JDD.HEADS_DECKS.reduce((n, d) => n + d.words.length, 0)') == 420
+        assert page.evaluate('JDD.HEADS_DECKS.reduce((n, d) => n + d.words.length, 0)') == 2420
         page.locator('#hu-start').click()
         page.locator('#heads [data-act="buttons"], #heads [data-act="countdown"]').click()
         expect(page.locator('#heads')).to_have_attribute('data-screen', 'playing')
+        assert page.evaluate("JSON.parse(localStorage.getItem('jdd.heads.v1')).active.pool.length") == 2195
         expect(page.locator('#hu-word')).not_to_be_empty()
         page.locator('[data-act="correct"]').click()
         expect(page.locator('#hu-points')).to_have_text('1')
