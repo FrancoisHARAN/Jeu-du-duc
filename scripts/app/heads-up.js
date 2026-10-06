@@ -91,22 +91,20 @@
     root.innerHTML = `${topbar('Jeu de devinettes')}
       <section class="hu-panel">
         ${windowBar('LE MOT EST SUR TA TÊTE')}
-        <div class="hu-intro"><img src="image/home/mascotte.webp" alt="" width="1254" height="1254"><div><h1>Devine<br>Tête</h1><p>Les potes expliquent.<br>Toi, tu devines.</p></div></div>
+        <div class="hu-intro"><img src="image/home/mascotte.webp" alt="" width="1254" height="1254"><h1>Devine<br>Tête</h1></div>
         <form id="hu-config" class="hu-config">
-          <fieldset class="hu-player-picker"><legend>Qui devine ?</legend><div id="hu-player" class="hu-player-grid">${playerChoices(people, player)}</div><div class="hu-player-note"><p id="hu-players-note" class="hu-help">${people.length} joueur${people.length > 1 ? 's' : ''} · La bande de l’accueil.</p><button class="hu-text-button" data-act="edit-players" type="button">Modifier les joueurs</button></div></fieldset>
-          <button id="hu-start" class="hu-button" type="submit">Lancer la partie <span aria-hidden="true">↗</span></button><p id="hu-selection" class="hu-selection" role="status"></p>
+          <fieldset class="hu-player-picker"><legend>Qui devine ?</legend><div id="hu-player" class="hu-player-grid">${playerChoices(people, player)}</div><button class="hu-text-button" data-act="edit-players" type="button">Modifier les joueurs</button></fieldset>
+          <button id="hu-start" class="hu-button" type="submit">Lancer la partie <span aria-hidden="true">↗</span></button>
         </form>
         ${round && !round.finished ? '<div class="hu-resume"><p>Une manche est en pause.</p><button class="hu-button hu-button--green" data-act="resume" type="button">Reprendre la manche</button></div>' : ''}
         <div class="hu-floor" aria-hidden="true"></div>
       </section>${store.history.length ? `<details class="hu-history-summary"><summary>Les scores de la bande</summary>${historyMarkup()}</details>` : ''}`;
-    updateSelection();
+    updateStartButton();
     window.scrollTo(0, 0);
   }
 
-  function updateSelection() {
-    const count = pool().length;
-    root.querySelector('#hu-selection').textContent = count ? `${count} mots mélangés · 60 secondes` : 'Aucun mot disponible pour le moment.';
-    root.querySelector('#hu-start').disabled = !count || names().length < 2;
+  function updateStartButton() {
+    root.querySelector('#hu-start').disabled = !pool().length || names().length < 2;
   }
 
   function onPlayersChanged() {
@@ -117,8 +115,7 @@
     const selected = people.includes(previous) ? previous : people[0] || '';
     picker.innerHTML = playerChoices(people, selected);
     store.nextPlayer = selected;
-    root.querySelector('#hu-players-note').textContent = `${people.length} joueur${people.length > 1 ? 's' : ''} · La bande de l’accueil.`;
-    updateSelection();
+    updateStartButton();
     save();
   }
 

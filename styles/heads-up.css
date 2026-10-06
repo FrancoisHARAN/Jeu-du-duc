@@ -52,7 +52,6 @@ body.hu-playing { overflow: hidden; }
 .hu-root .hu-dots i:nth-child(3) { background: var(--hu-green); }
 .hu-root .hu-intro { display: grid; grid-template-columns: 110px minmax(0, 1fr); align-items: center; gap: 18px; padding: 18px; }
 .hu-root .hu-intro img { width: 100%; height: auto; border: 2px solid var(--hu-ink); border-radius: 12px; }
-.hu-root .hu-intro p { margin: 8px 0 0; font-family: Arial, sans-serif; font-size: 15px; }
 .hu-root .hu-config { padding: 0 18px 18px; }
 .hu-root .hu-help { margin: 4px 0 12px; color: #5a5154; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.45; }
 .hu-root .hu-player-picker { margin: 0 0 18px; padding: 14px; border: 2px solid var(--hu-ink); border-radius: 12px; background: #eee8f7; }
@@ -65,10 +64,7 @@ body.hu-playing { overflow: hidden; }
 .hu-root .hu-player-avatar { display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; border: 1px solid var(--hu-ink); border-radius: 50%; background: var(--hu-pink); font-size: 15px; font-weight: 900; }
 .hu-root .hu-player-choice:has(input:checked) .hu-player-avatar { background: #6b62cc; color: var(--hu-cream); }
 .hu-root .hu-player-name { font-size: 14px; font-weight: 800; overflow-wrap: anywhere; }
-.hu-root .hu-player-note { margin-top: 14px; }
-.hu-root .hu-player-note .hu-help { margin: 0; font-size: 12px; }
-.hu-root .hu-player-note .hu-text-button { padding: 10px 0 0; font-size: 13px; }
-.hu-root .hu-selection { margin: 16px 0 0; color: #5a5154; font-family: Arial, sans-serif; font-size: 13px; text-align: center; }
+.hu-root .hu-player-picker .hu-text-button { min-height: 44px; margin-top: 10px; padding: 8px 0; font-size: 13px; }
 .hu-root .hu-history-summary { margin-top: 22px; padding: 0 14px; border: 2px solid var(--hu-ink); border-radius: 12px; background: var(--hu-cream); }
 .hu-root .hu-history-summary > summary { display: list-item; min-height: 48px; padding: 12px 0; cursor: pointer; font-size: 14px; font-weight: 800; }
 .hu-root .hu-history-summary .hu-history { margin: 0 0 16px; box-shadow: none; }

@@ -213,7 +213,6 @@ try:
           {id:'b', name:'B', words:['Pizza', '<b>Les potes, oui !</b>', 'A'.repeat(60)]}
         ]""")
         setup(page)
-        expect(page.locator('#hu-selection')).to_contain_text('4 mots')
         begin_manual(page)
         expect(page.locator('.hu-word-card .hu-window')).to_contain_text('FAIS DEVINER SANS DIRE LE MOT')
         seen = []
