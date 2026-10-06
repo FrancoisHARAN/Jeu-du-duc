@@ -956,6 +956,13 @@
     window.JDDParticipants.all().filter(p => p.kind === 'account').forEach(p => window.JDDParticipants.remove(p.label));
     players.splice(0, players.length, ...window.JDDParticipants.labels()); renderPlayerList();
   };
+  window.JDD.retainAccountPlayers = ids => {
+    const available = new Set(ids);
+    const absent = window.JDDParticipants.all().filter(p => p.kind === 'account' && !available.has(p.id));
+    if (!absent.length) return;
+    absent.forEach(p => window.JDDParticipants.remove(p.label));
+    players.splice(0, players.length, ...window.JDDParticipants.labels()); renderPlayerList();
+  };
 
   init();
 })();

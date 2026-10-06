@@ -22,7 +22,7 @@ profiles = [{'id': A, 'display_name': 'François', 'avatar_path': None, 'created
 profiles += [{'id': f'10000000-0000-4000-8000-{i:012d}', 'display_name': name, 'avatar_path': None, 'created_at': '2026-10-03'}
              for i, name in enumerate(['Nico', 'Léa', 'Lou', 'Paul', 'Emma', 'Zoé'], 3)]
 events, calls, uploads, auth_calls = {}, [], [], []
-control = {'drop_answer': False, 'block_rpc': False, 'offline': False, 'email_confirmed': True}
+control = {'drop_answer': False, 'block_rpc': False, 'offline': False, 'email_confirmed': True, 'email_error': None}
 
 
 def user(uid):
@@ -59,11 +59,15 @@ def backend(route):
             # L'adresse de retour doit être le dossier du site, sans paramètres Auth.
             redirect = parse_qs(urlsplit(request.url).query).get('redirect_to',[None])[0]
             assert redirect == base, (path,redirect,base)
-    headers = {'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*'}
+    headers = {'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*',
+               'access-control-expose-headers':'x-supabase-api-version', 'x-supabase-api-version':'2024-01-01'}
     def reply(value, status=200):
         route.fulfill(status=status, content_type='application/json', body=json.dumps(value), headers=headers)
     if request.method == 'OPTIONS':
         reply({})
+    elif path in ['/auth/v1/signup','/auth/v1/recover','/auth/v1/resend'] and control['email_error']:
+        code,status=control['email_error']
+        reply({'code':code,'msg':'Do not display this raw server message: private@example.test'},status)
     elif path == '/auth/v1/token':
         if not control['email_confirmed']:
             reply({'msg':'Email not confirmed','code':'email_not_confirmed'},400)
@@ -213,21 +217,23 @@ try:
         expect(page.locator('#accountForm')).to_contain_text('son lien')
         page.screenshot(path=str(OUT/'confirmation-email.png'),full_page=True)
         page.locator('#accountActions').get_by_text('Renvoyer l’email',exact=True).click()
-        expect(page.locator('#accountStatus')).to_contain_text('un email vient d’être envoyé')
+        expect(page.locator('#accountStatus')).to_contain_text('la demande d’envoi a été acceptée')
         assert next(c for c in reversed(auth_calls) if c['path']=='/auth/v1/resend')['data']['email']=='francois@example.test'
         page.reload(wait_until='load'); page.locator('#accountButton').click()
         expect(page.locator('#accountDialogTitle')).to_have_text('Confirmer mon email')
         assert page.evaluate('JSON.parse(localStorage.getItem("jdd.auth-pending.v1")).email')=='francois@example.test'
         assert 'password' not in page.evaluate('localStorage.getItem("jdd.auth-pending.v1")')
         before=len([c for c in auth_calls if c['path']=='/auth/v1/verify'])
-        page.locator('#accountForm').get_by_text('J’ai confirmé mon email',exact=True).click()
+        page.locator('#accountForm').get_by_text('Se connecter',exact=True).click()
         expect(page.locator('#accountEmail')).to_have_value('francois@example.test')
         page.locator('#accountPassword').fill('a-test-password-long')
         page.locator('#accountForm button[type="submit"]').click()
-        expect(page.locator('#accountStatus')).to_contain_text('la confirmation du compte')
+        expect(page.locator('#accountStatus')).to_contain_text('Ton email n’est pas encore confirmé')
+        expect(page.locator('#accountDialogTitle')).to_have_text('Confirmer mon email')
         assert page.evaluate('JDDAccounts.getUser()') is None
         # La confirmation reste vérifiée par Auth ; le bouton n'accorde aucun accès.
         control['email_confirmed']=True
+        page.locator('#accountForm').get_by_text('Se connecter',exact=True).click()
         page.locator('#accountPassword').fill('a-test-password-long')
         page.locator('#accountForm button[type="submit"]').click()
         expect(page.locator('#accountDialog')).not_to_be_visible()
@@ -236,6 +242,60 @@ try:
         assert page.evaluate('localStorage.getItem("jdd.auth-pending.v1")') is None
         context.close()
         print('PASS: email à lien seul, redirection propre, renvoi, confirmation persistante et connexion sans code',flush=True)
+
+        # Les blocages d'envoi sont expliqués ; aucun faux email envoyé ni message brut.
+        context,page=home()
+        page.locator('#accountButton').click()
+        page.locator('#accountActions').get_by_text('Créer un compte',exact=True).click()
+        page.locator('#accountName').fill('François')
+        page.locator('#accountEmail').fill('francois@example.test')
+        control['email_error']=('email_address_not_authorized',400)
+        page.locator('#accountPassword').fill('a-test-password-long')
+        page.locator('#accountForm button[type="submit"]').click()
+        expect(page.locator('#accountStatus')).to_contain_text('L’envoi vers cette adresse est bloqué')
+        expect(page.locator('#accountDialogTitle')).to_have_text('Créer mon compte')
+        assert page.evaluate('localStorage.getItem("jdd.auth-pending.v1")') is None
+        control['email_error']=None
+        page.locator('#accountPassword').fill('a-test-password-long')
+        page.locator('#accountForm button[type="submit"]').click()
+        expect(page.locator('.account-pending-email')).to_have_text('francois@example.test')
+        for code,status,message in [('over_email_send_rate_limit',429,'Le quota d’emails'),
+                                    ('email_address_not_authorized',400,'L’envoi vers cette adresse est bloqué'),
+                                    ('unexpected_failure',500,'L’email n’a pas pu être renvoyé')]:
+            control['email_error']=(code,status)
+            page.locator('#accountActions').get_by_text('Renvoyer l’email',exact=True).click()
+            expect(page.locator('#accountStatus')).to_contain_text(message)
+            assert 'private@example.test' not in page.locator('#accountStatus').inner_text()
+            expect(page.locator('#accountStatus')).to_have_class('account-status account-status--error')
+        control['email_error']=None
+        page.locator('#accountActions').get_by_text('Renvoyer l’email',exact=True).click()
+        expect(page.locator('#accountStatus')).to_contain_text('demande d’envoi a été acceptée')
+        assert page.evaluate('JDDAccounts.getUser()') is None
+        context.close()
+        print('PASS: destinataire bloqué, quota et panne distingués au renvoi, sans faux succès ni accès accordé',flush=True)
+
+        # Deux prénoms identiques sont deux profils, mais une seule session possède « Moi ».
+        original_profiles=profiles[:]
+        profiles[:]=[dict(original_profiles[0]),dict(original_profiles[1],display_name='François')]
+        context,page=home(signed=True)
+        expect(page.locator('#accountPlayers .account-profile')).to_have_count(2)
+        expect(page.locator('#accountPlayers .account-profile-self')).to_have_count(1)
+        assert page.locator('#accountPlayers .account-profile-self').evaluate('el=>el.closest("button").dataset.accountId')==A
+        page.locator('#playerInput').fill('François');page.locator('#addBtn').click()
+        add_account(page,A);add_account(page,B)
+        assert len(page.evaluate('JDDParticipants.all()'))==3
+        page.locator('#accountButton').click()
+        expect(page.locator('.account-current-email')).to_contain_text('private@example.test')
+        page.locator('#closeAccountDialog').click()
+        assert 'private@example.test' not in page.locator('#setup').inner_text()
+        profiles[:]=[profiles[0]]
+        page.evaluate('JDDAccounts.refresh()')
+        expect(page.locator('#accountPlayers .account-profile')).to_have_count(1)
+        roster=page.evaluate('JDDParticipants.all()')
+        assert [(p['kind'],p['name']) for p in roster]==[('guest','François'),('account','François')]
+        assert roster[1]['id']==A and page.evaluate('JDDAccounts.getUser().id')==A
+        context.close();profiles[:]=original_profiles
+        print('PASS: compte connecté marqué Moi, email privé, homonymes séparés et compte supprimé retiré de la bande',flush=True)
 
         context, page = home(old_heads=True)
         expect(page.locator('#accountButton')).to_have_text('Se connecter')

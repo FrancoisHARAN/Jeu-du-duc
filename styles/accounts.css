@@ -13,6 +13,8 @@
 :is(#setup, #playersDialog, .jdd-player-editor) .account-profile[aria-pressed="true"] { background: #a7d5bc; box-shadow: none; }
 .account-profile-name { display: block; max-width: 100%; hyphens: none; overflow-wrap: normal; word-break: normal; }
 .account-profile-check { position: absolute; top: 4px; right: 5px; font-size: 15px; }
+.account-profile-self { padding: 2px 7px; border: 1px solid #252124; border-radius: 8px; background: #ffd938; font: 800 10px/1.2 'Montserrat', Arial, sans-serif; }
+.account-current-email, .account-pending-email { overflow-wrap: anywhere; }
 .account-help { margin: 10px 0; color: #5a5154; font: 14px/1.5 Arial, sans-serif; }
 :is(#setup, #playersDialog, .jdd-player-editor, .account-dialog) .account-text-button { min-height: 44px; padding: 8px 0; border: 0; border-radius: 0; background: transparent; color: #252124; box-shadow: none; text-decoration: underline; font: 700 14px/1.35 Arial, sans-serif; }
 .account-kind { display: block; font: 11px/1.2 Arial, sans-serif; color: #5a5154; }

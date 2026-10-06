@@ -72,6 +72,10 @@
       const button = el('button', 'account-profile'); button.type = 'button'; button.dataset.accountId = profile.id;
       button.setAttribute('aria-pressed', String(added)); button.setAttribute('aria-label', `${added ? 'Déjà ajouté' : 'Ajouter'} : ${profile.display_name}`);
       button.append(avatar(profile), el('span', 'account-profile-name', profile.display_name));
+      if (profile.id === user.id) {
+        button.append(el('span', 'account-profile-self', 'Moi'));
+        button.setAttribute('aria-label', `${added ? 'Déjà ajouté' : 'Ajouter'} : ${profile.display_name}, mon compte connecté`);
+      }
       if (added) button.append(el('span', 'account-profile-check', '✓'));
       button.addEventListener('click', () => {
         if (added) return;
@@ -121,6 +125,7 @@
       usingCached = Boolean(directory.error || stats.error);
       if (!directory.error) {
         profiles = directory.data || [];
+        global.JDD.retainAccountPlayers?.(profiles.map(p => p.id));
         const paths = profiles.filter(p => p.avatar_path).map(p => p.avatar_path);
         if (paths.length) {
           const signed = await client.storage.from('avatars').createSignedUrls(paths, 3600);
@@ -210,6 +215,19 @@
   function status(message, error = false) {
     const node = document.getElementById('accountStatus'); node.textContent = message; node.classList.toggle('account-status--error', error);
   }
+  function authError(error, fallback) {
+    const messages = {
+      email_address_not_authorized: 'L’envoi vers cette adresse est bloqué par le service email du site. L’administrateur doit configurer les envois.',
+      over_email_send_rate_limit: 'Le quota d’emails du site est atteint. Attends son renouvellement avant de demander un nouvel email.',
+      over_request_rate_limit: 'Trop de tentatives. Réessaie dans un moment.',
+      email_provider_disabled: 'La connexion par email est désactivée sur le site. L’administrateur doit l’activer.',
+      email_address_invalid: 'Vérifie que ton adresse email est correcte.',
+      email_not_confirmed: 'Ton email n’est pas encore confirmé. Ouvre le lien de confirmation ou demande un nouvel email.',
+    };
+    // Traduire seulement les erreurs connues : ne pas afficher les messages bruts du serveur.
+    return Object.hasOwn(messages,error?.code) ? messages[error.code]
+      : error?.status === 429 ? messages.over_request_rate_limit : fallback;
+  }
   function open(mode = user ? 'profile' : ['confirm','verify-reset'].includes(formMode) ? formMode : 'login') {
     formMode = mode; loading = false;
     renderForm(); if (!dialog.open) dialog.showModal();
@@ -230,6 +248,7 @@
     if (profileMode) {
       const p = profiles.find(p => p.id === user?.id);
       accountForm.append(avatar(p || { display_name: user?.user_metadata?.display_name || 'Joueur' }, 'account-avatar--large'));
+      accountForm.append(el('p', 'account-help account-current-email', `Connecté avec ${user.email || 'ton compte'}`));
       field('accountName', 'Prénom', 'text', 'given-name', p?.display_name || user?.user_metadata?.display_name || 'Joueur');
       const file = el('input'); Object.assign(file, { id: 'accountPhoto', type: 'file', accept: 'image/jpeg,image/png,image/webp' });
       file.hidden = true; file.setAttribute('aria-label', 'Photo de profil');
@@ -241,8 +260,9 @@
       accountForm.append(el('p', 'account-help', formMode === 'confirm'
         ? 'Ouvre l’email de confirmation, appuie sur son lien puis reviens te connecter.'
         : 'Ouvre le lien reçu par email pour choisir un nouveau mot de passe.'));
+      accountForm.append(el('p', 'account-help account-pending-email', formMode === 'confirm' ? confirmationEmail : recoveryEmail));
       if (formMode === 'confirm') {
-        const confirmed = el('button', 'account-button', 'J’ai confirmé mon email'); confirmed.type = 'button';
+        const confirmed = el('button', 'account-button', 'Se connecter'); confirmed.type = 'button';
         confirmed.addEventListener('click', () => open('login')); accountForm.append(confirmed);
       }
       const details = el('details', 'account-code-details');
@@ -271,8 +291,8 @@
         if (loading || !client) return; busy(true);
         try {
           const { error } = await client.auth.resend({ type: 'signup', email: confirmationEmail, options: { emailRedirectTo: redirectUrl() } });
-          if (error) throw error; status('Si le compte attend une confirmation, un email vient d’être envoyé.');
-        } catch (_) { status('L’email n’a pas pu être renvoyé. Réessaie dans un moment.', true); }
+          if (error) throw error; status('Si le compte attend une confirmation, la demande d’envoi a été acceptée. Vérifie aussi les spams. Si ton compte est déjà confirmé, connecte-toi.');
+        } catch (error) { status(authError(error, 'L’email n’a pas pu être renvoyé. Réessaie dans un moment.'), true); }
         finally { busy(false); }
       });
     } else if (!recovery) {
@@ -309,15 +329,18 @@
       if (formMode === 'signup' && !result.data.session) {
         confirmationEmail = value('accountEmail').trim(); formMode = 'confirm'; rememberPending(formMode, confirmationEmail); renderForm();
       } else if (formMode === 'reset') {
-        recoveryEmail = value('accountEmail').trim(); formMode = 'verify-reset'; rememberPending(formMode, recoveryEmail); renderForm(); status('Si un compte correspond à cet email, un email vient d’être envoyé.');
+        recoveryEmail = value('accountEmail').trim(); formMode = 'verify-reset'; rememberPending(formMode, recoveryEmail); renderForm(); status('La demande a été acceptée. Si un compte correspond à cet email, vérifie ta boîte mail et les spams.');
       } else if (formMode === 'verify-reset') { formMode = 'recovery'; renderForm(); }
       else if (formMode === 'profile') { await refresh(); status('Prénom enregistré.'); }
       else { clearPending(); formMode = user ? 'profile' : 'login'; dialog.close(); }
     } catch (error) {
-      status(error.status === 429 ? 'Trop de tentatives. Réessaie dans un moment.'
-        : ['confirm','verify-reset'].includes(formMode) && [400,401,403].includes(error.status) ? 'Code invalide ou expiré. Demande un nouvel email.'
+      if (formMode === 'login' && error.code === 'email_not_confirmed') {
+        confirmationEmail = value('accountEmail').trim(); formMode = 'confirm'; rememberPending(formMode, confirmationEmail); renderForm();
+      }
+      status(authError(error,
+        ['confirm','verify-reset'].includes(formMode) && [400,401,403].includes(error.status) ? 'Code invalide ou expiré. Demande un nouvel email.'
         : formMode === 'login' && [400,401].includes(error.status) ? 'Vérifie ton email, ton mot de passe et la confirmation du compte.'
-        : 'Impossible de terminer. Vérifie ta connexion puis réessaie.', true);
+        : 'Impossible de terminer. Vérifie ta connexion puis réessaie.'), true);
     } finally { busy(false); const password = document.getElementById('accountPassword'); if (password) password.value = ''; }
   }
   async function signOut() {
