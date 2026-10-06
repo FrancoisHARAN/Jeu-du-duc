@@ -90,10 +90,10 @@ try:
         page.locator('#hu-player input').fill('Bob')
         page.locator('#hu-player .jdd-player-add').click()
         expect(page.locator('#heads')).to_have_attribute('data-screen', 'setup')
-        assert page.locator('#hu-player .jdd-player-choice > span:last-child').all_text_contents() == ['Alice', 'Bob']
+        assert page.locator('#hu-player .jdd-player-name').all_text_contents() == ['Alice', 'Bob']
         page.locator('#hu-player input').fill('Chloé')
         page.locator('#hu-player .jdd-player-add').click()
-        assert page.locator('#hu-player .jdd-player-choice > span:last-child').all_text_contents() == ['Alice', 'Bob', 'Chloé']
+        assert page.locator('#hu-player .jdd-player-name').all_text_contents() == ['Alice', 'Bob', 'Chloé']
         page.locator('#hu-player .jdd-player-choice').filter(has_text='Chloé').click()
         page.locator('#heads [data-act="exit"]').click()
         assert page.evaluate('JDD.players') == ['Alice', 'Bob', 'Chloé']
@@ -125,7 +125,7 @@ try:
         expect(page.locator('#uc-count-title')).to_contain_text('5 / 20 joueurs')
         act(page, 'exit-app')
         page.locator('#headsBtn').click()
-        assert page.locator('#hu-player .jdd-player-choice > span:last-child').all_text_contents() == ['Alice', 'Bob', 'Chloé', 'Dani', 'Emma']
+        assert page.locator('#hu-player .jdd-player-name').all_text_contents() == ['Alice', 'Bob', 'Chloé', 'Dani', 'Emma']
         expect(page.locator('#hu-player .jdd-player-choice[aria-pressed="true"]')).to_contain_text('Chloé')
         page.locator('#heads [data-act="exit"]').click()
         page.reload(wait_until='load')

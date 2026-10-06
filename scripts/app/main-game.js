@@ -228,40 +228,22 @@
     list.innerHTML = '';
     const wait = REMOVE_DELAY - (Date.now() - lastRemoveAt);
     players.forEach((name, index) => {
-      const item = document.createElement('div');
-      item.className = 'player-item';
-
-      const label = document.createElement('span');
-      label.textContent = name;
-      const identity = window.JDDParticipants.get(name);
-      if (identity?.kind === 'account') {
-        const profile = window.JDDAccounts.profileFor(name);
-        item.append(window.JDDAccounts.avatar(profile || { display_name: identity.name }));
-        label.appendChild(Object.assign(document.createElement('small'), { className: 'account-kind', textContent: 'Compte' }));
-      } else {
-        label.appendChild(Object.assign(document.createElement('small'), { className: 'account-kind', textContent: 'Invité' }));
-      }
-
-      const removeButton = document.createElement('button');
-      removeButton.type = 'button';
-      removeButton.className = 'remove-btn';
-      removeButton.textContent = '−';
-      removeButton.setAttribute('aria-label', `Retirer ${name}`);
-      if (wait > 0) {
-        removeButton.disabled = true;
-        setTimeout(() => { removeButton.disabled = false; }, wait);
-      }
-      removeButton.addEventListener('click', (event) => {
-        event.stopPropagation();
+      const item = window.JDDPlayerEditor.chip(name, { removePlayer() {
         if (Date.now() - lastRemoveAt < REMOVE_DELAY) return;
         lastRemoveAt = Date.now();
         removePlayer(index);
         if (list === elements.dialogPlayerList) elements.dialogPlayerInput.focus();
-      });
+      } });
+      item.classList.add('player-item');
+      const removeButton = item.querySelector('.remove-btn');
+      if (wait > 0) {
+        removeButton.disabled = true;
+        setTimeout(() => { removeButton.disabled = false; }, wait);
+      }
 
-      item.append(label, removeButton);
       list.appendChild(item);
     });
+    window.JDDPlayerEditor.fitNames(list);
   }
 
   function renderPlayerList() {
@@ -271,7 +253,8 @@
       updatePlayersDialog();
     }
     if (elements.playerCount) {
-      elements.playerCount.textContent = `${players.length} joueur${players.length > 1 ? 's' : ''}`;
+      elements.playerCount.textContent = window.JDDPlayerEditor.countLabel(players.length);
+      document.getElementById('homeRosterCount').textContent = elements.playerCount.textContent;
     }
     savePlayers();
     window.dispatchEvent(new Event('jdd:players'));
@@ -287,10 +270,10 @@
   function updatePlayersDialog(error = '') {
     const { minimum, maximum } = playersDialogContext;
     const remaining = Math.max(0, minimum - players.length);
-    const count = `${players.length} joueur${players.length > 1 ? 's' : ''}`;
+    document.getElementById('dialogRosterCount').textContent = window.JDDPlayerEditor.countLabel(players.length);
     const note = players.length > maximum ? `${maximum} joueurs maximum : retire quelques prénoms pour ce jeu.` : !remaining ? 'La bande est prête !'
       : `Ajoute encore ${remaining} joueur${remaining > 1 ? 's' : ''} pour lancer.`;
-    elements.dialogStatus.textContent = error || `${count} · ${note}`;
+    elements.dialogStatus.textContent = error || note;
     elements.dialogStatus.dataset.error = String(Boolean(error));
     const draft = elements.dialogPlayerInput.value.trim();
     const canAddDraft = draft && players.length < maximum

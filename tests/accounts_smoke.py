@@ -22,7 +22,8 @@ profiles = [{'id': A, 'display_name': 'François', 'avatar_path': None, 'created
 profiles += [{'id': f'10000000-0000-4000-8000-{i:012d}', 'display_name': name, 'avatar_path': None, 'created_at': '2026-10-03'}
              for i, name in enumerate(['Nico', 'Léa', 'Lou', 'Paul', 'Emma', 'Zoé'], 3)]
 events, calls, uploads, auth_calls = {}, [], [], []
-control = {'drop_answer': False, 'block_rpc': False, 'offline': False, 'email_confirmed': True, 'email_error': None}
+control = {'drop_answer': False, 'block_rpc': False, 'offline': False, 'email_confirmed': True, 'email_error': None, 'hold_stats': False, 'profiles_error': False}
+deferred_stats = []
 
 
 def user(uid):
@@ -93,8 +94,11 @@ def backend(route):
             reply(None)
         else:
             assert all('email' not in p for p in profiles)
-            reply(profiles)
+            reply({'message':'unavailable'},503) if control['profiles_error'] else reply(profiles)
     elif path == '/rest/v1/player_statistics':
+        if control['hold_stats']:
+            deferred_stats.append(route)
+            return
         totals = {}
         for event in events.values():
             for p in event['p_participants']:
@@ -373,6 +377,87 @@ try:
         assert roster[1]['id']==A and page.evaluate('JDDAccounts.getUser().id')==A
         context.close();profiles[:]=original_profiles
         print('PASS: compte connecté marqué Moi, email privé, homonymes séparés et compte supprimé retiré de la bande',flush=True)
+
+        # Un téléphone neuf retrouve les mêmes UUID en se connectant, sans recréer le compte.
+        pc_context,pc=home(1280,800,signed=True)
+        expect(pc.locator('#accountPlayers .account-profile')).to_have_count(6)
+        context,page=home()
+        expect(page.locator('#accountPlayers')).to_contain_text('Connecte-toi sur cet appareil')
+        expect(page.locator('#accountPlayers .account-profile')).to_have_count(0)
+        signup_count=len([c for c in auth_calls if c['path']=='/auth/v1/signup'])
+        page.locator('#accountPlayers').get_by_text('Ajouter des comptes',exact=True).click()
+        page.locator('#accountEmail').fill('francois@example.test');page.locator('#accountPassword').fill('a-test-password-long')
+        page.locator('#accountForm button[type="submit"]').click()
+        expect(page.locator('#accountPlayers .account-profile')).to_have_count(6)
+        ids=lambda p:p.locator('#accountPlayers .account-profile').evaluate_all('nodes=>nodes.map(n=>n.dataset.accountId)')
+        assert ids(page)==ids(pc) and page.evaluate('JDDAccounts.getUser().id')==pc.evaluate('JDDAccounts.getUser().id')==A
+        assert signup_count==len([c for c in auth_calls if c['path']=='/auth/v1/signup'])
+        add_account(page,A)
+        page.locator('#playerInput').fill('François');page.locator('#addBtn').click()
+        add_account(page,B)
+        expect(page.locator('#homeRosterCount')).to_have_text('3 joueurs')
+        assert page.locator('#playerList .account-kind').all_text_contents()==['Compte','Invité','Compte']
+        assert page.locator('#playerList .jdd-player-name').all_text_contents()==['François','François','Axel']
+        assert page.locator('#playerList').evaluate('el=>Boolean(el.compareDocumentPosition(document.getElementById("playerForm"))&Node.DOCUMENT_POSITION_FOLLOWING)')
+        assert page.locator('#playerForm').evaluate('el=>Boolean(el.compareDocumentPosition(document.getElementById("accountPlayers"))&Node.DOCUMENT_POSITION_FOLLOWING)')
+        widths=page.locator('#playerList .player-item').evaluate_all('nodes=>nodes.map(n=>n.getBoundingClientRect().width)')
+        assert max(widths)-min(widths)<1
+        assert page.locator('#playerList .jdd-player-remove').first.bounding_box()['height']>=44
+        assert page.locator('#accountPlayers .account-profile').first.bounding_box()['height']<70
+        page.screenshot(path=str(OUT/'bande-mobile.png'),full_page=True)
+        pc.locator('#playerInput').fill('Invité');pc.locator('#addBtn').click();add_account(pc,A)
+        pc.screenshot(path=str(OUT/'bande-pc.png'),full_page=True)
+        for game,root in [('#headsBtn','#hu-player'),('#geographyBtn','#geo-players'),('#footballBtn','#foot-players')]:
+            page.locator(game).click()
+            if game=='#geographyBtn':page.locator('[data-geo-mode="cities"]').click()
+            expect(page.locator(root+' .jdd-player-summary')).to_have_text('3 joueurs')
+            assert page.locator(root+' .jdd-player-name').all_text_contents()==['François','François','Axel']
+            assert page.locator(root+' .jdd-player-list').evaluate('el=>Boolean(el.compareDocumentPosition(el.parentNode.querySelector(".jdd-player-input"))&Node.DOCUMENT_POSITION_FOLLOWING)')
+            page.screenshot(path=str(OUT/f'bande-{root[1:]}.png'),full_page=True)
+            if game=='#headsBtn':page.locator('#heads [data-act="exit"]').click()
+            if game=='#geographyBtn':page.locator('#geography [data-geo="exit"]').click()
+            if game=='#footballBtn':page.locator('#football [data-foot="exit"]').click()
+        page.evaluate('JDD.clearAccountPlayers()')
+        page.locator('#startBtn').click()
+        expect(page.locator('#dialogRosterCount')).to_have_text('1 joueur')
+        page.locator('#dialogAccountPlayers [data-account-id="'+A+'"]').click()
+        page.locator('#dialogAccountPlayers [data-account-id="'+B+'"]').click()
+        expect(page.locator('#dialogRosterCount')).to_have_text('3 joueurs')
+        assert page.locator('#dialogPlayerList .account-kind').all_text_contents()==['Invité','Compte','Compte']
+        assert page.locator('#dialogPlayerList').bounding_box()['y']<page.locator('#dialogPlayerForm').bounding_box()['y']
+        page.locator('#closePlayersDialog').click()
+        # Nouveau compte cloud récupéré au retour au premier plan, sans reconnexion.
+        extra={'id':'10000000-0000-4000-8000-000000000009','display_name':'Yanis','avatar_path':None,'created_at':'2026-10-06'}
+        profiles.append(extra)
+        page.evaluate('window.dispatchEvent(new Event("pageshow"))')
+        page.wait_for_function('() => JSON.parse(localStorage.getItem("jdd.account-cache.v1")).profiles.length===9')
+        page.locator('#accountPlayers').get_by_text('Afficher plus',exact=True).click()
+        expect(page.locator('#accountPlayers [data-account-id="'+extra['id']+'"]').first).to_be_visible()
+        profiles.pop()
+        pc_context.close();context.close()
+        print('PASS: PC et téléphone neufs retrouvent les mêmes comptes cloud ; connexion locale explicite, compteur, ordre, capsules et retour PWA',flush=True)
+
+        # Les comptes sont utilisables et mis en cache même si les statistiques attendent.
+        control['hold_stats']=True
+        context,page=home(signed=True)
+        expect(page.locator('#accountPlayers .account-profile')).to_have_count(6)
+        expect(page.locator('#accountStatistics')).to_contain_text('Chargement des statistiques')
+        page.wait_for_function('() => JSON.parse(localStorage.getItem("jdd.account-cache.v1")).profiles.length===8')
+        assert page.evaluate('JSON.parse(localStorage.getItem("jdd.account-cache.v1")).hasSnapshot') is False
+        add_account(page,A)
+        control['hold_stats']=False
+        for route in deferred_stats:route.fulfill(content_type='application/json',body='[]',headers={'access-control-allow-origin':'*'})
+        deferred_stats.clear()
+        page.wait_for_function('() => JSON.parse(localStorage.getItem("jdd.account-cache.v1")).hasSnapshot')
+        control['profiles_error']=True
+        page.locator('#accountPlayers').get_by_text('Actualiser',exact=True).click()
+        expect(page.locator('#accountPlayers')).to_contain_text('Impossible de charger',timeout=15000)
+        expect(page.locator('#accountPlayers .account-profile')).to_have_count(6)
+        control['profiles_error']=False
+        page.locator('#accountPlayers').get_by_text('Réessayer',exact=True).click()
+        expect(page.locator('#accountPlayers').get_by_text('Actualiser',exact=True)).to_be_visible()
+        context.close()
+        print('PASS: statistiques lentes sans bloquer les profils, cache indépendant, erreur explicite et réessai conservant la bande',flush=True)
 
         context, page = home(old_heads=True)
         expect(page.locator('#accountButton')).to_have_text('Se connecter')

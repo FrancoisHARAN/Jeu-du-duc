@@ -16,15 +16,15 @@
   <link rel="icon" type="image/png" sizes="32x32" href="image/app/favicon-purple-32.png?v=20261006i">
   <link rel="stylesheet" href="styles/main.css?v=20261005o">
   <link rel="stylesheet" href="styles/undercover.css?v=20261005q">
-  <link rel="stylesheet" href="styles/home.css?v=20261006g">
+  <link rel="stylesheet" href="styles/home.css?v=20261006h">
   <link rel="stylesheet" href="styles/pwa.css?v=20261005i">
   <link rel="stylesheet" href="styles/questions.css?v=20261006h">
   <link rel="stylesheet" href="styles/heads-up.css?v=20261006e">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=1.9.4">
-  <link rel="stylesheet" href="styles/players.css?v=20261006e">
+  <link rel="stylesheet" href="styles/players.css?v=20261006g">
   <link rel="stylesheet" href="styles/geography.css?v=20261006e">
   <link rel="stylesheet" href="styles/football.css?v=20261006c">
-  <link rel="stylesheet" href="styles/accounts.css?v=20261006d">
+  <link rel="stylesheet" href="styles/accounts.css?v=20261006f">
 </head>
 <body>
   <main id="setup" class="home">
@@ -45,8 +45,9 @@
     </section>
 
     <section class="home-players" aria-labelledby="home-players-title">
-      <div class="home-player-window"><h2 id="home-players-title">Qui joue ?</h2><span>01 · LA BANDE</span></div>
+      <div class="home-player-window"><h2 id="home-players-title">Qui joue ?</h2><span id="homeRosterCount" class="jdd-player-count" aria-live="polite">0 joueur</span></div>
       <div class="home-player-content">
+        <div id="playerList" class="jdd-player-list" aria-label="Joueurs inscrits"></div>
         <label class="home-visually-hidden" for="playerInput">Prénom du joueur</label>
         <form id="playerForm" class="player-input-container">
           <input type="text" id="playerInput" placeholder="Prénom d’un invité" maxlength="40" autocomplete="off" autocapitalize="words" enterkeyhint="done" spellcheck="false">
@@ -54,7 +55,6 @@
         </form>
         <p id="playerError" class="player-error" role="alert" hidden></p>
         <div id="accountPlayers"></div>
-        <div id="playerList" aria-label="Joueurs inscrits"></div>
         <p class="home-player-note">La même bande pour Undercover, Devine Tête et tous les modes.</p>
       </div>
     </section>
@@ -160,12 +160,13 @@
 
     <dialog id="playersDialog" class="home-player-dialog" aria-labelledby="playersDialogTitle" aria-describedby="playersDialogHelp">
       <header class="home-player-window">
-        <h2 id="playersDialogTitle">Qui joue ?</h2>
+        <div class="home-dialog-player-heading"><h2 id="playersDialogTitle">Qui joue ?</h2><span id="dialogRosterCount" class="jdd-player-count" aria-live="polite">0 joueur</span></div>
         <button id="closePlayersDialog" class="home-dialog-close" type="button" aria-label="Fermer et revenir au menu">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"/></svg>
         </button>
       </header>
       <div class="home-dialog-content">
+        <div id="dialogPlayerList" class="jdd-player-list" aria-label="Joueurs inscrits"></div>
         <div class="home-dialog-mode">
           <img id="playersDialogArt" src="image/home/apero.webp" alt="" width="1254" height="1254" decoding="async">
           <div><span>LA PARTIE VOUS ATTEND</span><strong id="playersDialogMode">Apéro chiantos</strong></div>
@@ -177,7 +178,6 @@
           <button id="dialogAddBtn" class="action-btn" type="submit" aria-label="Ajouter le joueur"><span aria-hidden="true">+</span></button>
         </form>
         <div id="dialogAccountPlayers"></div>
-        <div id="dialogPlayerList" aria-label="Joueurs inscrits"></div>
         <p id="playersDialogStatus" class="home-player-note" role="status" aria-live="polite"></p>
       </div>
       <footer class="home-dialog-footer">
@@ -259,11 +259,11 @@
   <script src="vendor/supabase/supabase.js?v=2.117.2" defer></script>
   <script src="scripts/supabase-config.js?v=20261006a" defer></script>
   <script src="scripts/core/cloud.js?v=20261006a" defer></script>
-  <script src="scripts/app/accounts.js?v=20261006f" defer></script>
+  <script src="scripts/app/accounts.js?v=20261006h" defer></script>
 
   <!-- FEATURE MODULES -->
   <script src="vendor/leaflet/leaflet.js?v=1.9.4" defer></script>
-  <script src="scripts/app/player-editor.js?v=20261006f" defer></script>
+  <script src="scripts/app/player-editor.js?v=20261006g" defer></script>
   <script src="scripts/app/undercover.js?v=20261006f" defer></script>
   <script src="scripts/app/heads-up.js?v=20261006i" defer></script>
   <script src="scripts/app/geography.js?v=20261006f" defer></script>
@@ -280,7 +280,7 @@
   <script src="data/undercover.pairs.js?v=20261005k" defer></script>
   <script src="data/heads.words.js?v=20261006g" defer></script>
   <script src="data/heads.imported.js?v=20261006g" defer></script>
-  <script src="scripts/app/main-game.js?v=20261006j" defer></script>
+  <script src="scripts/app/main-game.js?v=20261006k" defer></script>
   <script src="data/culture.imported.js?v=20261006b" defer></script>
   <script src="data/culture.quiz360.js?v=20261006h" defer></script>
   <script src="scripts/pwa.js?v=20261006e" defer></script>

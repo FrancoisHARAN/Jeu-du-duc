@@ -25,7 +25,7 @@
   function clearPending() {
     try { localStorage.removeItem(pendingKey); } catch (_) { /* facultatif */ }
   }
-  let hasSnapshot = false, usingCached = false;
+  let hasSnapshot = false, usingCached = false, directoryLoaded = false, directoryCached = false, refreshWork = null;
   const usageKey = 'jdd.account-frequency.v1';
   const cacheKey = 'jdd.account-cache.v1';
   let frequency = {};
@@ -59,13 +59,17 @@
     const { container, maximum } = entry;
     container.replaceChildren(); container.className = 'account-directory';
     if (!user) {
+      container.append(el('p', 'account-help', 'Connecte-toi sur cet appareil pour retrouver les comptes de la bande.'));
       const connect = el('button', 'account-text-button', 'Ajouter des comptes'); connect.type = 'button';
       connect.addEventListener('click', () => open('login')); container.append(connect); return;
     }
-    container.append(el('h3', '', 'Les comptes de la bande'));
-    if (directoryError || !profiles.length) {
-      container.append(el('p', 'account-help', directoryError ? 'Les comptes ne sont pas disponibles.' : 'Chargement des comptes…'));
-      if (directoryError) { const retry = el('button', 'account-text-button', 'Réessayer'); retry.type = 'button'; retry.addEventListener('click', refresh); container.append(retry); }
+    const heading = el('div', 'account-directory-heading');
+    const retry = el('button', 'account-text-button', directoryError ? 'Réessayer' : 'Actualiser'); retry.type = 'button';
+    retry.addEventListener('click', refresh); heading.append(el('h3', '', 'Les comptes de la bande'), retry); container.append(heading);
+    if (directoryError) container.append(el('p', 'account-help', navigator.onLine ? 'Impossible de charger les comptes. Vérifie ta connexion et réessaie.' : 'Connecte cet appareil à Internet pour charger les comptes.'));
+    else if (directoryCached || !navigator.onLine) container.append(el('p', 'account-help', 'Derniers comptes synchronisés sur cet appareil.'));
+    if (!profiles.length) {
+      if (!directoryError) container.append(el('p', 'account-help', directoryLoaded ? 'Aucun compte confirmé disponible.' : 'Chargement des comptes…'));
       return;
     }
     const grid = el('div', 'account-profile-grid');
@@ -74,9 +78,10 @@
       const added = current.some(p => p.kind === 'account' && p.id === profile.id);
       const button = el('button', 'account-profile'); button.type = 'button'; button.dataset.accountId = profile.id;
       button.setAttribute('aria-pressed', String(added)); button.setAttribute('aria-label', `${added ? 'Déjà ajouté' : 'Ajouter'} : ${profile.display_name}`);
-      button.append(avatar(profile), el('span', 'account-profile-name', profile.display_name));
+      const text = el('span', 'account-profile-text');
+      text.append(el('span', 'account-profile-name', profile.display_name)); button.append(avatar(profile), text);
       if (profile.id === user.id) {
-        button.append(el('span', 'account-profile-self', 'Moi'));
+        text.append(el('span', 'account-profile-self', 'Moi'));
         button.setAttribute('aria-label', `${added ? 'Déjà ajouté' : 'Ajouter'} : ${profile.display_name}, mon compte connecté`);
       }
       if (added) button.append(el('span', 'account-profile-check', '✓'));
@@ -110,44 +115,60 @@
     directories = directories.filter(entry => entry.container.isConnected);
     directories.forEach(renderDirectory);
   }
+  function saveSnapshot() {
+    if (!user || !directoryLoaded) return;
+    try { localStorage.setItem(cacheKey, JSON.stringify({ owner: user.id, profiles, statistics, hasSnapshot })); } catch (_) { /* cache facultatif */ }
+  }
+  function publishProfiles() {
+    renderAccountButton(); updateDirectories(); renderStatistics();
+    global.dispatchEvent(new Event('jdd:profiles'));
+  }
   async function refresh() {
     if (!user || !client) return;
     if (!navigator.onLine) {
-      directoryError = !profiles.length; statsError = !hasSnapshot; usingCached = true;
+      directoryError = !directoryLoaded; statsError = !hasSnapshot; usingCached = directoryCached = true;
       updateDirectories(); renderStatistics(); return;
     }
+    if (refreshWork?.id === user.id) { refreshWork.again = true; return refreshWork.promise; }
     const request = ++generation, id = user.id;
-    try {
-      const [directory, stats] = await Promise.all([
-        client.from('profiles').select('id,display_name,avatar_path,created_at').order('created_at'),
-        client.from('player_statistics').select('player_id,mode,metric,total'),
-      ]);
-      if (request !== generation || id !== user?.id) return;
-      directoryError = Boolean(directory.error) && !profiles.length;
-      statsError = Boolean(stats.error) && !hasSnapshot;
-      usingCached = Boolean(directory.error || stats.error);
-      if (!directory.error) {
-        profiles = directory.data || [];
-        global.JDD.retainAccountPlayers?.(profiles.map(p => p.id));
-        const paths = profiles.filter(p => p.avatar_path).map(p => p.avatar_path);
-        if (paths.length) {
-          const signed = await client.storage.from('avatars').createSignedUrls(paths, 3600);
-          if (request !== generation || id !== user?.id) return;
-          for (const row of signed.data || []) {
-            const p = profiles.find(p => p.avatar_path === row.path); if (p) p.avatar_url = safeAvatar(row.signedUrl);
+    const current = () => request === generation && id === user?.id;
+    const work = { id, again: false };
+    refreshWork = work;
+    work.promise = Promise.all([
+      (async () => {
+        try {
+          const directory = await client.from('profiles').select('id,display_name,avatar_path,created_at').order('created_at');
+          if (!current()) return;
+          directoryError = Boolean(directory.error); directoryCached = directoryError;
+          if (directory.error) { publishProfiles(); return; }
+          profiles = directory.data || []; directoryLoaded = true;
+          global.JDD.retainAccountPlayers?.(profiles.map(p => p.id));
+          saveSnapshot(); publishProfiles(); // Les comptes sont utilisables avant les photos et les statistiques.
+          const paths = profiles.filter(p => p.avatar_path).map(p => p.avatar_path);
+          if (paths.length) {
+            const signed = await client.storage.from('avatars').createSignedUrls(paths, 3600);
+            if (!current()) return;
+            for (const row of signed.data || []) {
+              const p = profiles.find(p => p.avatar_path === row.path); if (p) p.avatar_url = safeAvatar(row.signedUrl);
+            }
+            saveSnapshot(); publishProfiles();
           }
-        }
-      }
-      if (!stats.error) statistics = stats.data || [];
-      if (!directory.error && !stats.error) {
-        hasSnapshot = true; usingCached = false;
-        try { localStorage.setItem(cacheKey, JSON.stringify({ owner: id, profiles, statistics })); } catch (_) { /* cache facultatif */ }
-      }
-    } catch (_) { if (request === generation) { directoryError = !profiles.length; statsError = !hasSnapshot; usingCached = true; } }
-    if (request === generation) {
-      renderAccountButton(); updateDirectories(); renderStatistics();
-      global.dispatchEvent(new Event('jdd:profiles'));
-    }
+        } catch (_) { if (current()) { directoryError = directoryCached = true; publishProfiles(); } }
+      })(),
+      (async () => {
+        try {
+          const stats = await client.from('player_statistics').select('player_id,mode,metric,total');
+          if (!current()) return;
+          statsError = Boolean(stats.error) && !hasSnapshot; usingCached = Boolean(stats.error);
+          if (!stats.error) { statistics = stats.data || []; hasSnapshot = true; }
+          saveSnapshot(); renderStatistics();
+        } catch (_) { if (current()) { statsError = !hasSnapshot; usingCached = true; renderStatistics(); } }
+      })(),
+    ]).finally(() => {
+      if (refreshWork === work) refreshWork = null;
+      if (current() && work.again) { clearTimeout(refreshTimer); refreshTimer = setTimeout(refresh, 600); }
+    });
+    return work.promise;
   }
   function renderAccountButton() {
     const button = document.getElementById('accountButton'); if (!button) return;
@@ -171,11 +192,13 @@
       root.append(el('p', 'account-help', 'Connecte-toi pour retrouver les statistiques de la bande.'));
       const login = el('button', 'account-button', 'Se connecter'); login.type = 'button'; login.addEventListener('click', () => open('login')); root.append(login); return;
     }
-    if (statsError || directoryError) {
+    if (statsError || (directoryError && !profiles.length)) {
       root.append(el('p', 'account-help', 'Les statistiques ne sont pas disponibles.'));
       const retry = el('button', 'account-text-button', 'Réessayer'); retry.type = 'button'; retry.addEventListener('click', refresh); root.append(retry); return;
     }
-    if (!profiles.length) { root.append(el('p', 'account-help', 'Chargement des statistiques…')); return; }
+    if (!profiles.length || !hasSnapshot) {
+      root.append(el('p', 'account-help', directoryLoaded && !profiles.length ? 'Aucun compte confirmé disponible.' : 'Chargement des statistiques…')); return;
+    }
     if (!profiles.some(p => p.id === selectedStats)) selectedStats = user.id;
     const label = el('label', 'account-stats-label', 'Les stats de qui ?'); label.htmlFor = 'statisticsPlayer';
     const select = el('select'); select.id = 'statisticsPlayer';
@@ -430,12 +453,12 @@
     const previous = user?.id; user = session?.user || null;
     if (previous !== user?.id) {
       ++generation; profiles = []; statistics = []; selectedStats = ''; directoryError = statsError = false;
-      hasSnapshot = usingCached = false;
+      hasSnapshot = usingCached = directoryLoaded = directoryCached = false;
       try {
         const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
         if (user && cached?.owner === user.id && Array.isArray(cached.profiles) && Array.isArray(cached.statistics)) {
           profiles = cached.profiles; statistics = cached.statistics;
-          hasSnapshot = usingCached = true;
+          hasSnapshot = cached.hasSnapshot !== false; usingCached = directoryLoaded = directoryCached = true;
         } else localStorage.removeItem(cacheKey);
       } catch (_) { /* pas de cache */ }
       if (previous && !user) global.JDD.clearAccountPlayers?.();
@@ -465,6 +488,7 @@
   global.addEventListener('offline', () => { if (user) void refresh(); });
   global.addEventListener('resize', () => { fitNames(document.getElementById('setup')); });
   global.addEventListener('visibilitychange', () => { if (!document.hidden && user) void refresh(); });
+  global.addEventListener('pageshow', () => { if (user) void refresh(); });
   global.JDDAccounts = { mountDirectory, avatar, profileFor, updateDirectories, refresh, open, getUser: () => user };
   document.addEventListener('DOMContentLoaded', init, { once: true });
 })(window);
