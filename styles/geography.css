@@ -80,6 +80,33 @@ body.geo-open { justify-content: flex-start; padding: 0; background: #6b62cc !im
 .geo-map--cities .leaflet-overlay-pane > svg { overflow: visible; }
 .geo-map--cities .leaflet-overlay-pane path { vector-effect: non-scaling-stroke; }
 
+/* Jackpot transparent, ancré à la carte et sans interception des gestes. */
+.geo-map-stage { position: relative; isolation: isolate; }
+.geo-mega-win { position: absolute; inset: 0; z-index: 1000; display: grid; place-items: center; overflow: hidden; background: transparent; pointer-events: none; user-select: none; animation: geo-win-fade 2s linear both; }
+.geo-mega-win-art { position: absolute; inset: 0; margin: auto; z-index: 1; display: block; width: min(82%, 380px); height: min(90%, 380px); object-fit: contain; animation: geo-win-bounce 2s ease-out both; }
+.geo-win-particle { position: absolute; top: 50%; left: 50%; margin: -13px 0 0 -13px; width: 26px; height: 26px; opacity: 0; animation: geo-win-burst 1650ms cubic-bezier(.15, .6, .3, 1) var(--win-delay) both; }
+.geo-win-coin { width: 23px; height: 29px; border: 2px solid #252124; border-radius: 50%; background: #ffd938; box-shadow: inset -4px -2px 0 #f5a343, 2px 2px 0 #252124; }
+.geo-win-coin::after { content: ''; position: absolute; inset: 4px 5px; border-top: 2px solid #fff9e9; border-left: 2px solid #fff9e9; border-radius: 50%; }
+.geo-win-sparkle { z-index: 2; color: #ffd938; }
+.geo-win-sparkle:nth-child(even) { color: #f7c3d0; }
+.geo-win-sparkle svg { display: block; width: 100%; height: 100%; }
+@keyframes geo-win-fade { 0%, 86% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes geo-win-bounce {
+  0% { opacity: 0; transform: scale(.35) rotate(-6deg); }
+  10% { opacity: 1; transform: scale(1.1) rotate(3deg); }
+  20% { transform: scale(.95) rotate(-2deg); }
+  32% { transform: scale(1) rotate(0); }
+  76% { opacity: 1; transform: scale(1.03); }
+  88% { transform: scale(1.06); }
+  100% { opacity: 0; transform: translateY(-12px) scale(.9); }
+}
+@keyframes geo-win-burst {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0) scale(.3); }
+  12% { opacity: 1; }
+  60% { opacity: 1; transform: translate(var(--win-x), var(--win-y)) rotate(var(--win-spin)) scale(1); }
+  100% { opacity: 0; transform: translate(var(--win-x), var(--win-fall)) rotate(var(--win-spin)) scale(.7); }
+}
+
 /* Révélation unique de 450 ms ; les positions Leaflet restent sur le marqueur parent. */
 .geo-pin--reveal span { animation: geo-city-arrive 450ms cubic-bezier(.2, .8, .3, 1) both; }
 .geo-pin--reveal::before { content: ''; position: absolute; top: 17px; left: -6px; width: 44px; height: 44px; border: 3px solid #18714a; border-radius: 50%; pointer-events: none; animation: geo-city-pulse 450ms ease-out both; }
@@ -94,6 +121,9 @@ body.geo-open { justify-content: flex-start; padding: 0; background: #6b62cc !im
 @keyframes geo-route-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 @keyframes geo-result-arrive { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) {
+  .geo-mega-win { animation: geo-win-fade 2s linear both; }
+  .geo-mega-win-art { animation: none; }
+  .geo-win-particle { display: none; }
   .geo-pin--reveal span, .geo-pin--reveal::before, .geo-map .geo-route--reveal, #geo-result.geo-result--reveal { animation: none; }
   .geo-pin--reveal::before { display: none; }
   .geo-map .geo-route--reveal { stroke-dasharray: 7 5; stroke-dashoffset: 0; }

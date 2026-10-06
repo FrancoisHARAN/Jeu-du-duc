@@ -39,6 +39,15 @@ sans attendre. Une reprise de réponse et le réglage « réduire les animations
 affichent directement le résultat. La transition ne s'applique pas aux pays
 ou aux départements.
 
+Une ville validée à 5 km ou moins déclenche « MEGA WIN » pendant deux secondes,
+en France comme dans le monde. Le visuel fourni est détouré, encodé en WebP avec
+transparence et précaché pour la PWA. L'overlay reste au-dessus de la carte sans
+fond ni interception des commandes ; rebond, pièces et éclats utilisent des
+animations CSS de transformation/opacité. Passer au tour suivant ou quitter
+nettoie immédiatement l'effet. Il ne rejoue pas lors d'une reprise et ne change
+ni le barème ni les statistiques. Avec les animations réduites, seule
+l'illustration apparaît, sans rebond ni particules.
+
 Les villes utilisent des marqueurs déplaçables et une ligne suivant le plus
 court arc terrestre. Aucun fond en image, serveur de tuiles ni clé d'API.
 

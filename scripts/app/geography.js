@@ -4,10 +4,11 @@
   const STORE_KEY = 'jdd.geography.v1';
   const TURN_MS = 30000;
   const REVEAL_SECONDS = .45;
+  const CELEBRATION_MS = 2000;
   const MODES = { cities: 'Où est la ville ?', countries: 'Trouve le pays', departments: 'Trouve le département' };
   const HOME = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9"/></svg>';
   const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  let root, options, data, loading, map, regions, guessMarker, clock, editor;
+  let root, options, data, loading, map, regions, guessMarker, clock, editor, celebrationTimer;
   let match = null, phase = 'menu', opened = false, chosenMode = 'cities', zone = 'france', request = 0;
   const names = () => options.getSuggestedNames().slice();
   const target = () => match.targets[match.index];
@@ -29,6 +30,7 @@
     try { localStorage.setItem(STORE_KEY, JSON.stringify(match)); } catch (_) { /* facultatif */ }
   }
   function disposeMap() {
+    clearCelebration();
     if (map) map.remove();
     map = regions = guessMarker = null;
     clearInterval(clock); clock = null;
@@ -168,7 +170,7 @@
     disposeMap(); setPhase(match.result ? 'answer' : 'playing');
     const current = player(), index = match.index % match.players.length;
     const prompt = isCity() ? `Où est ${target().name} ?` : `Trouve : ${target().name}${match.mode === 'departments' ? ` (${target().id})` : ''}`;
-    root.innerHTML = `${topbar()}<section class="geo-panel geo-turn">${windowBar(MODES[match.mode])}<div class="geo-stats"><strong id="geo-current-player">${escape(current)}</strong><span>Manche ${match.index + 1} / ${match.targets.length}</span><span id="geo-score">${match.scores[index]} pts</span><strong id="geo-timer" aria-label="Temps restant">${Math.ceil(match.remaining / 1000)} s</strong></div><h1 class="geo-prompt">${escape(prompt)}</h1><div id="geo-map" class="geo-map" role="region" aria-label="Carte interactive, déplacement et zoom à deux doigts"></div><div class="geo-answer"><p id="geo-selection" class="geo-help" role="status">${isCity() ? 'Touche la carte pour placer ton épingle.' : 'Touche une zone sur la carte.'}</p><div id="geo-result" role="status"></div><button type="button" class="geo-button" data-geo="validate" ${match.guess ? '' : 'disabled'}>Valider</button></div><details class="geo-map-sources"><summary>Données cartographiques</summary><p>Frontières : Natural Earth (domaine public). Départements : IGN / Admin Express via France GeoJSON (Licence ouverte). Carte : Leaflet.</p></details><div class="geo-floor" aria-hidden="true"></div></section>`;
+    root.innerHTML = `${topbar()}<section class="geo-panel geo-turn">${windowBar(MODES[match.mode])}<div class="geo-stats"><strong id="geo-current-player">${escape(current)}</strong><span>Manche ${match.index + 1} / ${match.targets.length}</span><span id="geo-score">${match.scores[index]} pts</span><strong id="geo-timer" aria-label="Temps restant">${Math.ceil(match.remaining / 1000)} s</strong></div><h1 class="geo-prompt">${escape(prompt)}</h1><div class="geo-map-stage"><div id="geo-map" class="geo-map" role="region" aria-label="Carte interactive, déplacement et zoom à deux doigts"></div>${isCity() ? '<div id="geo-mega-win" class="geo-mega-win" hidden aria-hidden="true"><img class="geo-mega-win-art" src="image/geography/mega-win.webp" width="768" height="768" alt="" decoding="async" draggable="false"></div>' : ''}</div><div class="geo-answer"><p id="geo-selection" class="geo-help" role="status">${isCity() ? 'Touche la carte pour placer ton épingle.' : 'Touche une zone sur la carte.'}</p><div id="geo-result" role="status"></div><button type="button" class="geo-button" data-geo="validate" ${match.guess ? '' : 'disabled'}>Valider</button></div><details class="geo-map-sources"><summary>Données cartographiques</summary><p>Frontières : Natural Earth (domaine public). Départements : IGN / Admin Express via France GeoJSON (Licence ouverte). Carte : Leaflet.</p></details><div class="geo-floor" aria-hidden="true"></div></section>`;
     makeMap();
     if (match.result) reveal();
     global.scrollTo(0, 0);
@@ -207,6 +209,44 @@
     match.scores[match.index % match.players.length] += points;
     match.rows.push({ target: target().id, player: player(), guess: match.guess, ...match.result });
     match.deadline = 0; setPhase('answer'); save(); reveal(true);
+    if (isCity() && Number.isFinite(km) && km <= 5) celebrate();
+  }
+  function clearCelebration() {
+    clearTimeout(celebrationTimer); celebrationTimer = null;
+    const overlay = root?.querySelector('#geo-mega-win');
+    if (!overlay) return;
+    if (!overlay.hidden) overlay.hidden = true;
+    overlay.querySelectorAll('.geo-win-particle').forEach(particle => particle.remove());
+  }
+  function celebrate() {
+    clearCelebration();
+    const overlay = root.querySelector('#geo-mega-win');
+    if (!overlay) return;
+    // Centrer dans la portion visible de la carte, même après le scroll du bouton.
+    const bounds = overlay.parentElement.getBoundingClientRect();
+    const top = Math.max(0, -bounds.top), bottom = Math.max(0, bounds.bottom - global.innerHeight);
+    const visibleHeight = bounds.height - top - bottom;
+    if (visibleHeight > 0) {
+      overlay.style.top = `${top}px`; overlay.style.bottom = `${bottom}px`;
+    }
+    // Une seule illustration et 16 petites particules ; aucun canvas ni boucle JS.
+    if (!global.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const radius = Math.min(bounds.width, visibleHeight > 0 ? visibleHeight : bounds.height) * .52;
+      for (let i = 0; i < 16; i++) {
+        const sparkle = i >= 10, angle = (i * 137.5 - 100) * Math.PI / 180;
+        const particle = document.createElement('span');
+        particle.className = `geo-win-particle ${sparkle ? 'geo-win-sparkle' : 'geo-win-coin'}`;
+        particle.style.setProperty('--win-x', `${Math.cos(angle) * radius}px`);
+        particle.style.setProperty('--win-y', `${Math.sin(angle) * radius}px`);
+        particle.style.setProperty('--win-fall', `${Math.sin(angle) * radius + radius * .4}px`);
+        particle.style.setProperty('--win-spin', `${(i % 2 ? -1 : 1) * (180 + i * 35)}deg`);
+        particle.style.setProperty('--win-delay', `${i % 5 * 35}ms`);
+        if (sparkle) particle.innerHTML = '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2C19 11 21 13 30 16C21 19 19 21 16 30C13 21 11 19 2 16C11 13 13 11 16 2Z" fill="currentColor" stroke="#252124" stroke-width="2.5" stroke-linejoin="round"/></svg>';
+        overlay.appendChild(particle);
+      }
+    }
+    overlay.hidden = false;
+    celebrationTimer = setTimeout(clearCelebration, CELEBRATION_MS);
   }
   function reveal(animate = false) {
     const L = global.L, result = match.result;

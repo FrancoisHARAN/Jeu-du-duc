@@ -6,6 +6,7 @@ from pathlib import Path
 import shutil
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from PIL import Image
 from playwright.sync_api import expect, sync_playwright
 
 REPO = Path(__file__).resolve().parents[1]
@@ -15,6 +16,10 @@ CHROMIUM = os.environ.get('PWA_TEST_CHROMIUM') or shutil.which('chromium')
 countries = json.loads((REPO / 'data/geography/countries.geojson').read_text())
 departments = json.loads((REPO / 'data/geography/departments.geojson').read_text())
 cities = json.loads((REPO / 'data/geography/cities.json').read_text())
+with Image.open(REPO / 'image/geography/mega-win.webp') as image:
+    assert image.mode == 'RGBA' and image.getextrema()[3] == (0, 255)
+    assert image.getpixel((0, 0))[3] == 0, 'Le jackpot doit avoir un vrai fond transparent.'
+assert (REPO / 'image/geography/mega-win.webp').stat().st_size < 200_000
 assert len(departments['features']) == 96
 assert {f['properties']['code'] for f in departments['features']} == {f'{i:02}' for i in range(1, 96) if i != 20} | {'2A', '2B'}
 for pool in cities.values():
@@ -199,6 +204,7 @@ try:
             select_region(page, code, 'countries')
             assert page.locator('#geo-map .leaflet-tooltip').count() == 0
             action(page, 'validate')
+            assert page.locator('#geo-mega-win').count() == 0
             assert state(page)['result']['correct'] and state(page)['result']['points'] == 1000
             assert page.locator(f'[data-geo-code="{code}"]').get_attribute('fill') == '#8bd5ae'
             if i == 0:
@@ -258,7 +264,11 @@ try:
         click_coordinate(page,[city['lat'],city['lng']],True);action(page,'validate')
         assert page.locator('.geo-pin--reveal, .geo-route--reveal, .geo-result--reveal').count()==0
         assert state(page)['scores']==[1000]
+        expect(page.locator('#geo-mega-win')).to_be_visible()
+        assert page.locator('.geo-win-particle').count()==0
+        assert page.locator('.geo-mega-win-art').evaluate('el => getComputedStyle(el).animationName')=='none'
         action(page,'next');expect(page.locator('#geography')).to_have_attribute('data-screen','playing')
+        expect(page.locator('#geo-mega-win')).to_be_hidden()
         context.close()
         # Quitter pendant le mouvement ne laisse aucun rappel vers une carte supprimée.
         context,page=home(['Alice']);start(page,'cities')
@@ -270,6 +280,55 @@ try:
         assert len(state(page)['rows'])==1
         context.close()
         print('PASS: caméra et zoom continus en moins d’une seconde, mouvement réduit, reprise et sortie pendant la révélation',flush=True)
+
+        # Le jackpot dépend des km réels, pas des points (le monde tolère 25 km).
+        for zone in ['france','world']:
+            context,page=home(['Alice']);start(page,'cities',zone)
+            def place_km(km):
+                city=state(page)['targets'][state(page)['index']]
+                point=[city['lat']+km/6371.0088*180/math.pi,city['lng']]
+                page.evaluate('''p => { testMap.setView(p,9,{animate:false});
+                  testMap.fire('click',{latlng:L.latLng(p)}); }''',point)
+            expect(page.locator('#geo-mega-win')).to_be_hidden()
+            page.wait_for_function('() => document.querySelector(".geo-mega-win-art").complete && document.querySelector(".geo-mega-win-art").naturalWidth > 0')
+            page.evaluate('''() => {window.jackpotTimes=[];
+              new MutationObserver(records => jackpotTimes.push({hidden:records[records.length-1].target.hidden,time:performance.now()}))
+                .observe(document.querySelector('#geo-mega-win'),{attributes:true,attributeFilter:['hidden']});}''')
+            place_km(4.99);action(page,'validate')
+            assert abs(state(page)['result']['km']-4.99)<.000001
+            expect(page.locator('#geo-mega-win')).to_be_visible()
+            assert page.locator('.geo-win-particle').count()==16
+            assert page.locator('#geo-mega-win').evaluate('el => getComputedStyle(el).pointerEvents')=='none'
+            assert page.locator('#geo-mega-win').evaluate('el => getComputedStyle(el).backgroundColor')=='rgba(0, 0, 0, 0)'
+            assert state(page)['scores']==[1000] and len(state(page)['rows'])==1
+            page.wait_for_timeout(500)
+            map_box=page.locator('#geo-map').bounding_box();win_box=page.locator('#geo-mega-win').bounding_box()
+            assert abs(map_box['x']-win_box['x'])<1 and abs(map_box['y']-win_box['y'])<1
+            layout(page)
+            if zone=='france':
+                page.screenshot(path=str(OUT/'mega-win-mobile.png'))
+                expect(page.locator('#geo-mega-win')).to_be_hidden(timeout=3000)
+                assert page.locator('.geo-win-particle').count()==0
+                times=page.evaluate('jackpotTimes')
+                shown=next(t['time'] for t in times if not t['hidden']);ended=next(t['time'] for t in times if t['hidden'] and t['time']>shown)
+                assert 1900<=ended-shown<=2300,times
+                assert state(page)['scores']==[1000] and len(state(page)['rows'])==1
+                action(page,'exit');page.locator('#geographyBtn').click();action(page,'resume')
+                expect(page.locator('#geo-mega-win')).to_be_hidden()
+            action(page,'next') # reste utilisable pendant l'overlay (Monde).
+            expect(page.locator('#geo-mega-win')).to_be_hidden()
+            assert page.locator('.geo-win-particle').count()==0
+            place_km(5.01);action(page,'validate')
+            assert abs(state(page)['result']['km']-5.01)<.000001
+            expect(page.locator('#geo-mega-win')).to_be_hidden()
+            action(page,'next');place_km(0);action(page,'validate')
+            expect(page.locator('#geo-mega-win')).to_be_visible()
+            action(page,'exit');page.wait_for_timeout(2100)
+            page.locator('#geographyBtn').click();action(page,'resume')
+            expect(page.locator('#geo-mega-win')).to_be_hidden()
+            assert len(state(page)['rows'])==3
+            context.close()
+        print('PASS: MEGA WIN transparent et léger, seuil de 5 km France/Monde, durée 2 s, commandes libres et nettoyage sans replay',flush=True)
 
         for width, height in [(320, 568), (360, 640), (393, 852), (430, 932), (852, 393), (1440, 900)]:
             context, page = home(['Alice'], width, height)
@@ -306,10 +365,19 @@ try:
                 assert page.evaluate('testMap.getCenter()') != center
                 assert state(page)['guess'] is None, 'Glisser la carte ne pose pas une épingle.'
                 page.screenshot(path=str(OUT / 'monde-mobile.png'), full_page=True)
+            city=state(page)['targets'][0]
+            page.evaluate('''p => {testMap.setView(p,7,{animate:false});
+              testMap.fire('click',{latlng:L.latLng(p)});}''',[city['lat'],city['lng']])
+            action(page,'validate');expect(page.locator('#geo-mega-win')).to_be_visible()
+            page.wait_for_timeout(450)
+            art=page.locator('.geo-mega-win-art').bounding_box()
+            assert art['x']>=-1 and art['x']+art['width']<=width+1,art
+            assert art['y']>=-1 and art['y']+art['height']<=height+1,art
+            layout(page)
             action(page, 'exit')
             page.wait_for_timeout(100)
             context.close()
-        print('PASS: six formats, zoom boutons, pinch et déplacement tactiles, sans image fixe', flush=True)
+        print('PASS: six formats, zoom boutons, pinch et déplacement tactiles, jackpot entièrement visible même en paysage', flush=True)
         assert not errors, errors
         browser.close()
 finally:

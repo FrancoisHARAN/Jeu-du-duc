@@ -145,7 +145,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           return (await cache.keys()).map(r => r.url);
         }''', cache)
         quiz360_images = json.loads((site / 'data/culture.quiz360.images.json').read_text())
-        assert len(shell) == 74 + len(quiz360_images), len(shell)
+        assert len(shell) == 75 + len(quiz360_images), len(shell)
         for file in ['styles/accounts.css','vendor/supabase/supabase.js','scripts/supabase-config.js',
                      'scripts/core/participants.js','scripts/core/cloud.js','scripts/app/accounts.js']:
             assert any(url.endswith('/' + file) for url in shell), file
@@ -158,7 +158,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
                      'scripts/app/player-editor.js', 'styles/players.css', 'scripts/app/geography.js',
                      'styles/geography.css', 'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css',
                      'data/geography/countries.geojson', 'data/geography/departments.geojson',
-                     'data/geography/cities.json', 'image/home/geography.svg', 'styles/football.css',
+                     'data/geography/cities.json', 'image/home/geography.svg', 'image/geography/mega-win.webp', 'styles/football.css',
                      'scripts/app/football.js', 'data/football.questions.json', 'image/home/football.jpg']:
             assert base + file in shell
         assert all(url.startswith(base) for url in shell)
@@ -193,6 +193,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         context.set_offline(True)
         page.goto(base + 'index.html?offline=1', wait_until='load')
         assert page.evaluate(load_images, [url + '?offline-check=1' for url in image_urls]) == [240, 240]
+        assert page.evaluate(load_images, [base+'image/geography/mega-win.webp']) == [768]
         imported = page.evaluate('JDD.DATA.cultureMcq.filter(q => q.id && q.id.startsWith("classeur-")).length')
         assert imported == 7632, imported
         pending = json.loads((site / 'data/culture.quiz360.review.json').read_text())
@@ -276,6 +277,8 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         page.locator('[data-act="pause"]').click()
         page.locator('#heads [data-act="exit"]').click()
         # Les cartes et leurs données sont locales : les trois jeux marchent en mode avion.
+        page.evaluate('''() => { const create=L.map;
+          L.map=(...args)=>{window.offlineGeoMap=create(...args);return offlineGeoMap;}; }''')
         for mode, expected in [('cities', 242), ('countries', 242), ('departments', 96)]:
             page.locator('#geographyBtn').click()
             page.locator(f'[data-geo-mode="{mode}"]').click()
@@ -283,10 +286,17 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
             expect(page.locator('#geography')).to_have_attribute('data-screen', 'playing')
             assert page.locator('#geo-map path.leaflet-interactive').count() == expected
             if mode == 'cities':
-                page.locator('#geo-map').click(position={'x': 120, 'y': 150})
+                page.evaluate('''() => { const match=JSON.parse(localStorage.getItem('jdd.geography.v1'));
+                  const city=match.targets[match.index],point=L.latLng(city.lat,city.lng);
+                  offlineGeoMap.setView(point,9,{animate:false});
+                  offlineGeoMap.fire('click',{latlng:point});
+                }''')
+                # Le visuel préchargé est disponible même sans jamais avoir gagné auparavant.
+                page.wait_for_function('() => document.querySelector(".geo-mega-win-art").complete && document.querySelector(".geo-mega-win-art").naturalWidth===768')
                 page.locator('[data-geo="validate"]').click()
                 expect(page.locator('#geography')).to_have_attribute('data-screen', 'answer')
                 assert page.locator('.geo-pin--truth').count() == 1
+                expect(page.locator('#geo-mega-win')).to_be_visible()
             page.locator('[data-geo="exit"]').click()
         print('PASS: trois cartes vectorielles et données géographiques hors connexion', flush=True)
         # Banque du classeur, chacun pour soi et équipes disponibles en mode avion.
