@@ -41,13 +41,11 @@ body:has(#setup:not(.hidden)) {
 #setup .home-sound-toggle:hover { transform: none; filter: none; }
 #setup .home-sound-toggle:focus-visible { outline: 3px solid var(--home-yellow); outline-offset: 3px; }
 #setup .home-stamp { background: var(--home-yellow); font-size: 11px; }
-#setup .home-edition { display: none; }
 #setup .home-overview { display: contents; }
 
 #setup .home-hero { position: relative; margin: 16px 0 20px; padding: 0 0 26px; overflow: hidden; border: 2px solid var(--home-ink); border-radius: 16px; background: #7677ee; box-shadow: 4px 4px 0 var(--home-ink); text-align: center; }
 #setup h1 { width: min(252px, 78%); margin: 0 auto; font-size: inherit; line-height: 1; text-shadow: none; }
 #setup .home-title-illustration { display: block; width: 100%; height: auto; }
-#setup .home-tagline { display: none; width: fit-content; max-width: calc(100% - 20px); margin: 0 auto 12px; padding: 4px 10px; border: 1px solid var(--home-ink); border-radius: 24px; background: var(--home-cream); color: var(--home-ink); font-family: Arial, sans-serif; font-size: 14px; font-weight: 700; }
 #setup .home-hero-floor { position: absolute; bottom: 0; left: 0; width: 100%; height: 20px; border-top: 2px solid var(--home-ink); background: conic-gradient(#f7c3d0 25%, #fff9e9 0 50%, #f7c3d0 0 75%, #fff9e9 0) 0 0 / 40px 40px; }
 
 #setup .home-layout { display: flex; flex-direction: column; gap: 20px; }
@@ -64,12 +62,12 @@ body:has(#setup:not(.hidden)) {
 #setup #playerList, #playersDialog #dialogPlayerList { margin: 0 0 16px; }
 #setup #playerList:empty, #playersDialog #dialogPlayerList:empty { margin: 0; }
 .home-dialog-player-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+:is(#setup, #playersDialog) .home-player-note:empty { display: none; }
 :is(#setup, #playersDialog) .home-player-note { margin: 12px 0 0; color: #5a5154; font-family: Arial, sans-serif; font-size: 14px; }
 
 #setup .home-section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 #setup .home-eyebrow { display: block; font-size: 12px; font-weight: 800; letter-spacing: .8px; }
 #setup .home-section-heading h2 { margin: 6px 0 0; font-size: 28px; font-weight: 900; line-height: 1.15; letter-spacing: -.8px; }
-#setup .home-section-note { display: none; }
 #setup .modes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin: 0; }
 #setup .home-undercover { width: min(640px, 100%); margin: 0 auto 24px; }
 
@@ -127,10 +125,8 @@ body:has(#setup:not(.hidden)) {
 #setup .active .home-mode-choice { background: var(--home-cream); }
 
 #setup #customWeights { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; margin: 0; padding: 18px; border: 2px solid var(--home-ink); border-radius: 14px; background: var(--home-cream); color: var(--home-ink); box-shadow: 4px 4px 0 var(--home-ink); }
-#setup .home-custom-heading { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 0 10px; margin-bottom: 6px; }
-#setup .home-custom-heading > span { grid-row: span 2; font-size: 36px; color: var(--home-yellow); -webkit-text-stroke: 1px var(--home-ink); paint-order: stroke fill; }
+#setup .home-custom-heading { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; margin-bottom: 6px; }
 #setup .home-custom-heading h3 { margin: 0; font-size: 23px; line-height: 1.15; letter-spacing: -.6px; }
-#setup .home-custom-heading p { margin: 4px 0 0; font-family: Arial, sans-serif; font-size: 14px; }
 #setup .slider-container { margin: 0; }
 #setup .slider-container label { margin: 4px 0 0; font-size: 16px; font-weight: 700; }
 #setup .slider-container input { display: block; width: 100%; max-width: none; min-height: 44px; margin: 0; padding: 0; appearance: none; border: 0; border-radius: 0; background: transparent; cursor: pointer; }
@@ -147,9 +143,6 @@ body:has(#setup:not(.hidden)) {
 #setup #startBtn { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; min-height: 60px; margin: 0; padding: 6px 12px; border: 2px solid var(--home-ink); border-radius: 12px; background: var(--home-yellow); color: var(--home-ink); box-shadow: 3px 3px 0 var(--home-ink); font-family: inherit; font-size: 17px; font-weight: 900; }
 #setup #startBtn > img { flex-shrink: 0; width: 44px; height: 44px; border: 1px solid var(--home-ink); border-radius: 8px; object-fit: contain; }
 #setup #startBtn > span:not(.home-start-arrow) { flex: 1; text-align: center; }
-#setup .home-footer { display: flex; flex-direction: column; gap: 12px; margin-top: 28px; padding-top: 18px; border-top: 1px solid rgb(255 249 233 / 50%); font-size: 12px; font-weight: 700; line-height: 1.5; }
-#setup .home-footer span span { padding: 0 5px; color: var(--home-yellow); }
-#setup .home-footer > span:last-child { font-size: 11px; font-weight: 400; }
 :is(#setup, #playersDialog) .home-visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 
 /* Le dialogue garde le mode choisi et la liste de joueurs de l'accueil. */
@@ -181,12 +174,10 @@ html:has(#playersDialog[open]) { overflow: hidden; }
 #playersDialog .home-dialog-close { display: grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px; padding: 10px; border: 2px solid var(--home-ink); border-radius: 50%; background: var(--home-cream); color: var(--home-ink); box-shadow: none; }
 #playersDialog .home-dialog-close svg { width: 20px; height: 20px; }
 #playersDialog .home-dialog-content { padding: 18px; }
-#playersDialog .home-dialog-mode { display: flex; align-items: center; gap: 12px; }
+#playersDialog .home-dialog-mode { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
 #playersDialog .home-dialog-mode img { flex-shrink: 0; width: 76px; height: 76px; border: 2px solid var(--home-ink); border-radius: 10px; background: #7677ee; object-fit: contain; }
 #playersDialog .home-dialog-mode > div { min-width: 0; }
-#playersDialog .home-dialog-mode span { display: block; font-size: 10px; font-weight: 800; }
 #playersDialog .home-dialog-mode strong { display: block; margin-top: 4px; font-size: clamp(16px, 4.8vw, 21px); font-weight: 900; line-height: 1.15; hyphens: none; overflow-wrap: normal; }
-#playersDialog #playersDialogHelp { margin: 16px 0 12px; font-family: Arial, sans-serif; font-size: 16px; }
 .home-player-dialog .player-input-container { flex-wrap: nowrap; }
 #playersDialog #dialogPlayerInput[aria-invalid="true"] { border-color: #b22b50; }
 #playersDialog #playersDialogStatus[data-error="true"] { color: #a12447; }
@@ -233,7 +224,6 @@ html:has(#playersDialog[open]) { overflow: hidden; }
   #setup .account-mode-stats { align-self: start; margin-top: 0; }
   #setup .account-stats-player { margin: 8px 0 0; }
   #setup .account-stat-total { margin: 0; }
-  #setup .home-footer { flex-direction: row; justify-content: space-between; }
 }
 
 @media (min-width: 1200px) {

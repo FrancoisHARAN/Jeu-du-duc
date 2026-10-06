@@ -16,7 +16,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="image/app/favicon-purple-32.png?v=20261006i">
   <link rel="stylesheet" href="styles/main.css?v=20261005o">
   <link rel="stylesheet" href="styles/undercover.css?v=20261005q">
-  <link rel="stylesheet" href="styles/home.css?v=20261006h">
+  <link rel="stylesheet" href="styles/home.css?v=20261006i">
   <link rel="stylesheet" href="styles/pwa.css?v=20261005i">
   <link rel="stylesheet" href="styles/questions.css?v=20261006h">
   <link rel="stylesheet" href="styles/heads-up.css?v=20261006e">
@@ -33,14 +33,12 @@
         <svg data-sound-icon="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></svg>
         <svg data-sound-icon="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="m3 3 18 18"/></svg>
       </button>
-      <span class="home-edition">LES BONNES SOIRÉES COMMENCENT ICI</span>
       <button id="accountButton" class="home-stamp account-entry" type="button" aria-haspopup="dialog"><span>Se connecter</span></button>
     </header>
 
     <div class="home-overview">
     <section class="home-hero" aria-labelledby="home-title">
       <h1 id="home-title"><span class="home-visually-hidden">Le Jeu du Duc</span><img class="home-title-illustration" src="image/home/hero.webp" alt="" width="1448" height="1086" fetchpriority="high" decoding="async"></h1>
-      <p class="home-tagline">Petites questions. Grands moments.</p>
       <div class="home-hero-floor" aria-hidden="true"></div>
     </section>
 
@@ -55,7 +53,6 @@
         </form>
         <p id="playerError" class="player-error" role="alert" hidden></p>
         <div id="accountPlayers"></div>
-        <p class="home-player-note">La même bande pour Undercover, Devine Tête et tous les modes.</p>
       </div>
     </section>
 
@@ -101,39 +98,34 @@
             <span class="home-window-bar" aria-hidden="true"><i></i><i></i><i></i><span>01 — QUIZ</span></span>
             <span class="home-mode-art"><img src="image/home/culture.webp" alt="" width="1254" height="1254" loading="lazy" decoding="async"></span>
             <span class="home-mode-label">Culture G.</span>
-            <span class="home-mode-description">Qui fait le malin ?</span>
             <span class="home-mode-choice"><span class="home-selected">SÉLECTIONNÉ</span><span class="home-unselected">CHOISIR</span><span class="home-mode-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></span>
           </button>
           <button class="mode-card home-mode home-mode--debut" data-mode="debut" type="button" aria-pressed="true">
             <span class="home-window-bar" aria-hidden="true"><i></i><i></i><i></i><span>02 — APÉRO</span></span>
             <span class="home-mode-art"><img src="image/home/apero.webp" alt="" width="1254" height="1254" loading="lazy" decoding="async"></span>
             <span class="home-mode-label">Apéro<br>chiantos</span>
-            <span class="home-mode-description">Pour lancer les hostilités.</span>
             <span class="home-mode-choice"><span class="home-selected">SÉLECTIONNÉ</span><span class="home-unselected">CHOISIR</span><span class="home-mode-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></span>
           </button>
           <button class="mode-card home-mode home-mode--hardcore" data-mode="hardcore" type="button" aria-pressed="false">
             <span class="home-window-bar" aria-hidden="true"><i></i><i></i><i></i><span>03 — +18</span></span>
             <span class="home-mode-art"><img src="image/home/hardcore.webp" alt="" width="1254" height="1254" loading="lazy" decoding="async"></span>
             <span class="home-mode-label">Sexy pas<br>raffiné</span>
-            <span class="home-mode-description">Les joues vont rougir.</span>
             <span class="home-mode-choice"><span class="home-selected">SÉLECTIONNÉ</span><span class="home-unselected">CHOISIR</span><span class="home-mode-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></span>
           </button>
           <button class="mode-card home-mode home-mode--alcool" data-mode="alcool" type="button" aria-pressed="false">
             <span class="home-window-bar" aria-hidden="true"><i></i><i></i><i></i><span>04 — EXPRESS</span></span>
             <span class="home-mode-art"><img src="image/home/torgnole.webp" alt="" width="1254" height="1254" loading="lazy" decoding="async"></span>
             <span class="home-mode-label">Torgnole<br>express</span>
-            <span class="home-mode-description">Ça part vite. Très vite.</span>
             <span class="home-mode-choice"><span class="home-selected">SÉLECTIONNÉ</span><span class="home-unselected">CHOISIR</span><span class="home-mode-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></span>
           </button>
           <button class="mode-card home-mode home-mode--custom" data-mode="custom" type="button" aria-pressed="false">
             <span class="home-window-bar" aria-hidden="true"><i></i><i></i><i></i><span>05 — À TA SAUCE</span></span>
             <span class="home-mode-art"><img src="image/home/personnalise.webp" alt="" width="1254" height="1254" loading="lazy" decoding="async"></span>
             <span class="home-mode-label">Personnalisé</span>
-            <span class="home-mode-description">Ton mélange. Tes règles.</span>
             <span class="home-mode-choice"><span class="home-selected">SÉLECTIONNÉ</span><span class="home-unselected">CHOISIR</span><span class="home-mode-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></span>
           </button>
           <div id="customWeights" class="hidden">
-            <div class="home-custom-heading"><span aria-hidden="true">✦</span><h3>Le mix, c'est toi.</h3><p>Dose chaque catégorie comme tu veux.</p></div>
+            <div class="home-custom-heading"><h3>Répartition des catégories</h3></div>
             <div class="slider-container"><label for="weight-debut">Apéro chiantos</label><input type="range" min="0" max="100" value="25" id="weight-debut"></div>
             <div class="slider-container"><label for="weight-hardcore">Sexy pas raffiné</label><input type="range" min="0" max="100" value="25" id="weight-hardcore"></div>
             <div class="slider-container"><label for="weight-alcool">Torgnole express</label><input type="range" min="0" max="100" value="25" id="weight-alcool"></div>
@@ -155,10 +147,9 @@
       <div id="accountStatistics" class="account-statistics-content"></div>
       <p id="accountSync" class="account-sync" role="status" hidden></p>
     </section>
-    <footer class="home-footer"><span>LE JEU DU DUC <span aria-hidden="true">✦</span> À JOUER. À REJOUER.</span></footer>
   </main>
 
-    <dialog id="playersDialog" class="home-player-dialog" aria-labelledby="playersDialogTitle" aria-describedby="playersDialogHelp">
+    <dialog id="playersDialog" class="home-player-dialog" aria-labelledby="playersDialogTitle">
       <header class="home-player-window">
         <div class="home-dialog-player-heading"><h2 id="playersDialogTitle">Qui joue ?</h2><span id="dialogRosterCount" class="jdd-player-count" aria-live="polite">0 joueur</span></div>
         <button id="closePlayersDialog" class="home-dialog-close" type="button" aria-label="Fermer et revenir au menu">
@@ -169,9 +160,8 @@
         <div id="dialogPlayerList" class="jdd-player-list" aria-label="Joueurs inscrits"></div>
         <div class="home-dialog-mode">
           <img id="playersDialogArt" src="image/home/apero.webp" alt="" width="1254" height="1254" decoding="async">
-          <div><span>LA PARTIE VOUS ATTEND</span><strong id="playersDialogMode">Apéro chiantos</strong></div>
+          <div><strong id="playersDialogMode">Apéro chiantos</strong></div>
         </div>
-        <p id="playersDialogHelp">Ajoute les prénoms, puis lance la partie.</p>
         <label class="home-visually-hidden" for="dialogPlayerInput">Prénom du joueur</label>
         <form id="dialogPlayerForm" class="player-input-container">
           <input type="text" id="dialogPlayerInput" placeholder="Prénom d’un invité" maxlength="40" autocomplete="off" autocapitalize="words" enterkeyhint="done" spellcheck="false" aria-describedby="playersDialogStatus" autofocus>
@@ -264,8 +254,8 @@
   <!-- FEATURE MODULES -->
   <script src="vendor/leaflet/leaflet.js?v=1.9.4" defer></script>
   <script src="scripts/app/player-editor.js?v=20261006g" defer></script>
-  <script src="scripts/app/undercover.js?v=20261006f" defer></script>
-  <script src="scripts/app/heads-up.js?v=20261006i" defer></script>
+  <script src="scripts/app/undercover.js?v=20261006g" defer></script>
+  <script src="scripts/app/heads-up.js?v=20261006j" defer></script>
   <script src="scripts/app/geography.js?v=20261006f" defer></script>
   <script src="scripts/app/football.js?v=20261006f" defer></script>
 
@@ -280,7 +270,7 @@
   <script src="data/undercover.pairs.js?v=20261005k" defer></script>
   <script src="data/heads.words.js?v=20261006g" defer></script>
   <script src="data/heads.imported.js?v=20261006g" defer></script>
-  <script src="scripts/app/main-game.js?v=20261006k" defer></script>
+  <script src="scripts/app/main-game.js?v=20261006l" defer></script>
   <script src="data/culture.imported.js?v=20261006b" defer></script>
   <script src="data/culture.quiz360.js?v=20261006h" defer></script>
   <script src="scripts/pwa.js?v=20261006e" defer></script>

@@ -271,7 +271,7 @@
     const { minimum, maximum } = playersDialogContext;
     const remaining = Math.max(0, minimum - players.length);
     document.getElementById('dialogRosterCount').textContent = window.JDDPlayerEditor.countLabel(players.length);
-    const note = players.length > maximum ? `${maximum} joueurs maximum : retire quelques prénoms pour ce jeu.` : !remaining ? 'La bande est prête !'
+    const note = players.length > maximum ? `${maximum} joueurs maximum : retire quelques prénoms pour ce jeu.` : !remaining ? ''
       : `Ajoute encore ${remaining} joueur${remaining > 1 ? 's' : ''} pour lancer.`;
     elements.dialogStatus.textContent = error || note;
     elements.dialogStatus.dataset.error = String(Boolean(error));
