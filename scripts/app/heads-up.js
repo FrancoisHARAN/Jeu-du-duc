@@ -133,7 +133,7 @@
           <div id="hu-team-settings">${teamMarkup()}</div>
           <button id="hu-start" class="hu-button" type="submit">Lancer la partie <span aria-hidden="true">↗</span></button>
         </form>
-        ${round && !round.finished ? '<div class="hu-resume"><p>Une manche est en pause.</p><button class="hu-button hu-button--green" data-act="resume" type="button">Reprendre la manche</button></div>' : ''}
+        ${round && !round.finished ? '<div class="hu-resume"><button class="hu-button hu-button--green" data-act="resume" type="button">Reprendre la manche</button></div>' : ''}
         <div class="hu-floor" aria-hidden="true"></div>
       </section>${store.history.length ? `<details class="hu-history-summary"><summary>Les scores de la bande</summary>${historyMarkup()}</details>` : ''}`;
     playerEditor = global.JDDPlayerEditor.mount(root.querySelector('#hu-player'), {
@@ -170,71 +170,33 @@
   }
 
   function initializeAudio() {
-    if (!store.config.sound) return;
+    if (!store.config.sound || !global.JDDSound.isEnabled()) return;
     try {
-      const Audio = global.AudioContext || global.webkitAudioContext;
-      if (!audio && Audio) audio = new Audio();
-      if (audio && ['suspended', 'interrupted'].includes(audio.state)) audio.resume().catch(() => {});
-      if (audio && !feedbackSounds) feedbackSounds = buildFeedbackSounds();
+      audio = global.JDDSound.getContext();
+      if (audio && !feedbackSounds) feedbackSounds = global.JDDFeedbackSounds.build(audio);
     } catch (_) { /* le son est facultatif */ }
   }
 
-  function buildFeedbackSounds() {
-    // Sons originaux, calculés une fois : aucune ressource à télécharger.
-    const rate = audio.sampleRate;
-    const makeBuffer = (duration, sample) => {
-      const buffer = audio.createBuffer(1, Math.ceil(rate * duration), rate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < data.length; i++) data[i] = sample(i / rate);
-      return buffer;
-    };
-    const bell = (t, frequency, decay) => {
-      if (t < 0) return 0;
-      const phase = 2 * Math.PI * frequency * t;
-      const attack = Math.min(1, t / .004);
-      return attack * (Math.sin(phase) * Math.exp(-t / decay)
-        + .2 * Math.sin(phase * 2) * Math.exp(-t / .055)
-        + .08 * Math.sin(phase * 3.86) * Math.exp(-t / .035));
-    };
-    // Deux notes montantes, avec une attaque douce et une résonance de clochette.
-    const correct = makeBuffer(.55, t => Math.min(1, (.55 - t) / .04)
-      * (.16 * bell(t, 1318.51, .105) + .2 * bell(t - .065, 1975.53, .15)));
-
-    // Souffle qui monte : bruit filtré et petit mouvement tonal, sans son d'erreur.
-    let seed = 173, lower = 0, upper = 0;
-    const pass = makeBuffer(.28, t => {
-      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-      const noise = seed / 2147483648 - 1;
-      const progress = t / .28;
-      lower += (1 - Math.exp(-2 * Math.PI * (500 + 2200 * progress) / rate)) * (noise - lower);
-      upper += (1 - Math.exp(-2 * Math.PI * (2800 + 4200 * progress) / rate)) * (noise - upper);
-      const envelope = Math.pow(Math.sin(Math.PI * progress), 1.4);
-      const glide = Math.sin(2 * Math.PI * (480 * t + 2200 * t * t));
-      return envelope * (.45 * (upper - lower) + .035 * glide);
-    });
-    return { correct, pass };
-  }
-
   function playFeedback(status) {
-    if (!store.config.sound || !audio || audio.state !== 'running' || !feedbackSounds) return;
+    if (!store.config.sound || !global.JDDSound.isEnabled() || !audio || audio.state !== 'running' || !feedbackSounds) return;
     try {
       const source = audio.createBufferSource();
       source.buffer = feedbackSounds[status];
-      source.connect(audio.destination);
+      source.connect(global.JDDSound.destination()); global.JDDSound.track(source);
       source.onended = () => source.disconnect();
       source.start();
     } catch (_) { /* le jeu continue si la sortie audio est indisponible */ }
   }
 
   function beep(frequency, duration = .12, delay = 0) {
-    if (!store.config.sound || !audio || audio.state !== 'running') return;
+    if (!store.config.sound || !global.JDDSound.isEnabled() || !audio || audio.state !== 'running') return;
     try {
       const osc = audio.createOscillator(), gain = audio.createGain();
       const start = audio.currentTime + delay;
       osc.frequency.value = frequency;
       gain.gain.setValueAtTime(.12, start);
       gain.gain.exponentialRampToValueAtTime(.001, start + duration);
-      osc.connect(gain); gain.connect(audio.destination);
+      osc.connect(gain); gain.connect(global.JDDSound.destination()); global.JDDSound.track(osc);
       osc.start(start); osc.stop(start + duration);
       osc.onended = () => { osc.disconnect(); gain.disconnect(); };
     } catch (_) { /* pas de son, le chrono continue */ }
@@ -343,7 +305,7 @@
   function renderReady() {
     setPhase('ready');
     const status = readyMessage || (round.motion ? (landscape() ? 'Place le téléphone au front et tiens-le droit.' : 'Tourne le téléphone à l’horizontale.') : 'Au signal, tes amis te font deviner le mot.');
-    root.innerHTML = `${topbar('Devine Tête')}<section class="hu-panel hu-ready">${windowBar(resume ? 'ON REPREND ?' : 'À TOI DE DEVINER')}<h1>${escape(round.player || 'Prêt ?')}</h1><div class="hu-phone" aria-hidden="true"><span>?</span></div><h2>${round.motion ? 'Téléphone au front' : 'À toi de jouer'}</h2><p>${round.motion ? 'Tourne le téléphone à l’horizontale, puis place-le contre ton front, écran vers tes amis. La manche démarre quand tu es prêt.' : 'Place le téléphone sur ton front. Un ami utilise les boutons pour valider ou passer.'}</p><p id="hu-sensor-status" class="hu-status" role="status">${escape(status)}</p>${round.motion ? '<p class="hu-help">Si l’écran ne tourne pas, désactive le verrouillage portrait de ton téléphone.</p><div class="hu-gesture-guide"><span>↓ Baisser = trouvé</span><span>↑ Lever = passer</span></div>' : ''}<button class="hu-button" data-act="${round.motion ? 'buttons' : 'countdown'}" type="button" ${permissionPending ? 'disabled' : ''}>${round.motion ? 'Jouer avec les boutons' : 'Lancer le compte à rebours'}</button><button class="hu-text-button" data-act="settings" type="button">Choisir le joueur</button></section>`;
+    root.innerHTML = `${topbar('Devine Tête')}<section class="hu-panel hu-ready">${windowBar('PRÉPARATION')}<h1>${escape(round.player || 'Prêt ?')}</h1><div class="hu-phone" aria-hidden="true"><span>?</span></div>${round.motion ? '<h2>Téléphone au front</h2>' : ''}<p>${round.motion ? 'Tourne le téléphone à l’horizontale, puis place-le contre ton front, écran vers tes amis. La manche démarre quand tu es prêt.' : 'Place le téléphone sur ton front. Un ami utilise les boutons pour valider ou passer.'}</p><p id="hu-sensor-status" class="hu-status" role="status">${escape(status)}</p>${round.motion ? '<p class="hu-help">Si l’écran ne tourne pas, désactive le verrouillage portrait de ton téléphone.</p><div class="hu-gesture-guide"><span>↓ Baisser = trouvé</span><span>↑ Lever = passer</span></div>' : ''}<button class="hu-button" data-act="${round.motion ? 'buttons' : 'countdown'}" type="button" ${permissionPending ? 'disabled' : ''}>${round.motion ? 'Jouer avec les boutons' : 'Lancer le compte à rebours'}</button><button class="hu-text-button" data-act="settings" type="button">Choisir le joueur</button></section>`;
     window.scrollTo(0, 0);
   }
 
@@ -432,7 +394,7 @@
     const good = status === 'correct';
     root.querySelector('#hu-word-card').dataset.feedback = status;
     root.querySelector('#hu-word').textContent = good ? 'Trouvé !' : 'Passé !';
-    root.querySelector('#hu-feedback-hint').textContent = round.motion ? 'Reviens au front pour le prochain mot.' : 'Le prochain mot arrive…';
+    root.querySelector('#hu-feedback-hint').textContent = round.motion ? 'Reviens au front pour le prochain mot.' : '';
     root.querySelector('#hu-points').textContent = score(round.rows);
     root.querySelectorAll('[data-act="correct"], [data-act="pass"]').forEach(b => { b.disabled = true; });
     fitWord();
@@ -515,7 +477,7 @@
   function renderResults() {
     setPhase('results');
     const points = score(round.rows), passed = round.rows.filter(r => r.status === 'pass').length;
-    root.innerHTML = `${topbar('Bilan de la manche')}<section class="hu-panel hu-results">${windowBar('BIEN JOUÉ, LA BANDE !')}<h1>${escape(round.reason)}</h1><p>${round.team ? `${escape(round.team.label)} · ` : ''}${escape(round.player || 'Votre manche')} · ${round.duration} secondes</p><div class="hu-result-score"><strong id="hu-result-points">${points}</strong><span>mot${points > 1 ? 's' : ''} trouvé${points > 1 ? 's' : ''}</span><small>${passed} passé${passed > 1 ? 's' : ''} · ${round.clues === 'mime' ? 'Mimes' : 'Indices'}</small></div><p class="hu-help">Une erreur de validation ? Touche « Corriger » à côté du mot.</p><ul class="hu-results-list">${round.rows.map((r, i) => `<li data-status="${r.status}"><span aria-hidden="true">${r.status === 'correct' ? '✓' : r.status === 'pass' ? '↑' : '—'}</span><span>${escape(r.word)}<small>${r.status === 'correct' ? 'Trouvé' : r.status === 'pass' ? 'Passé' : 'Temps écoulé'}</small></span>${r.status === 'unplayed' ? '' : `<button type="button" data-correct-row="${i}" aria-label="Corriger le résultat de ${escape(r.word)}">Corriger</button>`}</li>`).join('')}</ul><button class="hu-button" data-act="next-round" type="button">${store.nextPlayer ? `Au tour de ${escape(store.nextPlayer)}` : 'Nouvelle manche'} <span aria-hidden="true">↗</span></button><button class="hu-text-button" data-act="settings" type="button">Choisir le joueur</button><div class="hu-floor" aria-hidden="true"></div></section>${historyMarkup()}`;
+    root.innerHTML = `${topbar('Bilan de la manche')}<section class="hu-panel hu-results">${windowBar('RÉSULTATS')}<h1>${escape(round.reason)}</h1><p>${round.team ? `${escape(round.team.label)} · ` : ''}${escape(round.player || 'Votre manche')} · ${round.duration} secondes</p><div class="hu-result-score"><strong id="hu-result-points">${points}</strong><span>mot${points > 1 ? 's' : ''} trouvé${points > 1 ? 's' : ''}</span><small>${passed} passé${passed > 1 ? 's' : ''} · ${round.clues === 'mime' ? 'Mimes' : 'Indices'}</small></div><ul class="hu-results-list">${round.rows.map((r, i) => `<li data-status="${r.status}"><span aria-hidden="true">${r.status === 'correct' ? '✓' : r.status === 'pass' ? '↑' : '—'}</span><span>${escape(r.word)}<small>${r.status === 'correct' ? 'Trouvé' : r.status === 'pass' ? 'Passé' : 'Temps écoulé'}</small></span>${r.status === 'unplayed' ? '' : `<button type="button" data-correct-row="${i}" aria-label="Corriger le résultat de ${escape(r.word)}">Corriger</button>`}</li>`).join('')}</ul><button class="hu-button" data-act="next-round" type="button">${store.nextPlayer ? `Au tour de ${escape(store.nextPlayer)}` : 'Nouvelle manche'} <span aria-hidden="true">↗</span></button><button class="hu-text-button" data-act="settings" type="button">Choisir le joueur</button><div class="hu-floor" aria-hidden="true"></div></section>${historyMarkup()}`;
     window.scrollTo(0, 0);
   }
 

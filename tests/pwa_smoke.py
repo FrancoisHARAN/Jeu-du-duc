@@ -145,7 +145,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           return (await cache.keys()).map(r => r.url);
         }''', cache)
         quiz360_images = json.loads((site / 'data/culture.quiz360.images.json').read_text())
-        assert len(shell) == 71 + len(quiz360_images), len(shell)
+        assert len(shell) == 73 + len(quiz360_images), len(shell)
         for file in ['styles/accounts.css','vendor/supabase/supabase.js','scripts/supabase-config.js',
                      'scripts/core/participants.js','scripts/core/cloud.js','scripts/app/accounts.js']:
             assert any(url.endswith('/' + file) for url in shell), file
@@ -153,12 +153,12 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
             assert base + file in shell
         assert base + 'styles/questions.css' in shell
         assert base + 'data/culture.imported.js' in shell
-        for file in ['styles/heads-up.css', 'scripts/app/heads-up.js', 'data/heads.words.js', 'data/heads.imported.js',
+        for file in ['scripts/core/sound.js', 'scripts/core/feedback-sounds.js', 'styles/heads-up.css', 'scripts/app/heads-up.js', 'data/heads.words.js', 'data/heads.imported.js',
                      'scripts/app/player-editor.js', 'styles/players.css', 'scripts/app/geography.js',
                      'styles/geography.css', 'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css',
                      'data/geography/countries.geojson', 'data/geography/departments.geojson',
                      'data/geography/cities.json', 'image/home/geography.svg', 'styles/football.css',
-                     'scripts/app/football.js', 'data/football.questions.json', 'image/home/football.svg']:
+                     'scripts/app/football.js', 'data/football.questions.json', 'image/home/football.jpg']:
             assert base + file in shell
         assert all(url.startswith(base) for url in shell)
         for name in ['Alice', 'Bob', 'Chloe']:
@@ -288,24 +288,36 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
                 assert page.locator('.geo-pin--truth').count() == 1
             page.locator('[data-geo="exit"]').click()
         print('PASS: trois cartes vectorielles et données géographiques hors connexion', flush=True)
-        # Banque du classeur et les deux variantes du quiz disponibles en mode avion.
-        for mode in ['classic', 'shotgun']:
+        # Banque du classeur, chacun pour soi et équipes disponibles en mode avion.
+        page.evaluate('window.footNow=Date.now;window.footOffset=0;Date.now=()=>footNow()+footOffset')
+        for format in ['individual', 'teams']:
             page.locator('#footballBtn').click()
             expect(page.locator('#football')).to_have_attribute('data-screen', 'setup')
-            page.locator(f'[name="foot-mode"][value="{mode}"]').check()
+            assert page.locator('[name="foot-mode"], [name="foot-rounds"]').count()==0
+            page.locator(f'[name="foot-format"][value="{format}"]').check()
+            if format=='teams': expect(page.locator('.foot-team-table')).to_have_count(2)
             page.locator('[data-foot="start"]').click()
-            page.locator('[data-foot="begin"]').click()
-            expect(page.locator('#football')).to_have_attribute('data-screen', 'playing')
-            assert page.locator('.foot-question').inner_text().strip()
-            page.locator('[data-foot="reveal"]').click()
-            assert page.locator('.foot-answer').inner_text().strip()
-            if mode == 'classic':
+            match=page.evaluate('JSON.parse(localStorage.getItem("jdd.football.v2"))')
+            assert match['mode']=='classic' and match['rounds']==1
+            for camp in range(match['totalRounds']):
+                page.locator('[data-foot="begin"]').click()
+                expect(page.locator('#football')).to_have_attribute('data-screen', 'playing')
+                assert page.locator('.foot-question').inner_text().strip()
+                assert page.locator('.foot-answer').inner_text().strip()
                 page.locator('[data-foot="correct"]').click()
-            else:
-                page.locator('[data-foot-award="1"]').click()
-            expect(page.locator('#football')).to_have_attribute('data-screen', 'answer')
+                expect(page.locator('#football')).to_have_attribute('data-screen', 'feedback')
+                expect(page.locator('#football')).to_have_attribute('data-screen', 'playing')
+                page.evaluate('footOffset+=61000')
+                expect(page.locator('#football')).to_have_attribute('data-screen', 'results' if camp==match['totalRounds']-1 else 'round-end')
+                if camp<match['totalRounds']-1: page.locator('[data-foot="next"]').click()
+            page.locator('[data-foot="var"]').click()
+            page.locator('[data-foot-review="'+str(match['totalRounds']-1)+'"][data-result="wrong"]').click()
+            scores=page.evaluate('JSON.parse(localStorage.getItem("jdd.football.v2")).scores')
+            assert scores==[1]*(match['totalRounds']-1)+[0]
+            page.locator('[data-foot="close-var"]').click()
             page.locator('[data-foot="exit"]').click()
-        print('PASS: quiz foot classique et Shotgun avec réponses et scores hors connexion', flush=True)
+        page.evaluate('Date.now=footNow')
+        print('PASS: quiz foot chacun pour soi et équipes, un seul tour, chrono, scores et VAR hors connexion', flush=True)
         expect(page.locator('#setup')).to_be_visible()
         for mode in ['debut', 'hardcore', 'alcool', 'culture', 'custom']:
             page.locator(f'[data-mode="{mode}"]').click()
@@ -318,6 +330,13 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         page.locator('[data-act="exit-app"]').click()
         assert not errors, errors
         print('PASS: mode avion, 5 modes, Undercover, Devine Tête et ses 2 sons, images, polices et audio partiel', flush=True)
+        page.locator('#soundToggle').click()
+        page.reload(wait_until='load')
+        expect(page.locator('#soundToggle')).to_have_attribute('aria-pressed','false')
+        expect(page.locator('[data-sound-icon="off"]')).to_be_visible()
+        assert page.evaluate('JDDSound.getContext()===null')
+        page.locator('#soundToggle').click()
+        print('PASS: interrupteur sonore et choix muet conservé au relancement de la PWA en mode avion',flush=True)
 
         context.set_offline(False)
         # Une mise à jour de HTML/CSS/JS/données doit fonctionner sans changer le worker.

@@ -6,7 +6,26 @@
   let user = null, profiles = [], statistics = [], directories = [], selectedStats = '', generation = 0;
   let dialog, accountForm, formMode = 'login', loading = false, directoryError = false, statsError = false, refreshTimer;
   let confirmationEmail = '', recoveryEmail = '';
-  let hasSnapshot = false, usingCached = false;
+  // Brouillons non secrets, conservés seulement tant que cette page reste ouverte.
+  let emailDraft = null, nameDraft = '';
+  const readOnlyStates = new WeakMap();
+  const pendingKey = 'jdd.auth-pending.v1';
+  try {
+    const pending = JSON.parse(localStorage.getItem(pendingKey) || 'null');
+    if (pending && ['confirm','verify-reset'].includes(pending.mode) && typeof pending.email === 'string'
+      && pending.email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(pending.email)) {
+      formMode = pending.mode;
+      if (pending.mode === 'confirm') confirmationEmail = pending.email;
+      else recoveryEmail = pending.email;
+    }
+  } catch (_) { /* stockage facultatif */ }
+  function rememberPending(mode, email) {
+    try { localStorage.setItem(pendingKey, JSON.stringify({mode, email})); } catch (_) { /* facultatif */ }
+  }
+  function clearPending() {
+    try { localStorage.removeItem(pendingKey); } catch (_) { /* facultatif */ }
+  }
+  let hasSnapshot = false, usingCached = false, directoryLoaded = false, directoryCached = false, refreshWork = null;
   const usageKey = 'jdd.account-frequency.v1';
   const cacheKey = 'jdd.account-cache.v1';
   let frequency = {};
@@ -40,13 +59,17 @@
     const { container, maximum } = entry;
     container.replaceChildren(); container.className = 'account-directory';
     if (!user) {
+      container.append(el('p', 'account-help', 'Connecte-toi sur cet appareil pour retrouver les comptes de la bande.'));
       const connect = el('button', 'account-text-button', 'Ajouter des comptes'); connect.type = 'button';
       connect.addEventListener('click', () => open('login')); container.append(connect); return;
     }
-    container.append(el('h3', '', 'Les comptes de la bande'));
-    if (directoryError || !profiles.length) {
-      container.append(el('p', 'account-help', directoryError ? 'Les comptes ne sont pas disponibles.' : 'Chargement des comptes…'));
-      if (directoryError) { const retry = el('button', 'account-text-button', 'Réessayer'); retry.type = 'button'; retry.addEventListener('click', refresh); container.append(retry); }
+    const heading = el('div', 'account-directory-heading');
+    const retry = el('button', 'account-text-button', directoryError ? 'Réessayer' : 'Actualiser'); retry.type = 'button';
+    retry.addEventListener('click', refresh); heading.append(el('h3', '', 'Les comptes de la bande'), retry); container.append(heading);
+    if (directoryError) container.append(el('p', 'account-help', navigator.onLine ? 'Impossible de charger les comptes. Vérifie ta connexion et réessaie.' : 'Connecte cet appareil à Internet pour charger les comptes.'));
+    else if (directoryCached || !navigator.onLine) container.append(el('p', 'account-help', 'Derniers comptes synchronisés sur cet appareil.'));
+    if (!profiles.length) {
+      if (!directoryError) container.append(el('p', 'account-help', directoryLoaded ? 'Aucun compte confirmé disponible.' : 'Chargement des comptes…'));
       return;
     }
     const grid = el('div', 'account-profile-grid');
@@ -55,7 +78,12 @@
       const added = current.some(p => p.kind === 'account' && p.id === profile.id);
       const button = el('button', 'account-profile'); button.type = 'button'; button.dataset.accountId = profile.id;
       button.setAttribute('aria-pressed', String(added)); button.setAttribute('aria-label', `${added ? 'Déjà ajouté' : 'Ajouter'} : ${profile.display_name}`);
-      button.append(avatar(profile), el('span', 'account-profile-name', profile.display_name));
+      const text = el('span', 'account-profile-text');
+      text.append(el('span', 'account-profile-name', profile.display_name)); button.append(avatar(profile), text);
+      if (profile.id === user.id) {
+        text.append(el('span', 'account-profile-self', 'Moi'));
+        button.setAttribute('aria-label', `${added ? 'Déjà ajouté' : 'Ajouter'} : ${profile.display_name}, mon compte connecté`);
+      }
       if (added) button.append(el('span', 'account-profile-check', '✓'));
       button.addEventListener('click', () => {
         if (added) return;
@@ -87,43 +115,60 @@
     directories = directories.filter(entry => entry.container.isConnected);
     directories.forEach(renderDirectory);
   }
+  function saveSnapshot() {
+    if (!user || !directoryLoaded) return;
+    try { localStorage.setItem(cacheKey, JSON.stringify({ owner: user.id, profiles, statistics, hasSnapshot })); } catch (_) { /* cache facultatif */ }
+  }
+  function publishProfiles() {
+    renderAccountButton(); updateDirectories(); renderStatistics();
+    global.dispatchEvent(new Event('jdd:profiles'));
+  }
   async function refresh() {
     if (!user || !client) return;
     if (!navigator.onLine) {
-      directoryError = !profiles.length; statsError = !hasSnapshot; usingCached = true;
+      directoryError = !directoryLoaded; statsError = !hasSnapshot; usingCached = directoryCached = true;
       updateDirectories(); renderStatistics(); return;
     }
+    if (refreshWork?.id === user.id) { refreshWork.again = true; return refreshWork.promise; }
     const request = ++generation, id = user.id;
-    try {
-      const [directory, stats] = await Promise.all([
-        client.from('profiles').select('id,display_name,avatar_path,created_at').order('created_at'),
-        client.from('player_statistics').select('player_id,mode,metric,total'),
-      ]);
-      if (request !== generation || id !== user?.id) return;
-      directoryError = Boolean(directory.error) && !profiles.length;
-      statsError = Boolean(stats.error) && !hasSnapshot;
-      usingCached = Boolean(directory.error || stats.error);
-      if (!directory.error) {
-        profiles = directory.data || [];
-        const paths = profiles.filter(p => p.avatar_path).map(p => p.avatar_path);
-        if (paths.length) {
-          const signed = await client.storage.from('avatars').createSignedUrls(paths, 3600);
-          if (request !== generation || id !== user?.id) return;
-          for (const row of signed.data || []) {
-            const p = profiles.find(p => p.avatar_path === row.path); if (p) p.avatar_url = safeAvatar(row.signedUrl);
+    const current = () => request === generation && id === user?.id;
+    const work = { id, again: false };
+    refreshWork = work;
+    work.promise = Promise.all([
+      (async () => {
+        try {
+          const directory = await client.from('profiles').select('id,display_name,avatar_path,created_at').order('created_at');
+          if (!current()) return;
+          directoryError = Boolean(directory.error); directoryCached = directoryError;
+          if (directory.error) { publishProfiles(); return; }
+          profiles = directory.data || []; directoryLoaded = true;
+          global.JDD.retainAccountPlayers?.(profiles.map(p => p.id));
+          saveSnapshot(); publishProfiles(); // Les comptes sont utilisables avant les photos et les statistiques.
+          const paths = profiles.filter(p => p.avatar_path).map(p => p.avatar_path);
+          if (paths.length) {
+            const signed = await client.storage.from('avatars').createSignedUrls(paths, 3600);
+            if (!current()) return;
+            for (const row of signed.data || []) {
+              const p = profiles.find(p => p.avatar_path === row.path); if (p) p.avatar_url = safeAvatar(row.signedUrl);
+            }
+            saveSnapshot(); publishProfiles();
           }
-        }
-      }
-      if (!stats.error) statistics = stats.data || [];
-      if (!directory.error && !stats.error) {
-        hasSnapshot = true; usingCached = false;
-        try { localStorage.setItem(cacheKey, JSON.stringify({ owner: id, profiles, statistics })); } catch (_) { /* cache facultatif */ }
-      }
-    } catch (_) { if (request === generation) { directoryError = !profiles.length; statsError = !hasSnapshot; usingCached = true; } }
-    if (request === generation) {
-      renderAccountButton(); updateDirectories(); renderStatistics();
-      global.dispatchEvent(new Event('jdd:profiles'));
-    }
+        } catch (_) { if (current()) { directoryError = directoryCached = true; publishProfiles(); } }
+      })(),
+      (async () => {
+        try {
+          const stats = await client.from('player_statistics').select('player_id,mode,metric,total');
+          if (!current()) return;
+          statsError = Boolean(stats.error) && !hasSnapshot; usingCached = Boolean(stats.error);
+          if (!stats.error) { statistics = stats.data || []; hasSnapshot = true; }
+          saveSnapshot(); renderStatistics();
+        } catch (_) { if (current()) { statsError = !hasSnapshot; usingCached = true; renderStatistics(); } }
+      })(),
+    ]).finally(() => {
+      if (refreshWork === work) refreshWork = null;
+      if (current() && work.again) { clearTimeout(refreshTimer); refreshTimer = setTimeout(refresh, 600); }
+    });
+    return work.promise;
   }
   function renderAccountButton() {
     const button = document.getElementById('accountButton'); if (!button) return;
@@ -147,11 +192,13 @@
       root.append(el('p', 'account-help', 'Connecte-toi pour retrouver les statistiques de la bande.'));
       const login = el('button', 'account-button', 'Se connecter'); login.type = 'button'; login.addEventListener('click', () => open('login')); root.append(login); return;
     }
-    if (statsError || directoryError) {
+    if (statsError || (directoryError && !profiles.length)) {
       root.append(el('p', 'account-help', 'Les statistiques ne sont pas disponibles.'));
       const retry = el('button', 'account-text-button', 'Réessayer'); retry.type = 'button'; retry.addEventListener('click', refresh); root.append(retry); return;
     }
-    if (!profiles.length) { root.append(el('p', 'account-help', 'Chargement des statistiques…')); return; }
+    if (!profiles.length || !hasSnapshot) {
+      root.append(el('p', 'account-help', directoryLoaded && !profiles.length ? 'Aucun compte confirmé disponible.' : 'Chargement des statistiques…')); return;
+    }
     if (!profiles.some(p => p.id === selectedStats)) selectedStats = user.id;
     const label = el('label', 'account-stats-label', 'Les stats de qui ?'); label.htmlFor = 'statisticsPlayer';
     const select = el('select'); select.id = 'statisticsPlayer';
@@ -171,7 +218,7 @@
       const relevant = mode === 'undercover' ? ['games','wins','white_wins','undercover_wins','civil_wins','points']
         : mode === 'heads' ? ['games','words_found','words_passed','points']
         : mode === 'geography' ? ['games','wins','turns','correct_places','perfect_places','points','distance_km']
-        : mode === 'football' ? ['games','wins','points','turns','correct_answers']
+        : mode === 'football' ? ['games','wins','points','turns','questions_answered','correct_answers']
         : mode === 'culture' ? ['games','questions_answered','correct_answers','answers_revealed'] : ['games','cards_seen'];
       relevant.forEach(metric => {
         const value = rows.find(r => r.mode === mode && r.metric === metric)?.total || 0;
@@ -194,25 +241,67 @@
   function status(message, error = false) {
     const node = document.getElementById('accountStatus'); node.textContent = message; node.classList.toggle('account-status--error', error);
   }
+  function authError(error, fallback) {
+    const messages = {
+      email_address_not_authorized: 'L’envoi vers cette adresse est bloqué par le service email du site. L’administrateur doit configurer les envois.',
+      over_email_send_rate_limit: 'Le quota d’emails du site est atteint. Attends son renouvellement avant de demander un nouvel email.',
+      over_request_rate_limit: 'Trop de tentatives. Réessaie dans un moment.',
+      email_provider_disabled: 'La connexion par email est désactivée sur le site. L’administrateur doit l’activer.',
+      email_address_invalid: 'Vérifie que ton adresse email est correcte.',
+      email_not_confirmed: 'Ton email n’est pas encore confirmé. Ouvre le lien de confirmation ou demande un nouvel email.',
+    };
+    // Traduire seulement les erreurs connues : ne pas afficher les messages bruts du serveur.
+    return Object.hasOwn(messages,error?.code) ? messages[error.code]
+      : error?.status === 429 ? messages.over_request_rate_limit : fallback;
+  }
+  function rememberDraft() {
+    const email = document.getElementById('accountEmail');
+    if (email && !email.readOnly) emailDraft = email.value.trim();
+    if (formMode === 'signup') nameDraft = document.getElementById('accountName')?.value || '';
+  }
   function open(mode = user ? 'profile' : ['confirm','verify-reset'].includes(formMode) ? formMode : 'login') {
+    if (loading) return;
+    rememberDraft();
     formMode = mode; loading = false;
     renderForm(); if (!dialog.open) dialog.showModal();
   }
   function renderForm() {
     const signup = formMode === 'signup', profileMode = formMode === 'profile', recovery = formMode === 'recovery', reset = formMode === 'reset';
     const verification = ['confirm', 'verify-reset'].includes(formMode);
-    document.getElementById('accountDialogTitle').textContent = profileMode ? 'Mon compte' : signup ? 'Créer mon compte' : verification ? 'Code reçu par email' : recovery ? 'Nouveau mot de passe' : reset ? 'Retrouver mon compte' : 'Se connecter';
+    document.getElementById('accountDialogTitle').textContent = profileMode ? 'Mon compte' : signup ? 'Créer mon compte' : verification ? 'Confirmer mon email' : recovery ? 'Nouveau mot de passe' : reset ? 'Retrouver mon compte' : 'Se connecter';
     accountForm.replaceChildren(); status('');
-    const field = (id, title, type, autocomplete, value = '') => {
+    accountForm.name = `account-${formMode}`;
+    accountForm.method = 'post'; accountForm.autocomplete = 'on';
+    const formUrl = new URL(redirectUrl()); formUrl.searchParams.set('account', formMode);
+    accountForm.action = formUrl.href;
+    let submitContainer = accountForm;
+    const field = (id, title, type, autocomplete, value = '', container = accountForm) => {
       const label = el('label', '', title); label.htmlFor = id; const input = el('input');
-      Object.assign(input, { id, name: id, type, autocomplete, value, required: true });
-      if (type === 'password') { input.maxLength = 128; if (signup || recovery) input.minLength = 12; }
-      if (id === 'accountName') { input.maxLength = 40; input.autocapitalize = 'words'; }
-      accountForm.append(label, input); return input;
+      const name = {accountEmail:'username',accountPassword:'password',accountName:'given-name',accountCode:'one-time-code'}[id];
+      Object.assign(input, { id, name, type, autocomplete, value, required: true });
+      input.spellcheck = false;
+      if (id === 'accountEmail') { input.maxLength = 254; input.inputMode = 'email'; input.autocapitalize = 'none'; input.enterKeyHint = reset ? 'send' : 'next'; }
+      if (id === 'accountName') { input.maxLength = 40; input.autocapitalize = 'words'; input.enterKeyHint = 'done'; }
+      container.append(label);
+      if (type === 'password') {
+        input.maxLength = 128; input.autocapitalize = 'none'; input.enterKeyHint = signup ? 'next' : 'go';
+        if (signup || recovery) { input.minLength = 12; input.setAttribute('passwordrules', 'minlength: 12; maxlength: 128;'); }
+        const box = el('div', 'account-password-field'), toggle = el('button', 'account-password-toggle', 'Voir');
+        toggle.type = 'button'; toggle.setAttribute('aria-controls', id); toggle.setAttribute('aria-pressed', 'false');
+        toggle.setAttribute('aria-label', 'Afficher le mot de passe');
+        toggle.addEventListener('click', () => {
+          const show = input.type === 'password'; input.type = show ? 'text' : 'password';
+          toggle.textContent = show ? 'Masquer' : 'Voir'; toggle.setAttribute('aria-pressed', String(show));
+          toggle.setAttribute('aria-label', show ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+        });
+        box.append(input, toggle); container.append(box);
+      } else container.append(input);
+      return input;
     };
     if (profileMode) {
       const p = profiles.find(p => p.id === user?.id);
       accountForm.append(avatar(p || { display_name: user?.user_metadata?.display_name || 'Joueur' }, 'account-avatar--large'));
+      accountForm.append(el('p', 'account-help account-current-email', `Connecté avec ${user.email || 'ton compte'}`));
       field('accountName', 'Prénom', 'text', 'given-name', p?.display_name || user?.user_metadata?.display_name || 'Joueur');
       const file = el('input'); Object.assign(file, { id: 'accountPhoto', type: 'file', accept: 'image/jpeg,image/png,image/webp' });
       file.hidden = true; file.setAttribute('aria-label', 'Photo de profil');
@@ -221,26 +310,43 @@
       const removePhoto = el('button', 'account-text-button', 'Retirer la photo'); removePhoto.type = 'button'; removePhoto.hidden = !p?.avatar_path;
       removePhoto.addEventListener('click', removeAvatar); accountForm.append(removePhoto);
     } else if (verification) {
-      const code = field('accountCode', 'Code à 6 chiffres', 'text', 'one-time-code');
+      accountForm.append(el('p', 'account-help', formMode === 'confirm'
+        ? 'Ouvre l’email de confirmation, appuie sur son lien puis reviens te connecter.'
+        : 'Ouvre le lien reçu par email pour choisir un nouveau mot de passe.'));
+      accountForm.append(el('p', 'account-help account-pending-email', formMode === 'confirm' ? confirmationEmail : recoveryEmail));
+      if (formMode === 'confirm') {
+        const confirmed = el('button', 'account-button', 'Se connecter'); confirmed.type = 'button';
+        confirmed.addEventListener('click', () => open('login')); accountForm.append(confirmed);
+      }
+      const details = el('details', 'account-code-details');
+      details.append(el('summary', '', 'Mon email contient un code'));
+      const fields = el('div', 'account-code-fields'); details.append(fields); accountForm.append(details);
+      const code = field('accountCode', 'Code à 6 chiffres', 'text', 'one-time-code', '', fields);
       code.inputMode = 'numeric'; code.pattern = '[0-9]{6}'; code.minLength = code.maxLength = 6;
+      submitContainer = fields;
     } else {
-      if (signup) field('accountName', 'Prénom', 'text', 'given-name');
-      if (!recovery) field('accountEmail', 'Email', 'email', 'email');
+      const email = field('accountEmail', 'Email', 'email', 'username', recovery ? user?.email || recoveryEmail : emailDraft ?? (confirmationEmail || recoveryEmail));
+      if (recovery) email.readOnly = true;
       if (!reset) field('accountPassword', signup || recovery ? 'Mot de passe · 12 caractères minimum' : 'Mot de passe', 'password', signup || recovery ? 'new-password' : 'current-password');
+      if (signup) field('accountName', 'Prénom', 'text', 'given-name', nameDraft);
     }
-    const submit = el('button', 'account-button', profileMode ? 'Enregistrer' : signup ? 'Créer mon compte' : verification ? 'Confirmer le code' : recovery ? 'Enregistrer le mot de passe' : reset ? 'Recevoir le code' : 'Se connecter');
-    submit.type = 'submit'; accountForm.append(submit);
+    const submit = el('button', 'account-button', profileMode ? 'Enregistrer' : signup ? 'Créer mon compte' : verification ? 'Confirmer le code' : recovery ? 'Enregistrer le mot de passe' : reset ? 'Recevoir l’email' : 'Se connecter');
+    submit.type = 'submit'; submitContainer.append(submit);
     const actions = document.getElementById('accountActions'); actions.replaceChildren();
     const action = (text, fn) => { const button = el('button', 'account-text-button', text); button.type = 'button'; button.addEventListener('click', fn); actions.append(button); };
     if (profileMode) action('Se déconnecter', signOut);
     else if (verification) {
-      action(formMode === 'confirm' ? 'J’ai déjà confirmé mon email' : 'Renvoyer un code', () => open(formMode === 'confirm' ? 'login' : 'reset'));
-      if (formMode === 'confirm') action('Renvoyer un code', async () => {
+      action('Changer d’adresse email', () => open(formMode === 'confirm' ? 'signup' : 'reset'));
+      if (formMode === 'verify-reset') {
+        action('Renvoyer l’email', () => open('reset'));
+        action('Retour à la connexion', () => open('login'));
+      }
+      if (formMode === 'confirm') action('Renvoyer l’email', async () => {
         if (loading || !client) return; busy(true);
         try {
           const { error } = await client.auth.resend({ type: 'signup', email: confirmationEmail, options: { emailRedirectTo: redirectUrl() } });
-          if (error) throw error; status('Si le compte attend une confirmation, un code vient d’être envoyé.');
-        } catch (_) { status('Le code n’a pas pu être renvoyé. Réessaie dans un moment.', true); }
+          if (error) throw error; status('Si le compte attend une confirmation, la demande d’envoi a été acceptée. Vérifie aussi les spams. Si ton compte est déjà confirmé, connecte-toi.');
+        } catch (error) { status(authError(error, 'L’email n’a pas pu être renvoyé. Réessaie dans un moment.'), true); }
         finally { busy(false); }
       });
     } else if (!recovery) {
@@ -250,15 +356,27 @@
   }
   function busy(value) {
     loading = value;
-    dialog.querySelectorAll('button:not(.account-dialog-close), input').forEach(node => { node.disabled = value; });
+    // Laisser les identifiants lisibles par le gestionnaire lors de l’envoi AJAX.
+    dialog.querySelectorAll('button:not(.account-dialog-close), input[type="file"]').forEach(node => { node.disabled = value; });
+    accountForm.querySelectorAll('input:not([type="file"])').forEach(input => {
+      if (value) {
+        if (!readOnlyStates.has(input)) readOnlyStates.set(input, input.readOnly);
+        input.readOnly = true;
+      } else if (readOnlyStates.has(input)) {
+        input.readOnly = readOnlyStates.get(input); readOnlyStates.delete(input);
+      }
+    });
     accountForm.setAttribute('aria-busy', String(value));
   }
-  const redirectUrl = () => new URL('./', location.href).href;
+  // Utiliser le dossier public de la PWA, sans paramètres ni fragments de connexion.
+  const redirectUrl = () => new URL('./', document.querySelector('link[rel="manifest"]').href).href;
   async function submit(event) {
     event.preventDefault(); if (loading) return;
     if (!client) { status('La connexion n’est pas disponible pour le moment.', true); return; }
+    const values = Object.fromEntries(['accountEmail','accountPassword','accountName','accountCode'].map(id => [id, document.getElementById(id)?.value || '']));
+    const value = id => values[id] || '';
+    rememberDraft();
     busy(true); status('');
-    const value = id => document.getElementById(id)?.value || '';
     if (['signup','profile'].includes(formMode) && !value('accountName').trim()) {
       status('Entre un prénom.', true); busy(false); return;
     }
@@ -274,24 +392,27 @@
       if (formMode === 'profile') result = await client.from('profiles').update({ display_name: value('accountName').trim() }).eq('id', user.id);
       if (result?.error) throw result.error;
       if (formMode === 'signup' && !result.data.session) {
-        confirmationEmail = value('accountEmail').trim(); formMode = 'confirm'; renderForm(); status('Entre le code reçu par email, ou confirme avec le lien.');
+        confirmationEmail = value('accountEmail').trim(); formMode = 'confirm'; rememberPending(formMode, confirmationEmail); renderForm();
       } else if (formMode === 'reset') {
-        recoveryEmail = value('accountEmail').trim(); formMode = 'verify-reset'; renderForm(); status('Si un compte correspond à cet email, un code vient d’être envoyé.');
+        recoveryEmail = value('accountEmail').trim(); formMode = 'verify-reset'; rememberPending(formMode, recoveryEmail); renderForm(); status('La demande a été acceptée. Si un compte correspond à cet email, vérifie ta boîte mail et les spams.');
       } else if (formMode === 'verify-reset') { formMode = 'recovery'; renderForm(); }
       else if (formMode === 'profile') { await refresh(); status('Prénom enregistré.'); }
-      else { if (formMode === 'recovery') formMode = 'profile'; dialog.close(); }
+      else { clearPending(); formMode = user ? 'profile' : 'login'; dialog.close(); }
     } catch (error) {
-      status(error.status === 429 ? 'Trop de tentatives. Réessaie dans un moment.'
-        : ['confirm','verify-reset'].includes(formMode) && [400,401,403].includes(error.status) ? 'Code invalide ou expiré. Demande un nouveau code.'
+      if (formMode === 'login' && error.code === 'email_not_confirmed') {
+        confirmationEmail = value('accountEmail').trim(); formMode = 'confirm'; rememberPending(formMode, confirmationEmail); renderForm();
+      }
+      status(authError(error,
+        ['confirm','verify-reset'].includes(formMode) && [400,401,403].includes(error.status) ? 'Code invalide ou expiré. Demande un nouvel email.'
         : formMode === 'login' && [400,401].includes(error.status) ? 'Vérifie ton email, ton mot de passe et la confirmation du compte.'
-        : 'Impossible de terminer. Vérifie ta connexion puis réessaie.', true);
-    } finally { busy(false); const password = document.getElementById('accountPassword'); if (password) password.value = ''; }
+        : 'Impossible de terminer. Vérifie ta connexion puis réessaie.'), true);
+    } finally { busy(false); }
   }
   async function signOut() {
     busy(true);
     try {
       const { error } = await client.auth.signOut({ scope: 'local' }); if (error) throw error;
-      applySession(null); global.JDD.clearAccountPlayers?.(); dialog.close();
+      applySession(null); formMode = 'login'; clearPending(); global.JDD.clearAccountPlayers?.(); dialog.close();
     } catch (_) { status('La déconnexion n’a pas abouti. Réessaie.', true); }
     finally { busy(false); }
   }
@@ -332,17 +453,18 @@
     const previous = user?.id; user = session?.user || null;
     if (previous !== user?.id) {
       ++generation; profiles = []; statistics = []; selectedStats = ''; directoryError = statsError = false;
-      hasSnapshot = usingCached = false;
+      hasSnapshot = usingCached = directoryLoaded = directoryCached = false;
       try {
         const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
         if (user && cached?.owner === user.id && Array.isArray(cached.profiles) && Array.isArray(cached.statistics)) {
           profiles = cached.profiles; statistics = cached.statistics;
-          hasSnapshot = usingCached = true;
+          hasSnapshot = cached.hasSnapshot !== false; usingCached = directoryLoaded = directoryCached = true;
         } else localStorage.removeItem(cacheKey);
       } catch (_) { /* pas de cache */ }
       if (previous && !user) global.JDD.clearAccountPlayers?.();
     }
     cloud.setUser(user); renderAccountButton(); updateDirectories(); renderStatistics(); renderSync();
+    if (user) clearPending();
     if (user) void refresh();
     if (recovery) open('recovery');
   }
@@ -350,7 +472,8 @@
     dialog = document.getElementById('accountDialog'); accountForm = document.getElementById('accountForm');
     document.getElementById('accountButton').addEventListener('click', () => open());
     document.getElementById('closeAccountDialog').addEventListener('click', () => dialog.close());
-    dialog.addEventListener('close', () => { const password = document.getElementById('accountPassword'); if (password) password.value = ''; });
+    // Retirer le formulaire fermé : aucun mot de passe conservé dans un champ caché.
+    dialog.addEventListener('close', () => { if (!dialog.open) { rememberDraft(); accountForm.replaceChildren(); } });
     accountForm.addEventListener('submit', submit);
     mountDirectory(document.getElementById('accountPlayers')); mountDirectory(document.getElementById('dialogAccountPlayers'));
     renderAccountButton(); renderStatistics();
@@ -365,6 +488,7 @@
   global.addEventListener('offline', () => { if (user) void refresh(); });
   global.addEventListener('resize', () => { fitNames(document.getElementById('setup')); });
   global.addEventListener('visibilitychange', () => { if (!document.hidden && user) void refresh(); });
+  global.addEventListener('pageshow', () => { if (user) void refresh(); });
   global.JDDAccounts = { mountDirectory, avatar, profileFor, updateDirectories, refresh, open, getUser: () => user };
   document.addEventListener('DOMContentLoaded', init, { once: true });
 })(window);

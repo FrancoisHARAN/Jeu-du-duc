@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 import threading
 import time
+from urllib.parse import parse_qs, urlsplit
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from playwright.sync_api import expect, sync_playwright
 
@@ -20,8 +21,9 @@ profiles = [{'id': A, 'display_name': 'François', 'avatar_path': None, 'created
             {'id': B, 'display_name': 'Axel', 'avatar_path': None, 'created_at': '2026-10-02'}]
 profiles += [{'id': f'10000000-0000-4000-8000-{i:012d}', 'display_name': name, 'avatar_path': None, 'created_at': '2026-10-03'}
              for i, name in enumerate(['Nico', 'Léa', 'Lou', 'Paul', 'Emma', 'Zoé'], 3)]
-events, calls, uploads = {}, [], []
-control = {'drop_answer': False, 'block_rpc': False, 'offline': False}
+events, calls, uploads, auth_calls = {}, [], [], []
+control = {'drop_answer': False, 'block_rpc': False, 'offline': False, 'email_confirmed': True, 'email_error': None, 'hold_stats': False, 'profiles_error': False}
+deferred_stats = []
 
 
 def user(uid):
@@ -52,13 +54,25 @@ def backend(route):
     request = route.request
     path = request.url.split(HOST)[-1].split('?')[0]
     data = request.post_data_json if request.method in ['POST', 'PATCH'] and 'application/json' in request.headers.get('content-type', '') else {}
-    headers = {'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*'}
+    if path.startswith('/auth/v1/') and request.method != 'OPTIONS':
+        auth_calls.append({'path':path, 'url':request.url, 'data':data})
+        if path in ['/auth/v1/signup','/auth/v1/recover','/auth/v1/resend']:
+            # L'adresse de retour doit être le dossier du site, sans paramètres Auth.
+            redirect = parse_qs(urlsplit(request.url).query).get('redirect_to',[None])[0]
+            assert redirect == base, (path,redirect,base)
+    headers = {'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*',
+               'access-control-expose-headers':'x-supabase-api-version', 'x-supabase-api-version':'2024-01-01'}
     def reply(value, status=200):
         route.fulfill(status=status, content_type='application/json', body=json.dumps(value), headers=headers)
     if request.method == 'OPTIONS':
         reply({})
+    elif path in ['/auth/v1/signup','/auth/v1/recover','/auth/v1/resend'] and control['email_error']:
+        code,status=control['email_error']
+        reply({'code':code,'msg':'Do not display this raw server message: private@example.test'},status)
     elif path == '/auth/v1/token':
-        if data.get('password') == 'wrong-password':
+        if not control['email_confirmed']:
+            reply({'msg':'Email not confirmed','code':'email_not_confirmed'},400)
+        elif data.get('password') == 'wrong-password':
             reply({'msg': 'Invalid login credentials', 'code': 'invalid_credentials'}, 400)
         else:
             reply(session(B if data.get('email', '').startswith('axel') else A))
@@ -80,8 +94,11 @@ def backend(route):
             reply(None)
         else:
             assert all('email' not in p for p in profiles)
-            reply(profiles)
+            reply({'message':'unavailable'},503) if control['profiles_error'] else reply(profiles)
     elif path == '/rest/v1/player_statistics':
+        if control['hold_stats']:
+            deferred_stats.append(route)
+            return
         totals = {}
         for event in events.values():
             for p in event['p_participants']:
@@ -155,14 +172,90 @@ try:
         def add_account(page, uid):
             page.locator(f'#accountPlayers [data-account-id="{uid}"]').click()
 
+        def credential_form(page, mode):
+            form=page.locator('#accountForm')
+            expect(form).to_have_attribute('method','post')
+            expect(form).to_have_attribute('autocomplete','on')
+            expect(form).to_have_attribute('name','account-'+mode)
+            action=urlsplit(form.get_attribute('action'))
+            assert (action.scheme,action.netloc,action.path)==(urlsplit(base).scheme,urlsplit(base).netloc,urlsplit(base).path) and parse_qs(action.query)=={'account':[mode]}
+            email=page.locator('#accountEmail')
+            expect(email).to_have_attribute('type','email')
+            expect(email).to_have_attribute('name','username')
+            expect(email).to_have_attribute('autocomplete','username')
+            expect(email).to_have_attribute('inputmode','email')
+            expect(email).to_have_attribute('autocapitalize','none')
+            expect(email).to_have_attribute('spellcheck','false')
+            if mode!='reset':
+                password=page.locator('#accountPassword')
+                expect(password).to_have_attribute('name','password')
+                expect(password).to_have_attribute('autocomplete','current-password' if mode=='login' else 'new-password')
+                expect(password).to_have_attribute('type','password')
+                if mode!='login': expect(password).to_have_attribute('minlength','12')
+            if mode=='signup':
+                assert form.locator('input').evaluate_all('els=>els.map(el=>el.id)')==['accountEmail','accountPassword','accountName']
+                expect(page.locator('#accountName')).to_have_attribute('name','given-name')
+                expect(page.locator('#accountName')).to_have_attribute('autocomplete','given-name')
+
+        # Prénom séparé de l'identifiant ; remplissage direct comme un gestionnaire.
+        context,page=home()
+        page.locator('#accountButton').click();credential_form(page,'login')
+        page.evaluate('()=>{accountDialog.close();JDDAccounts.open("login");}')
+        page.wait_for_timeout(50);credential_form(page,'login')
+        page.locator('#accountEmail').fill('francois@example.test')
+        page.locator('#accountActions').get_by_text('Créer un compte',exact=True).click()
+        credential_form(page,'signup')
+        expect(page.locator('#accountEmail')).to_have_value('francois@example.test')
+        page.locator('#accountName').fill('François')
+        page.locator('#accountPassword').fill('a-generated-password-long')
+        page.get_by_role('button',name='Afficher le mot de passe',exact=True).click()
+        expect(page.locator('#accountPassword')).to_have_attribute('type','text')
+        page.get_by_role('button',name='Masquer le mot de passe',exact=True).click()
+        expect(page.locator('#accountPassword')).to_have_attribute('type','password')
+        page.locator('#accountActions').get_by_text('J’ai déjà un compte',exact=True).click()
+        credential_form(page,'login')
+        expect(page.locator('#accountEmail')).to_have_value('francois@example.test')
+        expect(page.locator('#accountPassword')).to_have_value('')
+        page.locator('#accountActions').get_by_text('Mot de passe oublié',exact=True).click()
+        credential_form(page,'reset')
+        expect(page.locator('#accountEmail')).to_have_value('francois@example.test')
+        page.locator('#accountActions').get_by_text('J’ai déjà un compte',exact=True).click()
+        page.locator('#accountActions').get_by_text('Créer un compte',exact=True).click()
+        expect(page.locator('#accountName')).to_have_value('François')
+        page.evaluate('''()=>{accountEmail.value="francois@example.test";accountPassword.value="a-generated-password-long";}''')
+        # Pendant la requête, les champs restent dans FormData et ne sont pas désactivés.
+        pending=[]
+        context.route(HOST+'/auth/v1/signup*',lambda route:backend(route) if route.request.method=='OPTIONS' else pending.append(route))
+        page.locator('#accountForm button[type="submit"]').click()
+        page.wait_for_function('accountForm.getAttribute("aria-busy")==="true"')
+        expect(page.locator('#accountEmail')).to_be_enabled()
+        expect(page.locator('#accountPassword')).to_be_enabled()
+        assert not page.locator('#accountPassword').is_editable()
+        assert page.evaluate('Object.fromEntries(new FormData(accountForm))')=={'username':'francois@example.test','password':'a-generated-password-long','given-name':'François'}
+        assert pending
+        backend(pending[0])
+        expect(page.locator('#accountDialogTitle')).to_have_text('Confirmer mon email')
+        call=next(c for c in reversed(auth_calls) if c['path']=='/auth/v1/signup')
+        assert call['data']['email']=='francois@example.test' and call['data']['password']=='a-generated-password-long'
+        assert call['data']['data']['display_name']=='François'
+        assert page.locator('#accountPassword').count()==0
+        assert page.evaluate('!Object.values(localStorage).some(v=>v.includes("a-generated-password-long"))')
+        context.close()
+        print('PASS: formulaires POST distincts, email identifiant, prénom séparé, mot de passe suggéré, brouillons et envoi lisible sans stockage du secret',flush=True)
+
         context,page=home()
         page.locator('#accountButton').click()
         page.locator('#accountActions').get_by_text('Créer un compte',exact=True).click()
+        credential_form(page,'signup')
         page.locator('#accountName').fill('François')
         page.locator('#accountEmail').fill('francois@example.test')
         page.locator('#accountPassword').fill('a-test-password-long')
         page.locator('#accountForm button[type="submit"]').click()
+        expect(page.locator('#accountDialogTitle')).to_have_text('Confirmer mon email')
+        expect(page.locator('#accountCode')).not_to_be_visible()
+        page.locator('.account-code-details summary').click()
         expect(page.locator('#accountCode')).to_be_visible()
+        expect(page.locator('#accountCode')).to_have_attribute('autocomplete','one-time-code')
         page.locator('#accountCode').fill('999999')
         page.locator('#accountForm button[type="submit"]').click()
         expect(page.locator('#accountStatus')).to_contain_text('Code invalide')
@@ -174,25 +267,214 @@ try:
         context,page=home()
         page.locator('#accountButton').click()
         page.locator('#accountActions').get_by_text('Mot de passe oublié',exact=True).click()
+        credential_form(page,'reset')
         page.locator('#accountEmail').fill('francois@example.test')
         page.locator('#accountForm button[type="submit"]').click()
+        page.locator('.account-code-details summary').click()
         expect(page.locator('#accountCode')).to_be_visible()
         page.locator('#accountCode').fill('123456')
         page.locator('#accountForm button[type="submit"]').click()
         expect(page.locator('#accountPassword')).to_be_visible()
+        credential_form(page,'recovery')
+        expect(page.locator('#accountEmail')).to_have_value('private@example.test')
+        assert not page.locator('#accountEmail').is_editable()
         page.locator('#accountPassword').fill('a-new-test-password-long')
         page.locator('#accountForm button[type="submit"]').click()
         expect(page.locator('#accountDialog')).not_to_be_visible()
         context.close()
         print('PASS: inscription, confirmation et récupération par code dans la PWA',flush=True)
 
+        # L'email Supabase par défaut contient uniquement un lien : aucun code exigé.
+        control['email_confirmed']=False
+        context,page=home()
+        page.goto(base+'index.html?campaign=home#custom',wait_until='load')
+        page.locator('#accountButton').click()
+        page.locator('#accountActions').get_by_text('Créer un compte',exact=True).click()
+        page.locator('#accountName').fill('François')
+        page.locator('#accountEmail').fill('francois@example.test')
+        page.locator('#accountPassword').fill('a-test-password-long')
+        page.locator('#accountForm button[type="submit"]').click()
+        expect(page.locator('#accountCode')).not_to_be_visible()
+        expect(page.locator('#accountForm')).to_contain_text('son lien')
+        page.screenshot(path=str(OUT/'confirmation-email.png'),full_page=True)
+        page.locator('#accountActions').get_by_text('Renvoyer l’email',exact=True).click()
+        expect(page.locator('#accountStatus')).to_contain_text('la demande d’envoi a été acceptée')
+        assert next(c for c in reversed(auth_calls) if c['path']=='/auth/v1/resend')['data']['email']=='francois@example.test'
+        page.reload(wait_until='load'); page.locator('#accountButton').click()
+        expect(page.locator('#accountDialogTitle')).to_have_text('Confirmer mon email')
+        assert page.evaluate('JSON.parse(localStorage.getItem("jdd.auth-pending.v1")).email')=='francois@example.test'
+        assert 'password' not in page.evaluate('localStorage.getItem("jdd.auth-pending.v1")')
+        before=len([c for c in auth_calls if c['path']=='/auth/v1/verify'])
+        page.locator('#accountForm').get_by_text('Se connecter',exact=True).click()
+        expect(page.locator('#accountEmail')).to_have_value('francois@example.test')
+        page.locator('#accountPassword').fill('a-test-password-long')
+        page.locator('#accountForm button[type="submit"]').click()
+        expect(page.locator('#accountStatus')).to_contain_text('Ton email n’est pas encore confirmé')
+        expect(page.locator('#accountDialogTitle')).to_have_text('Confirmer mon email')
+        assert page.evaluate('JDDAccounts.getUser()') is None
+        # La confirmation reste vérifiée par Auth ; le bouton n'accorde aucun accès.
+        control['email_confirmed']=True
+        page.locator('#accountForm').get_by_text('Se connecter',exact=True).click()
+        page.locator('#accountPassword').fill('a-test-password-long')
+        page.locator('#accountForm button[type="submit"]').click()
+        expect(page.locator('#accountDialog')).not_to_be_visible()
+        expect(page.locator('#accountButton')).to_contain_text('François')
+        assert len([c for c in auth_calls if c['path']=='/auth/v1/verify'])==before
+        assert page.evaluate('localStorage.getItem("jdd.auth-pending.v1")') is None
+        context.close()
+        print('PASS: email à lien seul, redirection propre, renvoi, confirmation persistante et connexion sans code',flush=True)
+
+        # Les blocages d'envoi sont expliqués ; aucun faux email envoyé ni message brut.
+        context,page=home()
+        page.locator('#accountButton').click()
+        page.locator('#accountActions').get_by_text('Créer un compte',exact=True).click()
+        page.locator('#accountName').fill('François')
+        page.locator('#accountEmail').fill('francois@example.test')
+        control['email_error']=('email_address_not_authorized',400)
+        page.locator('#accountPassword').fill('a-test-password-long')
+        page.locator('#accountForm button[type="submit"]').click()
+        expect(page.locator('#accountStatus')).to_contain_text('L’envoi vers cette adresse est bloqué')
+        expect(page.locator('#accountDialogTitle')).to_have_text('Créer mon compte')
+        assert page.evaluate('localStorage.getItem("jdd.auth-pending.v1")') is None
+        control['email_error']=None
+        page.locator('#accountPassword').fill('a-test-password-long')
+        page.locator('#accountForm button[type="submit"]').click()
+        expect(page.locator('.account-pending-email')).to_have_text('francois@example.test')
+        for code,status,message in [('over_email_send_rate_limit',429,'Le quota d’emails'),
+                                    ('email_address_not_authorized',400,'L’envoi vers cette adresse est bloqué'),
+                                    ('unexpected_failure',500,'L’email n’a pas pu être renvoyé')]:
+            control['email_error']=(code,status)
+            page.locator('#accountActions').get_by_text('Renvoyer l’email',exact=True).click()
+            expect(page.locator('#accountStatus')).to_contain_text(message)
+            assert 'private@example.test' not in page.locator('#accountStatus').inner_text()
+            expect(page.locator('#accountStatus')).to_have_class('account-status account-status--error')
+        control['email_error']=None
+        page.locator('#accountActions').get_by_text('Renvoyer l’email',exact=True).click()
+        expect(page.locator('#accountStatus')).to_contain_text('demande d’envoi a été acceptée')
+        assert page.evaluate('JDDAccounts.getUser()') is None
+        context.close()
+        print('PASS: destinataire bloqué, quota et panne distingués au renvoi, sans faux succès ni accès accordé',flush=True)
+
+        # Deux prénoms identiques sont deux profils, mais une seule session possède « Moi ».
+        original_profiles=profiles[:]
+        profiles[:]=[dict(original_profiles[0]),dict(original_profiles[1],display_name='François')]
+        context,page=home(signed=True)
+        expect(page.locator('#accountPlayers .account-profile')).to_have_count(2)
+        expect(page.locator('#accountPlayers .account-profile-self')).to_have_count(1)
+        assert page.locator('#accountPlayers .account-profile-self').evaluate('el=>el.closest("button").dataset.accountId')==A
+        page.locator('#playerInput').fill('François');page.locator('#addBtn').click()
+        add_account(page,A);add_account(page,B)
+        assert len(page.evaluate('JDDParticipants.all()'))==3
+        page.locator('#accountButton').click()
+        expect(page.locator('.account-current-email')).to_contain_text('private@example.test')
+        page.locator('#closeAccountDialog').click()
+        assert 'private@example.test' not in page.locator('#setup').inner_text()
+        profiles[:]=[profiles[0]]
+        page.evaluate('JDDAccounts.refresh()')
+        expect(page.locator('#accountPlayers .account-profile')).to_have_count(1)
+        roster=page.evaluate('JDDParticipants.all()')
+        assert [(p['kind'],p['name']) for p in roster]==[('guest','François'),('account','François')]
+        assert roster[1]['id']==A and page.evaluate('JDDAccounts.getUser().id')==A
+        context.close();profiles[:]=original_profiles
+        print('PASS: compte connecté marqué Moi, email privé, homonymes séparés et compte supprimé retiré de la bande',flush=True)
+
+        # Un téléphone neuf retrouve les mêmes UUID en se connectant, sans recréer le compte.
+        pc_context,pc=home(1280,800,signed=True)
+        expect(pc.locator('#accountPlayers .account-profile')).to_have_count(6)
+        context,page=home()
+        expect(page.locator('#accountPlayers')).to_contain_text('Connecte-toi sur cet appareil')
+        expect(page.locator('#accountPlayers .account-profile')).to_have_count(0)
+        signup_count=len([c for c in auth_calls if c['path']=='/auth/v1/signup'])
+        page.locator('#accountPlayers').get_by_text('Ajouter des comptes',exact=True).click()
+        page.locator('#accountEmail').fill('francois@example.test');page.locator('#accountPassword').fill('a-test-password-long')
+        page.locator('#accountForm button[type="submit"]').click()
+        expect(page.locator('#accountPlayers .account-profile')).to_have_count(6)
+        ids=lambda p:p.locator('#accountPlayers .account-profile').evaluate_all('nodes=>nodes.map(n=>n.dataset.accountId)')
+        assert ids(page)==ids(pc) and page.evaluate('JDDAccounts.getUser().id')==pc.evaluate('JDDAccounts.getUser().id')==A
+        assert signup_count==len([c for c in auth_calls if c['path']=='/auth/v1/signup'])
+        add_account(page,A)
+        page.locator('#playerInput').fill('François');page.locator('#addBtn').click()
+        add_account(page,B)
+        expect(page.locator('#homeRosterCount')).to_have_text('3 joueurs')
+        assert page.locator('#playerList .account-kind').all_text_contents()==['Compte','Invité','Compte']
+        assert page.locator('#playerList .jdd-player-name').all_text_contents()==['François','François','Axel']
+        assert page.locator('#playerList').evaluate('el=>Boolean(el.compareDocumentPosition(document.getElementById("playerForm"))&Node.DOCUMENT_POSITION_FOLLOWING)')
+        assert page.locator('#playerForm').evaluate('el=>Boolean(el.compareDocumentPosition(document.getElementById("accountPlayers"))&Node.DOCUMENT_POSITION_FOLLOWING)')
+        widths=page.locator('#playerList .player-item').evaluate_all('nodes=>nodes.map(n=>n.getBoundingClientRect().width)')
+        assert max(widths)-min(widths)<1
+        assert page.locator('#playerList .jdd-player-remove').first.bounding_box()['height']>=44
+        assert page.locator('#accountPlayers .account-profile').first.bounding_box()['height']<70
+        page.screenshot(path=str(OUT/'bande-mobile.png'),full_page=True)
+        pc.locator('#playerInput').fill('Invité');pc.locator('#addBtn').click();add_account(pc,A)
+        pc.screenshot(path=str(OUT/'bande-pc.png'),full_page=True)
+        for game,root in [('#headsBtn','#hu-player'),('#geographyBtn','#geo-players'),('#footballBtn','#foot-players')]:
+            page.locator(game).click()
+            if game=='#geographyBtn':page.locator('[data-geo-mode="cities"]').click()
+            expect(page.locator(root+' .jdd-player-summary')).to_have_text('3 joueurs')
+            assert page.locator(root+' .jdd-player-name').all_text_contents()==['François','François','Axel']
+            assert page.locator(root+' .jdd-player-list').evaluate('el=>Boolean(el.compareDocumentPosition(el.parentNode.querySelector(".jdd-player-input"))&Node.DOCUMENT_POSITION_FOLLOWING)')
+            page.screenshot(path=str(OUT/f'bande-{root[1:]}.png'),full_page=True)
+            if game=='#headsBtn':page.locator('#heads [data-act="exit"]').click()
+            if game=='#geographyBtn':page.locator('#geography [data-geo="exit"]').click()
+            if game=='#footballBtn':page.locator('#football [data-foot="exit"]').click()
+        page.evaluate('JDD.clearAccountPlayers()')
+        page.locator('#startBtn').click()
+        expect(page.locator('#dialogRosterCount')).to_have_text('1 joueur')
+        page.locator('#dialogAccountPlayers [data-account-id="'+A+'"]').click()
+        page.locator('#dialogAccountPlayers [data-account-id="'+B+'"]').click()
+        expect(page.locator('#dialogRosterCount')).to_have_text('3 joueurs')
+        assert page.locator('#dialogPlayerList .account-kind').all_text_contents()==['Invité','Compte','Compte']
+        assert page.locator('#dialogPlayerList').bounding_box()['y']<page.locator('#dialogPlayerForm').bounding_box()['y']
+        page.locator('#closePlayersDialog').click()
+        # Nouveau compte cloud récupéré au retour au premier plan, sans reconnexion.
+        extra={'id':'10000000-0000-4000-8000-000000000009','display_name':'Yanis','avatar_path':None,'created_at':'2026-10-06'}
+        profiles.append(extra)
+        page.evaluate('window.dispatchEvent(new Event("pageshow"))')
+        page.wait_for_function('() => JSON.parse(localStorage.getItem("jdd.account-cache.v1")).profiles.length===9')
+        page.locator('#accountPlayers').get_by_text('Afficher plus',exact=True).click()
+        expect(page.locator('#accountPlayers [data-account-id="'+extra['id']+'"]').first).to_be_visible()
+        profiles.pop()
+        pc_context.close();context.close()
+        print('PASS: PC et téléphone neufs retrouvent les mêmes comptes cloud ; connexion locale explicite, compteur, ordre, capsules et retour PWA',flush=True)
+
+        # Les comptes sont utilisables et mis en cache même si les statistiques attendent.
+        control['hold_stats']=True
+        context,page=home(signed=True)
+        expect(page.locator('#accountPlayers .account-profile')).to_have_count(6)
+        expect(page.locator('#accountStatistics')).to_contain_text('Chargement des statistiques')
+        page.wait_for_function('() => JSON.parse(localStorage.getItem("jdd.account-cache.v1")).profiles.length===8')
+        assert page.evaluate('JSON.parse(localStorage.getItem("jdd.account-cache.v1")).hasSnapshot') is False
+        add_account(page,A)
+        control['hold_stats']=False
+        for route in deferred_stats:route.fulfill(content_type='application/json',body='[]',headers={'access-control-allow-origin':'*'})
+        deferred_stats.clear()
+        page.wait_for_function('() => JSON.parse(localStorage.getItem("jdd.account-cache.v1")).hasSnapshot')
+        control['profiles_error']=True
+        page.locator('#accountPlayers').get_by_text('Actualiser',exact=True).click()
+        expect(page.locator('#accountPlayers')).to_contain_text('Impossible de charger',timeout=15000)
+        expect(page.locator('#accountPlayers .account-profile')).to_have_count(6)
+        control['profiles_error']=False
+        page.locator('#accountPlayers').get_by_text('Réessayer',exact=True).click()
+        expect(page.locator('#accountPlayers').get_by_text('Actualiser',exact=True)).to_be_visible()
+        context.close()
+        print('PASS: statistiques lentes sans bloquer les profils, cache indépendant, erreur explicite et réessai conservant la bande',flush=True)
+
         context, page = home(old_heads=True)
         expect(page.locator('#accountButton')).to_have_text('Se connecter')
         page.locator('#accountButton').click()
+        credential_form(page,'login')
+        page.locator('#accountEmail').fill('François')
+        page.locator('#accountPassword').fill('wrong-password')
+        tokens_before=len([c for c in auth_calls if c['path']=='/auth/v1/token'])
+        page.locator('#accountForm button[type="submit"]').click()
+        assert not page.locator('#accountEmail').evaluate('el=>el.validity.valid')
+        assert len([c for c in auth_calls if c['path']=='/auth/v1/token'])==tokens_before
         page.locator('#accountEmail').fill('francois@example.test')
         page.locator('#accountPassword').fill('wrong-password')
         page.locator('#accountForm button[type="submit"]').click()
         expect(page.locator('#accountStatus')).to_contain_text('Vérifie ton email')
+        expect(page.locator('#accountPassword')).to_have_value('wrong-password')
+        expect(page.locator('#accountPassword')).to_be_editable()
         page.locator('#accountPassword').fill('a-test-password-long')
         page.locator('#accountForm button[type="submit"]').click()
         expect(page.locator('#accountDialog')).not_to_be_visible()
@@ -312,22 +594,28 @@ try:
 
         # Foot : les points de l'équipe sont attribués aux comptes du départ,
         # même si leurs profils ont été retirés de la bande pendant la partie.
+        page.evaluate('window.footNow=Date.now;window.footOffset=0;Date.now=()=>footNow()+footOffset')
         page.locator('#footballBtn').click()
         expect(page.locator('#football')).to_have_attribute('data-screen','setup')
         page.locator('[name="foot-format"][value="teams"]').check()
-        page.locator('[data-foot-team="0"]').select_option('1')  # Axel invité
-        page.locator('[data-foot-team="1"]').select_option('0')  # François compte
-        page.locator('[data-foot-team="2"]').select_option('0')  # Axel compte
+        page.locator('[data-foot-move="0"]').click()  # Axel invité
+        page.locator('[data-foot-move="1"]').click()  # François compte
+        expect(page.locator('[data-team="0"]')).to_contain_text('Axel')  # Axel compte
         page.locator('[data-foot="start"]').click()
-        football_id=page.evaluate('JSON.parse(localStorage.getItem("jdd.football.v1")).cloud.id')
+        football_id=page.evaluate('JSON.parse(localStorage.getItem("jdd.football.v2")).cloud.id')
         page.evaluate('JDD.clearAccountPlayers()')
         control['block_rpc']=True
-        for i in range(10):
+        for camp in range(2):
             page.locator('[data-foot="begin"]').click()
-            page.locator('[data-foot="reveal"]').click()
-            action = 'correct' if i%2==0 else 'wrong'
-            page.locator(f'[data-foot="{action}"]').click()
-            page.locator('[data-foot="next"]').click()
+            for _ in range(5):
+                action='correct' if camp==0 else 'wrong'
+                page.locator(f'[data-foot="{action}"]').click()
+                expect(page.locator('#football')).to_have_attribute('data-screen','feedback')
+                page.evaluate('footOffset+=600')
+                expect(page.locator('#football')).to_have_attribute('data-screen','playing')
+            page.evaluate('footOffset+=61000')
+            expect(page.locator('#football')).to_have_attribute('data-screen','results' if camp else 'round-end')
+            if camp==0: page.locator('[data-foot="next"]').click()
         expect(page.locator('#football')).to_have_attribute('data-screen','results')
         page.wait_for_function('() => JDDCloud.status().state === "error"')
         queued=page.evaluate('JSON.parse(localStorage.getItem("jdd.cloud-outbox.v1"))')
@@ -335,16 +623,32 @@ try:
         assert {p['account_id'] for p in event['participants']}=={A,B}
         assert all(p['metrics']['points']==5 and p['metrics']['correct_answers']==5 and p['metrics']['wins']==1 for p in event['participants'])
         assert 'invité' not in json.dumps(event['payload']) and 'Axel' not in json.dumps(event['payload'])
+        # Une correction hors connexion remplace la révision en attente.
+        page.locator('[data-foot="var"]').click()
+        page.locator('#foot-review-round').select_option('0')
+        page.locator('[data-foot-review="0"][data-result="wrong"]').click()
+        revised=next(e for e in page.evaluate('JSON.parse(localStorage.getItem("jdd.cloud-outbox.v1"))') if e['id']==football_id)
+        assert revised['id']==football_id and revised['revision']==2
+        assert all(p['metrics']['points']==4 and p['metrics']['games']==1 for p in revised['participants'])
+        page.wait_for_function('() => JDDCloud.status().state === "error"')
         control['block_rpc']=False
         page.evaluate('JDDCloud.flush()'); settled(page)
         assert len([e for e in events if e==football_id])==1
+        assert events[football_id]['p_revision']==2
+        # Une correction après synchronisation met à jour la même partie.
+        page.locator('[data-foot-review="0"][data-result="correct"]').click()
+        settled(page)
+        assert events[football_id]['p_revision']==3
+        assert all(p['metrics']['games']==1 and p['metrics']['points']==5 and p['metrics']['turns']==1 for p in events[football_id]['p_participants'])
+        page.locator('[data-foot="close-var"]').click()
+        page.evaluate('Date.now=footNow')
         page.locator('[data-foot="exit"]').click()
         page.locator('#statisticsPlayer').select_option(B)
         page.locator('.account-mode-stats--football summary').click()
         expect(page.locator('.account-mode-stats--football')).to_contain_text('Bonnes réponses')
         expect(page.locator('.account-mode-stats--football dd').nth(2)).to_have_text('5')
         add_account(page,A); add_account(page,B)
-        print('PASS: foot en équipes, comptes du départ, invité homonyme exclu et synchronisation après coupure',flush=True)
+        print('PASS: foot 60 s en équipes, identités du départ, invité homonyme exclu et VAR synchronisée sans doubler les parties',flush=True)
 
         # Photo réencodée et stockée sous le dossier du propriétaire.
         page.locator('#accountButton').click()
@@ -400,6 +704,24 @@ try:
         print('PASS: PWA relancée hors ligne, comptes connus disponibles, données Auth/API absentes du cache worker',flush=True)
 
         for width,height in [(320,568),(393,852),(430,932),(852,393)]:
+            context,page=home(width,height)
+            page.locator('#accountButton').click()
+            for mode in ['login','signup','reset']:
+                if mode=='signup': page.locator('#accountActions').get_by_text('Créer un compte',exact=True).click()
+                if mode=='reset':
+                    page.locator('#accountActions').get_by_text('J’ai déjà un compte',exact=True).click()
+                    page.locator('#accountActions').get_by_text('Mot de passe oublié',exact=True).click()
+                credential_form(page,mode)
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                bounds=page.locator('#accountDialog').bounding_box()
+                assert bounds['x']>=0 and bounds['y']>=0 and bounds['x']+bounds['width']<=width+1 and bounds['y']+bounds['height']<=height+1
+                if mode!='reset':
+                    toggle=page.locator('.account-password-toggle').bounding_box()
+                    assert toggle['width']>=44 and toggle['height']>=44
+                if width in [320,393]: page.screenshot(path=str(OUT/f'{mode}-{width}.png'))
+            page.locator('#closeAccountDialog').click()
+            expect(page.locator('#accountForm input')).to_have_count(0)
+            context.close()
             context,page=home(width,height,signed=True)
             expect(page.locator('#accountPlayers .account-profile')).to_have_count(6)
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')

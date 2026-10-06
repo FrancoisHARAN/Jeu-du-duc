@@ -8,10 +8,11 @@ const { PGlite } = await import(pathToFileURL(modulePath).href);
 const db = new PGlite();
 const a = '10000000-0000-4000-8000-000000000001', b = '10000000-0000-4000-8000-000000000002';
 const c = '10000000-0000-4000-8000-000000000003', event = '20000000-0000-4000-8000-000000000001';
+const pending = '10000000-0000-4000-8000-000000000004', secondPending = '10000000-0000-4000-8000-000000000005';
 await db.exec(`
   create role anon; create role authenticated;
   create schema auth; create schema storage;
-  create table auth.users(id uuid primary key, raw_user_meta_data jsonb, email text);
+  create table auth.users(id uuid primary key, raw_user_meta_data jsonb, email text, email_confirmed_at timestamptz default now());
   create function auth.uid() returns uuid language sql stable as
     $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   grant usage on schema auth, storage, public to anon, authenticated;
@@ -25,14 +26,45 @@ await db.exec(`
 `);
 await db.exec(await readFile(new URL('../supabase/migrations/202610060001_accounts_and_statistics.sql', import.meta.url), 'utf8'));
 await db.exec(await readFile(new URL('../supabase/migrations/202610060002_football.sql', import.meta.url), 'utf8'));
-await db.query('insert into auth.users values ($1,$2,$3),($4,$5,$6),($7,$8,$9)',
+await db.query('insert into auth.users(id,raw_user_meta_data,email) values ($1,$2,$3),($4,$5,$6),($7,$8,$9)',
   [a,{display_name:'François'},'private-francois@example.test',b,{display_name:'Axel'},'private-axel@example.test',c,{display_name:'Nico'},'private-nico@example.test']);
+await db.query('insert into auth.users values ($1,$2,$3,null)',[pending,{display_name:'François'},'pending@example.test']);
+const confirmationMigration = await readFile(new URL('../supabase/migrations/202610060003_confirmed_profiles.sql', import.meta.url), 'utf8');
+await db.exec(confirmationMigration);
+const initialProfiles = (await db.query('select id,display_name from public.profiles order by id')).rows;
+// Installation partielle : la colonne existe, mais pas encore le trigger ni le filtre.
+await db.exec(`drop trigger sync_player_confirmation on auth.users;
+  drop function public.sync_player_confirmation();
+  alter policy profiles_read on public.profiles using (true);
+  update public.profiles set is_confirmed=false;`);
+await db.exec(confirmationMigration);
+await db.exec(confirmationMigration);
+assert.deepEqual((await db.query('select id,display_name from public.profiles order by id')).rows,initialProfiles);
+console.log('PASS: installation neuve, reprise avec colonne existante et relance complète sans doublon ni perte de profils');
+await db.query('insert into auth.users values ($1,$2,$3,null)',[secondPending,{display_name:'François'},'second-pending@example.test']);
 async function as(role, id, fn) {
   await db.exec(`set role ${role}`); await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id || '']);
   try { return await fn(); } finally { await db.exec('reset role'); }
 }
 async function rejects(fn, code) { await assert.rejects(fn, error => !code || error.code === code); }
 const participants = [{account_id:a,metrics:{games:1,white_wins:1,points:6}}, {account_id:b,metrics:{games:1,points:0}}];
+await as('authenticated', a, async () => {
+  assert.deepEqual((await db.query('select id from public.profiles order by id')).rows.map(r=>r.id),[a,b,c]);
+  await rejects(()=>db.query('update public.profiles set is_confirmed=true where id=$1',[a]),'42501');
+  await rejects(()=>db.query('select email_confirmed_at from auth.users'),'42501');
+});
+await db.query('update auth.users set email_confirmed_at=now() where id=$1',[secondPending]);
+await as('authenticated', a, async () => {
+  const ids=(await db.query('select id from public.profiles order by id')).rows.map(r=>r.id);
+  assert.deepEqual(ids,[a,b,c,secondPending]);
+});
+assert.equal((await db.query('select is_confirmed from public.profiles where id=$1',[pending])).rows[0].is_confirmed,false);
+await db.query('update auth.users set email_confirmed_at=null where id=$1',[secondPending]);
+const immediate='10000000-0000-4000-8000-000000000006';
+await db.query('insert into auth.users(id,raw_user_meta_data,email) values ($1,$2,$3)',[immediate,{display_name:'Confirmé'},'immediate@example.test']);
+assert.equal((await db.query('select is_confirmed from public.profiles where id=$1',[immediate])).rows[0].is_confirmed,true);
+await db.query('delete from auth.users where id=$1',[immediate]);
+console.log('PASS: anciens et nouveaux profils non confirmés masqués, confirmation par UUID et impossible à usurper');
 async function record(host, id = event, revision = 1, people = participants, mode = 'undercover') {
   return (await db.query('select public.record_game_event($1,$2,$3,$4,now(),$5,$6) as written',
     [host,id,mode,revision,people,{result:'white'}])).rows[0].written;
@@ -92,4 +124,13 @@ await as('authenticated', a, async () => {
   await rejects(() => record(a,'20000000-0000-4000-8000-000000000003',1,people,'invalid-mode'),'22023');
 });
 console.log('PASS: migration foot, statistiques sans doublon et protections existantes conservées');
+const initialResults = (await db.query('select * from public.game_results order by event_id,player_id')).rows;
+await db.exec(confirmationMigration);
+assert.deepEqual((await db.query('select * from public.game_results order by event_id,player_id')).rows,initialResults);
+await db.query('delete from auth.users where id=$1',[b]);
+assert.equal((await db.query('select id from public.profiles where id=$1',[b])).rows.length,0);
+assert.equal((await db.query('select player_id from public.game_results where player_id=$1',[b])).rows.length,0);
+assert.equal((await db.query('select id from public.profiles where id=$1',[a])).rows.length,1);
+assert.equal((await db.query('select id from public.game_events where id=$1',[event])).rows.length,1);
+console.log('PASS: suppression ciblée du compte de test et de ses résultats, autre compte conservé');
 await db.close();

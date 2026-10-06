@@ -5,6 +5,86 @@ Auth, PostgreSQL et un bucket privé pour les avatars. Les invités continuent
 à jouer sans compte. Les profils et statistiques sont visibles uniquement
 aux utilisateurs connectés ; les emails restent dans Supabase Auth.
 
+## Deux profils pour le même prénom
+
+Chaque adresse inscrite crée un utilisateur Auth distinct. Le profil de jeu
+est créé dès l'inscription ; il ne prouve pas que l'email est confirmé.
+Les coches de la bande indiquent les joueurs ajoutés à la partie, pas les
+sessions connectées. Une confirmation valide seulement l'UUID concerné.
+Le repère « Moi » identifie la seule session connectée ; « Mon compte »
+affiche son adresse email uniquement à son propriétaire.
+
+Pour conserver un seul compte de test, ouvrir **Authentication → Users**,
+vérifier les adresses et les dates de confirmation, puis supprimer uniquement
+l'utilisateur en trop via **Delete user**. La suppression efface son profil,
+ses résultats et les parties qu'il a organisées. Si Supabase refuse la suppression
+parce que le compte possède une photo, supprimer d'abord son dossier dans le
+bucket `avatars`. Ne pas supprimer seulement sa ligne dans `profiles` :
+cela laisserait un utilisateur Auth sans profil. Recharger ensuite l'application ;
+le profil supprimé est retiré de la liste et de la bande après lecture en ligne.
+
+Appliquer `supabase/migrations/202610060003_confirmed_profiles.sql` dans
+**SQL Editor**, après les deux migrations précédentes, pour que les inscriptions
+non confirmées restent invisibles aux autres joueurs. Cette migration reprend
+les états Auth actuels sans supprimer ni fusionner les comptes. La confirmation
+est synchronisée par un trigger protégé ; le client ne peut pas modifier cet état.
+Ce script est relançable si la colonne `is_confirmed` existe déjà : copier la
+version complète actuelle, jusqu'à `commit;`, puis l'exécuter. Il complète le
+trigger et le filtre sans supprimer les profils ni les résultats.
+
+## Aucun email reçu
+
+Le service email intégré de Supabase est réservé aux essais : il accepte
+uniquement les adresses des membres de l'organisation Supabase et impose un
+quota très bas. La [documentation officielle](https://supabase.com/docs/guides/auth/auth-smtp)
+décrit ces restrictions. Créer un compte dans le jeu ne fait pas de son adresse
+un membre de l'organisation Supabase.
+
+Configurer **Authentication → Emails → SMTP Settings** avec un fournisseur
+SMTP externe pour envoyer les confirmations aux amis. Cela n'exige pas de
+passer Supabase en Pro. Les modèles du service intégré restent ceux par défaut
+tant que leur personnalisation n'est pas autorisée ; la PWA accepte le lien
+de confirmation. Avec un SMTP personnalisé, les modèles à code du dépôt sont
+utilisables. Garder leurs identifiants SMTP uniquement dans Supabase.
+
+L'application distingue les erreurs de destinataire non autorisé et de quota
+au lieu de promettre un email envoyé. Une réponse Auth positive au renvoi
+indique seulement que la demande a été acceptée, pas que le message est livré.
+En cas d'absence malgré cela, consulter les journaux Auth du projet et l'état
+de confirmation du compte dans **Authentication → Users**.
+
+## Si l'email renvoie vers localhost:3000
+
+Dans le [tableau de bord du projet](https://supabase.com/dashboard/project/jyuzvxhnolzwcviycljm/auth/url-configuration),
+ouvrir **Authentication → URL Configuration**, puis enregistrer :
+
+```text
+Site URL : https://francoisharan.github.io/Jeu-du-duc/
+Redirect URLs : https://francoisharan.github.io/Jeu-du-duc/
+```
+
+L'application fournit déjà cette adresse de retour dans les demandes
+d'inscription, de renvoi et de récupération. Si cette adresse n'est pas
+autorisée, Supabase peut revenir vers sa Site URL par défaut (`localhost:3000`).
+La clé publishable du site ne permet pas de modifier ces réglages.
+
+Le modèle d'email par défaut contient uniquement un lien. L'application accepte
+ce parcours : confirmer le lien puis se connecter avec l'email et le mot de passe.
+Le code est proposé dans **Mon email contient un code**, uniquement s'il figure
+dans l'email. L'étape et l'adresse attendue sont conservées sur le téléphone en
+cas de redémarrage ; aucun mot de passe n'est conservé par ce mécanisme.
+
+Pour utiliser un code dans la PWA, ouvrir **Authentication → Email Templates →
+Confirm signup**, coller `supabase/email-confirmation.html`, puis enregistrer.
+Faire de même dans **Reset password** avec `supabase/email-recovery.html`.
+Supabase ne lit pas les fichiers du dépôt : ces modèles doivent être collés
+explicitement dans son tableau de bord. `{{ .Token }}` affiche le code.
+
+Après modification, demander un **nouvel email** depuis le jeu. Un ancien lien
+ne change pas après avoir corrigé les réglages et peut déjà avoir été utilisé.
+Si le lien a été validé avant de tomber sur localhost, le compte peut déjà être
+confirmé : essayer directement **J'ai confirmé mon email**, puis la connexion.
+
 ## Activation sur le projet Supabase
 
 Les migrations sont préparées et vérifiées localement. Elles n'ont pas été exécutées
@@ -20,7 +100,12 @@ sa politique réseau actuelle.
    déjà appliquée ; conserver son historique pour les évolutions suivantes.
    Exécuter ensuite `supabase/migrations/202610060002_football.sql` pour
    autoriser les résultats du Grand Quiz Foot. Si la première migration est
-   déjà appliquée, exécuter uniquement cette deuxième migration.
+  déjà appliquée, exécuter uniquement cette deuxième migration.
+   Les manches de foot de 60 secondes et la VAR réutilisent cette migration :
+   une correction envoie une nouvelle révision du même résultat, sans ajouter
+   de partie. Les statistiques incluent les questions répondues et correctes.
+   Appliquer ensuite `supabase/migrations/202610060003_confirmed_profiles.sql`
+   pour limiter l'annuaire aux profils confirmés et au compte connecté.
 2. Dans **Authentication → URL Configuration**, définir le Site URL sur
    `https://francoisharan.github.io/Jeu-du-duc/` et ajouter cette même URL aux
    Redirect URLs. Pour une prévisualisation, autoriser explicitement son URL
@@ -32,7 +117,7 @@ sa politique réseau actuelle.
    service SMTP de production : le service email intégré de développement
    peut limiter les destinataires et les envois. Le site n'envoie aucun email
    lui-même et ne stocke jamais de mot de passe.
-4. Dans **Authentication → Email Templates**, utiliser les modèles
+4. Avec un **SMTP personnalisé**, dans **Authentication → Emails**, utiliser les modèles
    `supabase/email-confirmation.html` pour **Confirm signup** et
    `supabase/email-recovery.html` pour **Reset password**. Ils affichent le
    code à six chiffres `{{ .Token }}` : confirmation et récupération peuvent

@@ -391,7 +391,7 @@
         ${topbar()}
         <section class="uc-panel uc-setup-panel">
           ${windowBar('JEU DE BLUFF')}
-          <div class="uc-intro"><img src="image/home/undercover.webp" alt="" width="1254" height="1254"><div><h1>Undercover</h1><p>Un intrus parmi vous.<br>À vous de le démasquer.</p></div></div>
+          <div class="uc-intro"><img src="image/home/undercover.webp" alt="" width="1254" height="1254"><div><h1>Undercover</h1></div></div>
           <details class="uc-rules"><summary>Comment on joue ?</summary><ol><li>De 3 à 20 joueurs. Les civils ont le même mot, les Undercovers un mot proche. Mr. White n’a aucun mot.</li><li>Chacun lit son mot en secret, puis le décrit à son tour sans le dévoiler.</li><li>Discutez et votez pour éliminer un suspect. Mr. White peut tenter de deviner le mot des civils quand il est éliminé.</li><li>Les civils gagnent en démasquant tous les infiltrés. Les infiltrés gagnent quand il reste un seul civil.</li></ol></details>
           <div class="uc-config">
           <section class="uc-setup-section"><h2>01 · La bande</h2><p class="uc-setup-title" id="uc-count-title"></p><div id="uc-players"></div></section>
@@ -432,7 +432,7 @@
       <div class="uc-role-row"><span class="uc-pill uc-pill--civil">${plural(civils, 'Civil', 'Civils')}</span></div>
       ${roleRow('undercover', 'Undercover', 'dark')}
       ${roleRow('white', 'Mr. White', 'light')}
-      <div class="uc-roles-hint">${full ? `Maximum ${max} infiltré${max > 1 ? 's' : ''} pour ${s.count} joueurs` : 'Ajuste les rôles avec − et +'}</div>`;
+      ${full ? `<div class="uc-roles-hint">Maximum ${max} infiltré${max > 1 ? 's' : ''} pour ${s.count} joueurs</div>` : ''}`;
 
     root.querySelector('#uc-words-label').textContent = s.hard ? 'Standards + Hard' : 'Standards';
     const players = store.players;
@@ -576,8 +576,6 @@
         return overlay(`
           <div class="uc-modal">
             <h3>Nouvelle partie</h3>
-            <p class="uc-sub">Nouveaux mots, nouveaux rôles !</p>
-            <div class="uc-modal-spacer"></div>
             <p class="uc-sub">Chacun son tour, touche ta pastille pour découvrir ton mot secret.</p>
             <div class="uc-modal-spacer"></div>
             <button class="uc-btn uc-btn--green" data-act="close-modal">OK</button>
@@ -669,7 +667,6 @@
             <div class="uc-modal-spacer"></div>
             ${bigAvatar(player.name, slotColor(modal.slot), 'white')}
             <div class="uc-modal-spacer"></div>
-            <p class="uc-sub uc-muted">La partie continue…</p>
             <button class="uc-btn uc-btn--green" data-act="guess-wrong-ok">OK</button>
           </div>`);
 
