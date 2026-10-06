@@ -23,11 +23,16 @@ le lui font deviner pendant une manche chronométrée.
 - Le bilan permet de corriger une validation. Les prénoms de l’accueil
   servent à proposer le joueur suivant et à afficher les scores.
 
-Les 420 mots originaux des sept thèmes restent conservés. La liste fournie
-`devine_tete_2000.json` ajoute 2 000 mots répartis dans dix catégories,
-conservées dans `data/heads.imported.js`. Les 225 mots communs sont proposés
-une seule fois : le mélange contient 2 195 mots distincts, sans modification
-des banques des autres jeux. Les mots ne se répètent pas dans une manche ;
+Les sept thèmes d'origine et la liste fournie `devine_tete_2000.json`
+(dix catégories, dans `data/heads.imported.js`) ont été triés le 6 octobre 2026
+pour que les manches aillent vite et qu'on sache toujours quoi valider :
+- un mot court plutôt qu'une phrase (« Bowling », pas « Faire du bowling ») ;
+- pas deux mots qui se confondent (« Chocolat » sans « Chocolat blanc »,
+  « Tasse » sans « Mug », « Pingouin » sans « Manchot ») ;
+- pas de mots trop pointus ou ennuyeux à faire deviner (phrases inventées,
+  métiers abstraits, villes moyennes, personnages secondaires).
+Le mélange contient 1 681 mots distincts, sans modification des banques des
+autres jeux. Les mots ne se répètent pas dans une manche ;
 la mémoire des tirages couvre désormais tout le mélange afin de privilégier
 les mots non vus avant de recommencer un cycle.
 Les mots personnalisés déjà enregistrés rejoignent le mélange automatiquement.
