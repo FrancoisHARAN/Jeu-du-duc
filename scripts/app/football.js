@@ -12,6 +12,7 @@
   let root, options, editor, data, byId, loading, clock, opened = false, request = 0, phase = 'setup', match = null;
   let settings = { difficulty:'AMATEUR', mode:'classic', format:'individual', rounds:1, categories:[] };
   let assignments = Object.create(null), reviewRound = 'all';
+  let audio = null, feedbackSounds = null;
   const names = () => options.getSuggestedNames().slice();
   const categoryLabel = value => value || 'Non classées';
   const sideIndex = () => match.mode === 'classic' ? match.round % match.sides.length : null;
@@ -33,6 +34,25 @@
     global.scrollTo(0, 0); fitText();
   }
   function stopClock() { clearInterval(clock); clock = null; }
+  function initializeAudio() {
+    try {
+      const Audio = global.AudioContext || global.webkitAudioContext;
+      if (!audio && Audio) audio = new Audio();
+      if (audio && ['suspended', 'interrupted'].includes(audio.state)) audio.resume().catch(() => {});
+      if (audio && !feedbackSounds) feedbackSounds = global.JDDFeedbackSounds.build(audio);
+    } catch (_) { /* Le jeu continue sans sortie audio. */ }
+  }
+  function playFeedback(reason) {
+    initializeAudio();
+    if (!audio || audio.state === 'closed' || !feedbackSounds?.[reason]) return;
+    try {
+      const source = audio.createBufferSource();
+      source.buffer = feedbackSounds[reason];
+      source.connect(audio.destination);
+      source.onended = () => source.disconnect();
+      source.start();
+    } catch (_) { /* Le chrono reste indépendant du son. */ }
+  }
   function save() { try { localStorage.setItem(STORE, JSON.stringify(match)); } catch (_) { /* Jeu disponible en mémoire. */ } }
   function saveSettings() { try { localStorage.setItem(SETTINGS, JSON.stringify(settings)); } catch (_) { /* facultatif */ } }
   async function loadData() {
@@ -157,6 +177,7 @@
   }
   function begin() {
     if (!match || match.finished || phase !== 'ready') return;
+    initializeAudio();
     match.stage = 'playing'; match.remaining = ROUND_MS; match.paused = false; match.deadline = Date.now() + ROUND_MS;
     renderLive();
   }
@@ -180,6 +201,7 @@
     if (winner !== null) match.scores[winner]++;
     match.cursor++; match.stage = 'feedback'; match.feedbackUntil = Date.now() + FEEDBACK_MS;
     save(); updateCard();
+    playFeedback(reason);
   }
   function finishRound() {
     if (!match || match.finished || !['playing','feedback','paused'].includes(phase)) return;
@@ -350,7 +372,7 @@
         case 'begin': begin(); break;
         case 'resume': resume(); break;
         case 'pause': pause(); break;
-        case 'continue': if (phase === 'paused') {match.paused = false; match.stage = 'playing'; match.deadline = Date.now() + match.remaining; renderLive();} break;
+        case 'continue': if (phase === 'paused') {initializeAudio(); match.paused = false; match.stage = 'playing'; match.deadline = Date.now() + match.remaining; renderLive();} break;
         case 'correct': if (match?.mode === 'classic') judge(sideIndex(),'correct'); break;
         case 'wrong': judge(null,'wrong'); break;
         case 'pass': judge(null,'pass'); break;

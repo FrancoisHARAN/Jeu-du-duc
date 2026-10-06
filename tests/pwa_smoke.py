@@ -145,7 +145,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           return (await cache.keys()).map(r => r.url);
         }''', cache)
         quiz360_images = json.loads((site / 'data/culture.quiz360.images.json').read_text())
-        assert len(shell) == 71 + len(quiz360_images), len(shell)
+        assert len(shell) == 72 + len(quiz360_images), len(shell)
         for file in ['styles/accounts.css','vendor/supabase/supabase.js','scripts/supabase-config.js',
                      'scripts/core/participants.js','scripts/core/cloud.js','scripts/app/accounts.js']:
             assert any(url.endswith('/' + file) for url in shell), file
@@ -153,7 +153,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
             assert base + file in shell
         assert base + 'styles/questions.css' in shell
         assert base + 'data/culture.imported.js' in shell
-        for file in ['styles/heads-up.css', 'scripts/app/heads-up.js', 'data/heads.words.js', 'data/heads.imported.js',
+        for file in ['scripts/core/feedback-sounds.js', 'styles/heads-up.css', 'scripts/app/heads-up.js', 'data/heads.words.js', 'data/heads.imported.js',
                      'scripts/app/player-editor.js', 'styles/players.css', 'scripts/app/geography.js',
                      'styles/geography.css', 'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css',
                      'data/geography/countries.geojson', 'data/geography/departments.geojson',

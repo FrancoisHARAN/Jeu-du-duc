@@ -32,7 +32,16 @@ try:
             context=browser.new_context(viewport={'width':width,'height':height},is_mobile=width<900,has_touch=True,service_workers='block')
             context.add_init_script('''if (!localStorage.getItem('jdd.players')) localStorage.setItem('jdd.players', %s);
               const origin=Number(sessionStorage.getItem('test-foot-origin'))||Date.now();sessionStorage.setItem('test-foot-origin',origin);
-              window.offset=Number(sessionStorage.getItem('test-foot-offset'))||0;Date.now=()=>origin+offset;'''%json.dumps(json.dumps(people if people is not None else ['François','Solène'])))
+              window.offset=Number(sessionStorage.getItem('test-foot-offset'))||0;Date.now=()=>origin+offset;
+              window.testSounds=[];
+              const Audio=window.AudioContext||window.webkitAudioContext;
+              if(Audio){const create=Audio.prototype.createBufferSource;
+                Audio.prototype.createBufferSource=function(){
+                  const source=create.call(this),audio=this,start=source.start;
+                  source.start=function(...args){if(source.buffer)testSounds.push({buffer:source.buffer,audio});return start.apply(source,args);};
+                  return source;
+                };
+              }'''%json.dumps(json.dumps(people if people is not None else ['François','Solène'])))
             if fixture: context.route('**/data/football.questions.json',lambda route:route.fulfill(json={'questions':fixture}))
             page=context.new_page();page.on('pageerror',lambda e:errors.append(str(e)));page.set_default_timeout(10000)
             page.goto(base,wait_until='load');page.locator('#footballBtn').click()
@@ -40,6 +49,12 @@ try:
             return context,page
         def act(page,name): page.locator(f'#football [data-foot="{name}"]').click()
         def saved(page): return page.evaluate('JSON.parse(localStorage.getItem("jdd.football.v2"))')
+        def sounds(page):
+            return page.evaluate('''testSounds.map(({buffer,audio})=>{
+              const samples=buffer.getChannelData(0);let energy=0,peak=0,crossings=0;
+              samples.forEach((value,i)=>{energy+=value*value;peak=Math.max(peak,Math.abs(value));if(i&&value*samples[i-1]<0)crossings++;});
+              return {duration:buffer.duration,rms:Math.sqrt(energy/samples.length),peak,first:samples[0],last:samples.at(-1),frequency:crossings/(2*buffer.duration),state:audio.state};
+            })''')
         def advance(page,ms):
             page.evaluate('ms=>{offset+=ms;sessionStorage.setItem("test-foot-offset",offset);}',ms)
             page.wait_for_timeout(80)
@@ -81,6 +96,7 @@ try:
         # Deux appuis rapprochés ne valident pas deux questions pendant le retour visuel.
         page.evaluate('''()=>{const b=document.querySelector('[data-foot="correct"]');b.click();b.click();document.querySelector('[data-foot="wrong"]').click();}''')
         assert len(saved(page)['rows'])==1 and saved(page)['scores']==[1,0]
+        assert len(sounds(page))==1, 'Un double appui ne doit pas rejouer le son.'
         expect(page.locator('.foot-feedback')).to_contain_text('+1')
         advance(page,499);expect(page.locator('#football')).to_have_attribute('data-screen','feedback')
         advance(page,1);expect(page.locator('#football')).to_have_attribute('data-screen','playing')
@@ -89,6 +105,15 @@ try:
         respond(page,'wrong');respond(page,'pass');respond(page)
         assert len(saved(page)['rows'])==4 and saved(page)['scores']==[2,0]
         assert len({r['question'] for r in saved(page)['rows']})==4
+        feedback=sounds(page)
+        assert len(feedback)==4
+        assert [round(s['duration'],2) for s in feedback]==[.55,.38,.28,.55]
+        for sound in feedback:
+            assert sound['state']=='running',sound
+            assert .01<sound['rms']<.2 and .05<sound['peak']<.65,sound
+            assert abs(sound['first'])<.001 and abs(sound['last'])<.001,'Clic aux bords du son.'
+        assert 80<feedback[1]['frequency']<250,feedback[1]
+        assert feedback[0]['frequency']>1000,'La clochette doit être distincte du buzzer grave.'
         end(page)
         act(page,'var');expect(page.locator('#football')).to_have_attribute('data-screen','review')
         page.locator('[data-foot-review="1"][data-result="correct"]').click()
@@ -104,9 +129,20 @@ try:
         for i in [1,3]:page.locator(f'[data-foot-review="{i}"][data-result="wrong"]').click()
         act(page,'close-var');expect(page.locator('#football h1')).to_have_text('Solène gagne !')
         assert saved(page)['scores']==[0,1]
+        assert len(sounds(page))==5,'La VAR et les bilans ne doivent pas rejouer les sons de la manche.'
+        # Les sons joués par les deux jeux doivent être identiques échantillon par échantillon.
+        act(page,'exit');page.locator('#headsBtn').click();page.locator('#hu-start').click()
+        page.locator('#heads [data-act="buttons"]').click();advance(page,3100)
+        expect(page.locator('#heads')).to_have_attribute('data-screen','playing')
+        page.locator('#heads [data-act="correct"]').click();advance(page,700)
+        page.locator('#heads [data-act="pass"]').click()
+        assert page.evaluate('''()=>{
+          const same=(a,b)=>{const x=a.buffer.getChannelData(0),y=b.buffer.getChannelData(0);return x.length===y.length&&x.every((v,i)=>v===y[i]);};
+          return testSounds.length===7&&same(testSounds[0],testSounds[5])&&same(testSounds[2],testSounds[6]);
+        }'''),'Le souffle ou la clochette diffère entre les jeux.'
         page.reload(wait_until='load');page.locator('#footballBtn').click();act(page,'resume')
         expect(page.locator('#football h1')).to_have_text('Solène gagne !')
-        context.close();print('PASS: filtres, un geste par question, 500 ms chronométrés, anti-double-appui, VAR et classement corrigé persistant',flush=True)
+        context.close();print('PASS: filtres, 500 ms chronométrés, anti-double-appui, buzzer grave, sons identiques à Devine Tête et VAR sans répétition sonore',flush=True)
 
         context,page=home(['Axel','Nico','François','Solène'])
         page.locator('[name="foot-format"][value="teams"]').check()
@@ -124,6 +160,7 @@ try:
         context,page=home(['Axel','Nico'])
         page.locator('[name="foot-mode"][value="shotgun"]').check();act(page,'start');act(page,'begin')
         respond(page,winner=0);respond(page,winner=1);end(page)
+        assert [round(s['duration'],2) for s in sounds(page)]==[.55,.55]
         expect(page.locator('#football h1')).to_have_text('Égalité !')
         act(page,'var');page.locator('[data-foot-review-winner="0"]').select_option('1');act(page,'close-var')
         assert saved(page)['scores']==[0,2]
@@ -143,11 +180,15 @@ try:
         page.evaluate("Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'))")
         expect(page.locator('#football')).to_have_attribute('data-screen','paused')
         remaining=saved(page)['remaining'];advance(page,10000);assert saved(page)['remaining']==remaining
-        page.evaluate('delete document.hidden');act(page,'continue');advance(page,remaining-1)
+        page.evaluate('delete document.hidden')
+        page.evaluate('testSounds[0].audio.suspend()');act(page,'continue')
+        page.wait_for_function("testSounds[0].audio.state==='running'")
+        advance(page,remaining-1)
         expect(page.locator('#football')).to_have_attribute('data-screen','playing')
         page.evaluate("offset+=1;sessionStorage.setItem('test-foot-offset',offset);document.querySelector('[data-foot=\"correct\"]').click()")
         expect(page.locator('#football')).to_have_attribute('data-screen','round-end')
         assert saved(page)['scores']==[1,0] and len(saved(page)['rows'])==1
+        assert len(sounds(page))==1,'Un appui après la fin du chrono ne doit pas jouer de son.'
         context.close();print('PASS: pause, arrière-plan, reprise pendant le retour visuel et aucun point après 60 secondes',flush=True)
 
         context,page=home(['Solo'],fixture=[bank[0]])
@@ -157,6 +198,12 @@ try:
         assert saved(page)['remaining']==59499
         end(page);assert saved(page)['scores']==[1]
         context.close();print('PASS: un thème épuisé ne répète pas ses questions et conserve les 60 secondes',flush=True)
+
+        context,page=home()
+        page.evaluate('window.AudioContext=window.webkitAudioContext=undefined')
+        act(page,'start');act(page,'begin');respond(page);respond(page,'wrong');respond(page,'pass')
+        assert saved(page)['scores']==[1,0] and len(saved(page)['rows'])==3 and not sounds(page)
+        context.close();print('PASS: sans Web Audio, les trois actions et le chrono restent fonctionnels',flush=True)
 
         context,page=home([]);expect(page.locator('[data-foot="start"]')).to_be_disabled()
         page.locator('#foot-players input[type="text"]').fill('Invité');page.locator('.jdd-player-add').click()
