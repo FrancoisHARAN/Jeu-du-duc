@@ -52,9 +52,9 @@
       if (!data || !Array.isArray(data.players) || !data.settings) return freshStore();
       const base = freshStore();
       return {
-        players: data.players.filter((p) => p && p.id && typeof p.name === 'string').map((p) => ({ id: p.id, name: p.name, score: Number(p.score) || 0 })),
+        players: data.players.filter((p) => p && p.id && typeof p.name === 'string').map((p) => ({ id: p.id, name: p.name, score: Number(p.score) || 0, participant: p.participant || null })),
         // joueurs retirés de la bande : leurs points les attendent s'ils reviennent
-        bench: Array.isArray(data.bench) ? data.bench.filter((p) => p && p.id && typeof p.name === 'string').map((p) => ({ id: p.id, name: p.name, score: Number(p.score) || 0 })) : [],
+        bench: Array.isArray(data.bench) ? data.bench.filter((p) => p && p.id && typeof p.name === 'string').map((p) => ({ id: p.id, name: p.name, score: Number(p.score) || 0, participant: p.participant || null })) : [],
         settings: Object.assign(base.settings, data.settings),
         game: data.game && Array.isArray(data.game.slots) ? data.game : null,
         usedPairs: Array.isArray(data.usedPairs) ? data.usedPairs : [],
@@ -207,6 +207,7 @@
     const pair = pickPair();
     const swap = Math.random() < 0.5;
     store.game = {
+      cloud: global.JDDCloud.begin('undercover', store.players.map(p => p.name)),
       phase: 'distribute',
       words: swap ? { civil: pair.under, under: pair.civil } : { civil: pair.civil, under: pair.under },
       slots: roles.map((role, index) => ({
@@ -291,6 +292,14 @@
     g.winnerSlot = whiteSlotIndex == null ? null : whiteSlotIndex;
     g.deltas = deltas;
     g.phase = 'end';
+    if (g.cloud) {
+      global.JDDCloud.record(g.cloud, g.slots.map((slot, index) => {
+        const participant = g.cloud.participants.find(p => p.label === playerById(slot.pid)?.name);
+        const won = deltas[index] > 0;
+        return { participant, metrics: { games: 1, wins: Number(won), points: deltas[index],
+          [`${slot.role}_games`]: 1, [`${slot.role}_wins`]: Number(won) } };
+      }), { result, roles: g.slots.map(slot => slot.role) });
+    }
     save();
     modal = { type: 'end' };
   }
@@ -353,8 +362,11 @@
     const previous = store.players.concat(store.bench || []);
     const names = options.getSuggestedNames().slice(0, MAX_PLAYERS);
     store.players = names.map((name) => {
-      const existing = previous.find((player) => player.name.toLowerCase() === name.toLowerCase());
-      return existing ? { ...existing, name } : { id: uid(), name, score: 0 };
+      const participant = global.JDDParticipants.get(name);
+      const existing = previous.find(player => participant?.kind === 'account'
+        ? player.participant?.kind === 'account' && player.participant.id === participant.id
+        : player.participant?.kind !== 'account' && player.name.toLowerCase() === name.toLowerCase());
+      return existing ? { ...existing, name, participant } : { id: uid(), name, score: 0, participant };
     });
     store.bench = previous.filter((p) => p.score > 0 && !store.players.some((q) => q.id === p.id)).slice(-30);
     const count = Math.max(MIN_PLAYERS, store.players.length);

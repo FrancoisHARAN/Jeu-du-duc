@@ -74,6 +74,7 @@
           .filter(f => chosenMode !== 'countries' || f.properties.quiz)
           .map(f => ({ id: f.properties.code, name: f.properties.name || f.properties.nom }));
       match = { mode: chosenMode, zone, players: people, scores: people.map(() => 0),
+        cloud: global.JDDCloud.begin('geography', people),
         targets: global.JDD.shuffle(pool.slice()).slice(0, roundCount(people)), index: 0,
         guess: null, result: null, rows: [], remaining: TURN_MS, deadline: 0, finished: false };
       beginTurn();
@@ -277,8 +278,21 @@
   function next() {
     if (phase !== 'answer') return;
     match.index += 1;
-    if (match.index >= match.targets.length) { match.finished = true; save(); renderResults(); }
+    if (match.index >= match.targets.length) { match.finished = true; recordCloudMatch(); save(); renderResults(); }
     else beginTurn();
+  }
+  function recordCloudMatch() {
+    if (!match.cloud) return;
+    const best = Math.max(...match.scores);
+    global.JDDCloud.record(match.cloud, match.players.map((name, index) => {
+      const rows = match.rows.filter(r => r.player === name);
+      return { participant: match.cloud.participants.find(p => p.label === name), metrics: {
+        games: 1, wins: Number(match.players.length > 1 && best > 0 && match.scores[index] === best), points: match.scores[index],
+        turns: rows.length, correct_places: rows.filter(r => r.correct).length,
+        perfect_places: rows.filter(r => r.rating.startsWith('PARFAIT')).length,
+        distance_km: Math.round(rows.reduce((sum, r) => sum + (r.km || 0), 0)),
+      } };
+    }), { map_mode: match.mode, zone: match.zone, rows: match.rows });
   }
   function renderResults() {
     disposeMap(); setPhase('results');

@@ -4,6 +4,7 @@
   const MAX_PLAYERS = 30;
 
   const players = loadPlayers();
+  window.JDDParticipants.restore(players);
   if (window.JDD) {
     window.JDD.players = players;
   }
@@ -72,6 +73,7 @@
   };
   let playersDialogContext = null;
   let mediaRequest = 0;
+  let partySession = null;
 
   const MODE_BACKGROUNDS = {
     'VÉRITÉ': 'var(--yellow)',
@@ -192,10 +194,9 @@
     if (players.length >= maximum) {
       return rejectPlayer(input, `La bande est complète : ${maximum} joueurs maximum.`);
     }
-    if (players.some((existing) => cleanName(existing).toLowerCase() === name.toLowerCase())) {
-      return rejectPlayer(input, 'Ce prénom est déjà dans la bande. Choisis-en un autre.');
-    }
-    players.push(name);
+    const added = window.JDDParticipants.addGuest(name);
+    if (added.error) return rejectPlayer(input, added.error);
+    players.push(added.participant.label);
     if (input === elements.playerInput) clearPlayerError();
     input.value = '';
     input.classList.remove('input-error');
@@ -206,6 +207,7 @@
   }
 
   function removePlayer(index) {
+    window.JDDParticipants.remove(players[index]);
     players.splice(index, 1);
     renderPlayerList();
   }
@@ -223,6 +225,14 @@
 
       const label = document.createElement('span');
       label.textContent = name;
+      const identity = window.JDDParticipants.get(name);
+      if (identity?.kind === 'account') {
+        const profile = window.JDDAccounts.profileFor(name);
+        item.append(window.JDDAccounts.avatar(profile || { display_name: identity.name }));
+        label.appendChild(Object.assign(document.createElement('small'), { className: 'account-kind', textContent: 'Compte' }));
+      } else {
+        label.appendChild(Object.assign(document.createElement('small'), { className: 'account-kind', textContent: 'Invité' }));
+      }
 
       const removeButton = document.createElement('button');
       removeButton.type = 'button';
@@ -256,6 +266,7 @@
       elements.playerCount.textContent = `${players.length} joueur${players.length > 1 ? 's' : ''}`;
     }
     savePlayers();
+    window.dispatchEvent(new Event('jdd:players'));
     Object.values(modules).forEach((module) => {
       if (typeof module.onPlayersChanged === 'function') module.onPlayersChanged();
     });
@@ -428,6 +439,7 @@
   }
 
   function renderMcq(question, playerName) {
+    const resultEvent = quizEvent(playerName);
     const isTrueFalse = question.vf === true;
     const prompt = question.image ? question.imageTitle || 'Quelle est la bonne réponse pour cette image ?' : question.question;
     elements.typeBox.textContent = 'CULTURE G.';
@@ -443,7 +455,7 @@
     elements.mcqGrid.classList.toggle('mcq-grid--images', Boolean(question.choiceImages));
 
     const credits = (question.imageCredit || '').split('±');
-    const options = question.choices.map((label, index) => ({ label, correct: index === question.answerIndex,
+    const options = question.choices.map((label, index) => ({ label, sourceIndex: index, correct: index === question.answerIndex,
       image: question.choiceImages && question.choiceImages[index], credit: credits[index] }));
     if (!isTrueFalse) {
       window.JDD.shuffle(options);
@@ -471,6 +483,10 @@
             if (options[index].correct) btn.classList.add('mcq-correct');
           });
           if (!option.correct) button.classList.add('mcq-wrong');
+          window.JDDCloud.record(resultEvent, [{ participant: resultEvent?.participants[0], metrics: {
+            questions_answered: 1, correct_answers: Number(option.correct),
+          } }], { question_id: String(question.id || window.JDD.cardId?.(question) || question.question).slice(0, 240),
+            selected_answer: option.sourceIndex, correct: option.correct });
           if (question.note) elements.answerText.textContent = `💡 ${question.note}`;
         },
         { once: true }
@@ -498,6 +514,7 @@
   }
 
   function renderOpenQuestion(question, playerName) {
+    const resultEvent = quizEvent(playerName);
     elements.typeBox.textContent = 'CULTURE G.';
     setBackground('CULTURE G.');
     elements.currentQuestion.textContent = addressPlayer(playerName, question.question);
@@ -508,7 +525,24 @@
       elements.answerText.textContent = `✅ Réponse : ${question.answer}${question.note ? ` — ${question.note}` : ''}`;
       elements.showAnswerButton.style.display = 'none';
       state.answerShownAt = event.timeStamp;
+      window.JDDCloud.record(resultEvent, [{ participant: resultEvent?.participants[0], metrics: { answers_revealed: 1 } }],
+        { question_id: String(question.id || question.question).slice(0, 240) });
     };
+  }
+
+  function quizEvent(playerName) {
+    const event = window.JDDCloud.begin('culture', []);
+    event.host = partySession?.host || null;
+    event.participants = partySession?.participants.filter(p => p.label === playerName) || [];
+    return event;
+  }
+
+  function recordCard(mode, label) {
+    if (!partySession) return;
+    const event = window.JDDCloud.begin(mode, []);
+    event.host = partySession.host;
+    event.participants = label ? partySession.participants.filter(p => p.label === label) : partySession.participants;
+    window.JDDCloud.record(event, event.participants.map(participant => ({ participant, metrics: { cards_seen: 1 } })));
   }
 
   function pickCustomMode() {
@@ -558,9 +592,10 @@
     const type = normalizeType(separator > -1 ? raw.slice(0, separator) : 'ACTION');
     const text = separator > -1 ? raw.slice(separator + 1) : raw;
 
-    let questionText = text;
+    let questionText = text, addressed = null;
     if (questionText.includes('{player}')) {
       const player = window.JDD.nextPlayer(players);
+      addressed = player;
       questionText = questionText.replace(/\{player\}/g, player);
       if (questionText.includes('{other}')) {
         questionText = questionText.replace(/\{other\}/g, window.JDD.pickOther(players, player));
@@ -572,6 +607,7 @@
     elements.typeBox.textContent = TYPE_LABELS[type] || type;
     setBackground(type);
     elements.currentQuestion.textContent = questionText;
+    recordCard(mode, addressed);
   }
 
   function showQuestion() {
@@ -614,6 +650,7 @@
       const pool = (window.JDD && window.JDD.RAPIDITY) || [];
       const draw = window.JDD.drawCard('rapidite', pool);
       elements.currentQuestion.textContent = draw || '⚡ Pas de question de rapidité disponible.';
+      recordCard('rapidite');
       state.rapidityMode = false;
       return;
     }
@@ -636,6 +673,8 @@
     if (elements.playersDialog.open) elements.playersDialog.close();
     elements.setupScreen.classList.add('hidden');
     elements.gameScreen.classList.remove('hidden');
+    partySession = window.JDDCloud.begin(state.currentMode, players);
+    window.JDDCloud.record(partySession, partySession.participants.map(participant => ({ participant, metrics: { games: 1 } })));
     showQuestion();
   }
 
@@ -745,6 +784,10 @@
   }
 
   function attachEvents() {
+    window.addEventListener('jdd:profiles', () => {
+      renderPlayersInto(elements.playerList);
+      if (elements.playersDialog.open) renderPlayersInto(elements.dialogPlayerList);
+    });
     window.addEventListener('resize', fitCultureText);
     if (document.fonts) document.fonts.ready.then(fitCultureText);
     document.getElementById('playerForm').addEventListener('submit', (event) => {
@@ -848,6 +891,19 @@
     }
     renderPlayerList();
   }
+
+  window.JDD.addAccountPlayer = (profile, maximum = MAX_PLAYERS) => {
+    if (!window.JDDAccounts.getUser()) return 'Connecte-toi pour ajouter un compte.';
+    if (elements.playersDialog.open && playersDialogContext) maximum = Math.min(maximum, playersDialogContext.maximum);
+    if (players.length >= maximum) return `La bande est complète : ${maximum} joueurs maximum.`;
+    const p = window.JDDParticipants.addAccount(profile);
+    if (p) { players.push(p.label); renderPlayerList(); }
+    return null;
+  };
+  window.JDD.clearAccountPlayers = () => {
+    window.JDDParticipants.all().filter(p => p.kind === 'account').forEach(p => window.JDDParticipants.remove(p.label));
+    players.splice(0, players.length, ...window.JDDParticipants.labels()); renderPlayerList();
+  };
 
   init();
 })();

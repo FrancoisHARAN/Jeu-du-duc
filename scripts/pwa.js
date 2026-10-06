@@ -45,6 +45,7 @@
   // La saisie terminée, la mise à jour en attente peut s'appliquer (le délai laisse « Lancer la partie » masquer l'accueil).
   const playersDialog = document.getElementById('playersDialog');
   if (playersDialog) playersDialog.addEventListener('close', () => setTimeout(reloadOnHome, 0));
+  document.getElementById('accountDialog')?.addEventListener('close', () => setTimeout(reloadOnHome, 0));
   document.addEventListener('focusout', () => setTimeout(reloadOnHome, 0));
 
   function checkWorker() {

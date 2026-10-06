@@ -1,0 +1,59 @@
+/* La même carte crème, les mêmes pastels et les mêmes gestes que les jeux. */
+.account-entry { max-width: 52%; cursor: pointer; text-transform: none; }
+#setup .account-entry { padding: 5px 9px; font: 800 11px/1.2 'Montserrat', Arial, sans-serif; }
+.account-entry > span:last-child { display: block; min-width: 0; overflow-wrap: normal; word-break: normal; }
+.account-avatar { position: relative; display: inline-grid; flex: 0 0 auto; place-items: center; width: 44px; height: 44px; overflow: hidden; border: 2px solid #252124; border-radius: 12px; background: #c9b3ef; color: #252124; font: 900 22px/1 'Montserrat', Arial, sans-serif; }
+.account-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.account-entry .account-avatar { width: 28px; height: 28px; border-width: 1px; border-radius: 8px; font-size: 16px; }
+.account-avatar--large { width: 80px; height: 80px; margin-bottom: 8px; font-size: 38px; }
+.account-directory { margin: 16px 0 0; color: #252124; }
+.account-directory h3 { margin: 0 0 12px; font: 800 14px/1.3 'Montserrat', Arial, sans-serif; }
+.account-profile-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+:is(#setup, #playersDialog, .jdd-player-editor) .account-profile { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 7px; min-width: 0; min-height: 94px; padding: 10px 5px; border: 2px solid #252124; border-radius: 10px; background: #fff9e9; color: #252124; box-shadow: 2px 2px 0 #252124; font: 800 12px/1.25 'Montserrat', Arial, sans-serif; }
+:is(#setup, #playersDialog, .jdd-player-editor) .account-profile[aria-pressed="true"] { background: #a7d5bc; box-shadow: none; }
+.account-profile-name { display: block; max-width: 100%; hyphens: none; overflow-wrap: normal; word-break: normal; }
+.account-profile-check { position: absolute; top: 4px; right: 5px; font-size: 15px; }
+.account-help { margin: 10px 0; color: #5a5154; font: 14px/1.5 Arial, sans-serif; }
+:is(#setup, #playersDialog, .jdd-player-editor, .account-dialog) .account-text-button { min-height: 44px; padding: 8px 0; border: 0; border-radius: 0; background: transparent; color: #252124; box-shadow: none; text-decoration: underline; font: 700 14px/1.35 Arial, sans-serif; }
+.account-kind { display: block; font: 11px/1.2 Arial, sans-serif; color: #5a5154; }
+#setup .player-item .account-avatar, #playersDialog .player-item .account-avatar { width: 28px; height: 28px; margin-left: -5px; border-width: 1px; border-radius: 7px; font-size: 15px; }
+.jdd-player-avatar .account-avatar { width: 100%; height: 100%; border: 0; border-radius: inherit; font-size: inherit; }
+#setup .home-statistics { margin-top: 30px; overflow: hidden; border: 2px solid #252124; border-radius: 14px; background: #fff9e9; color: #252124; box-shadow: 4px 4px 0 #252124; }
+#setup .home-statistics .home-player-window h2 { font-size: 19px; }
+.account-statistics-content { padding: 16px; }
+.account-stats-label { display: block; margin-bottom: 8px; font: 800 14px/1.3 'Montserrat', Arial, sans-serif; }
+#statisticsPlayer { width: 100%; min-height: 48px; padding: 8px 12px; border: 2px solid #252124; border-radius: 8px; background: #fff; color: #252124; font: 16px/1.3 Arial, sans-serif; }
+.account-stats-player { display: flex; align-items: center; gap: 10px; margin: 18px 0 8px; }
+.account-stats-player strong { min-width: 0; font-size: 19px; }
+.account-stat-total { margin: 0 0 16px; font: 700 14px/1.4 Arial, sans-serif; }
+.account-mode-stats { margin-top: 10px; overflow: hidden; border: 2px solid #252124; border-radius: 9px; background: #fff; }
+.account-mode-stats summary { min-height: 46px; padding: 12px; background: #c9b3ef; cursor: pointer; font: 800 14px/1.4 'Montserrat', Arial, sans-serif; }
+.account-mode-stats--undercover summary { background: #aac7e4; }
+.account-mode-stats--heads summary, .account-mode-stats--hardcore summary { background: #f7c3d0; }
+.account-mode-stats--geography summary, .account-mode-stats--culture summary { background: #a7d5bc; }
+.account-mode-stats--debut summary, .account-mode-stats--rapidite summary { background: #ffd938; }
+.account-mode-stats--alcool summary { background: #f49e73; }
+.account-metrics { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; margin: 0; padding: 14px; font: 14px/1.4 Arial, sans-serif; }
+.account-metrics dd { margin: 0; font-weight: 800; font-variant-numeric: tabular-nums; }
+.account-sync { margin: 0; padding: 0 16px 16px; color: #5a5154; font: 13px/1.45 Arial, sans-serif; }
+.account-sync button { display: block; }
+.account-dialog { width: min(420px, calc(100vw - 28px)); max-width: none; max-height: calc(100dvh - 28px); margin: auto; padding: 0; overflow-y: auto; border: 2px solid #252124; border-radius: 14px; background: #fff9e9; color: #252124; box-shadow: 4px 4px 0 #252124; font-family: 'Montserrat', Arial, sans-serif; text-align: left; }
+.account-dialog::backdrop { background: rgb(37 33 36 / .65); }
+.account-dialog .home-player-window { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 50px; padding: 8px 14px; border-bottom: 2px solid #252124; background: #f7c3d0; }
+.account-dialog h2 { margin: 0; font: 900 20px/1.25 'Montserrat', Arial, sans-serif; }
+.account-dialog-close { flex-shrink: 0; width: 44px; height: 44px; padding: 0; border: 2px solid #252124; border-radius: 8px; background: #fff9e9; color: #252124; font: 28px/1 Arial, sans-serif; }
+.account-dialog-content { padding: 18px; }
+#accountForm { display: flex; flex-direction: column; gap: 8px; }
+#accountForm label { margin-top: 7px; font: 800 13px/1.35 'Montserrat', Arial, sans-serif; }
+#accountForm input { box-sizing: border-box; width: 100%; min-height: 48px; padding: 10px 12px; border: 2px solid #252124; border-radius: 8px; background: #fff; color: #252124; font: 16px/1.3 Arial, sans-serif; }
+#accountForm input[hidden] { display: none; }
+.account-photo-button { min-height: 48px; margin-top: 8px; padding: 10px; border: 2px solid #252124; border-radius: 8px; background: #f7c3d0; color: #252124; font: 800 14px/1.3 'Montserrat', Arial, sans-serif; }
+:is(#setup, .account-dialog) .account-button { width: 100%; min-height: 52px; margin: 10px 0 4px; padding: 12px; border: 2px solid #252124; border-radius: 9px; background: #ffd938; color: #252124; box-shadow: 3px 3px 0 #252124; font: 900 14px/1.4 'Montserrat', Arial, sans-serif; }
+.account-status { margin: 12px 0 0; font: 14px/1.5 Arial, sans-serif; }
+.account-status:empty { margin: 0; }
+.account-status--error { color: #a22648; }
+#accountActions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-top: 10px; }
+.account-dialog button, .account-profile { cursor: pointer; touch-action: manipulation; }
+.account-dialog button:disabled { opacity: .55; cursor: wait; }
+.account-dialog :is(button,input):focus-visible, .account-directory button:focus-visible, #statisticsPlayer:focus-visible { outline: 3px solid #6b62cc; outline-offset: 3px; }
+@media (max-height: 450px) { .account-dialog { max-height: calc(100dvh - 12px); } .account-dialog-content { padding: 12px; } }

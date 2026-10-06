@@ -165,8 +165,8 @@
   function historyMarkup() {
     if (!store.history.length) return '';
     const totals = new Map();
-    store.totals.forEach(t => totals.set(t.player, t));
-    return `<section class="hu-panel hu-history">${windowBar('LES MANCHES DE LA BANDE')}${store.teams.totals.some(t => t.rounds) ? `<h2>Les équipes</h2><ul class="hu-score-list">${store.teams.totals.map((t, i) => `<li><span>Équipe ${i + 1}</span><strong>${t.points} pts</strong></li>`).join('')}</ul>` : ''}${totals.size ? `<h2>Les scores</h2><ul class="hu-score-list">${[...totals].sort((a, b) => b[1].points - a[1].points).map(([name, total]) => `<li><span>${escape(name)}<small>${total.rounds} manche${total.rounds > 1 ? 's' : ''}</small></span><strong>${total.points} pt${total.points > 1 ? 's' : ''}</strong></li>`).join('')}</ul>` : ''}<h2>Dernières manches</h2><ul class="hu-score-list">${store.history.slice(-5).reverse().map(r => `<li><span>${r.team ? `${escape(r.team.label)} · ` : ''}${escape(r.player || 'Sans prénoms')}<small>${escape(r.themeLabel)} · ${r.duration} s</small></span><strong>${score(r.rows)} pt${score(r.rows) > 1 ? 's' : ''}</strong></li>`).join('')}</ul><button class="hu-text-button" data-act="clear-history" type="button">Effacer les scores</button></section>`;
+    store.totals.forEach(t => totals.set(t.participant?.kind === 'account' ? `account:${t.participant.id}` : `guest:${t.player}`, t));
+    return `<section class="hu-panel hu-history">${windowBar('LES MANCHES DE LA BANDE')}${store.teams.totals.some(t => t.rounds) ? `<h2>Les équipes</h2><ul class="hu-score-list">${store.teams.totals.map((t, i) => `<li><span>Équipe ${i + 1}</span><strong>${t.points} pts</strong></li>`).join('')}</ul>` : ''}${totals.size ? `<h2>Les scores</h2><ul class="hu-score-list">${[...totals].sort((a, b) => b[1].points - a[1].points).map(([, total]) => `<li><span>${escape(total.player)}<small>${total.rounds} manche${total.rounds > 1 ? 's' : ''} · ${total.participant?.kind === 'account' ? 'Compte' : 'Invité'}</small></span><strong>${total.points} pt${total.points > 1 ? 's' : ''}</strong></li>`).join('')}</ul>` : ''}<h2>Dernières manches</h2><ul class="hu-score-list">${store.history.slice(-5).reverse().map(r => `<li><span>${r.team ? `${escape(r.team.label)} · ` : ''}${escape(r.player || 'Sans prénoms')}<small>${escape(r.themeLabel)} · ${r.duration} s</small></span><strong>${score(r.rows)} pt${score(r.rows) > 1 ? 's' : ''}</strong></li>`).join('')}</ul><button class="hu-text-button" data-act="clear-history" type="button">Effacer les scores</button></section>`;
   }
 
   function initializeAudio() {
@@ -332,6 +332,7 @@
         return { index, label: `Équipe ${index + 1}`, members: store.teams.members[index].slice() };
       })() : null,
     };
+    round.cloud = global.JDDCloud.begin('heads', round.team ? round.team.members : [round.player]);
     resume = false;
     readyMessage = '';
     save();
@@ -473,14 +474,13 @@
     round.finished = true;
     round.reason = reason;
     round.remaining = Math.max(0, round.remaining);
-    store.history.push({ id: round.id, player: round.player, team: round.team || null, themeLabel: round.themeLabel, duration: round.duration, rows: round.rows });
+    store.history.push({ id: round.id, player: round.player, participant: roundParticipant(), team: round.team || null, themeLabel: round.themeLabel, duration: round.duration, rows: round.rows });
     store.history = store.history.slice(-30);
     if (round.team) {
       const total = store.teams.totals[round.team.index];
       total.points += score(round.rows); total.rounds += 1;
     } else if (round.player) {
-      let total = store.totals.find(t => t.player === round.player);
-      if (!total) { total = { player: round.player, points: 0, rounds: 0 }; store.totals.push(total); }
+      const total = personalTotal(true);
       total.points += score(round.rows); total.rounds += 1;
     }
     const people = names(), index = people.indexOf(round.player);
@@ -490,9 +490,26 @@
       store.nextPlayer = other[(other.indexOf(last?.player) + 1) % other.length];
     } else store.nextPlayer = people.length ? people[(index + 1) % people.length] : '';
     stopSensors(); releaseAwake();
+    recordCloudRound();
     save();
     beep(880, .15); beep(660, .15, .18); beep(440, .3, .36);
     renderResults();
+  }
+
+  function recordCloudRound() {
+    if (!round?.cloud) return;
+    global.JDDCloud.record(round.cloud, round.cloud.participants.map(participant => ({ participant,
+      metrics: { games: 1, words_found: score(round.rows), words_passed: round.rows.filter(r => r.status === 'pass').length, points: score(round.rows) },
+    })), { rows: round.rows.map(r => ({ word: r.word, status: r.status })), team: Boolean(round.team) });
+  }
+  function roundParticipant() { return round.cloud?.participants.find(p => p.label === round.player) || null; }
+  function personalTotal(create = false) {
+    const participant = roundParticipant();
+    let total = store.totals.find(t => participant?.kind === 'account'
+      ? t.participant?.kind === 'account' && t.participant.id === participant.id
+      : t.participant?.kind !== 'account' && t.player === round.player);
+    if (!total && create) { total = { player: round.player, participant, points: 0, rounds: 0 }; store.totals.push(total); }
+    return total;
   }
 
   function renderResults() {
@@ -564,10 +581,10 @@
       const recorded = store.history.find(r => r.id === round.id);
       if (recorded) {
         recorded.rows = round.rows;
-        const total = round.team ? store.teams.totals[round.team.index] : store.totals.find(t => t.player === round.player);
+        const total = round.team ? store.teams.totals[round.team.index] : personalTotal();
         if (total) total.points += row.status === 'correct' ? 1 : -1;
       }
-      save(); renderResults(); return;
+      recordCloudRound(); save(); renderResults(); return;
     }
     const button = event.target.closest('[data-act]');
     const move = event.target.closest('[data-move-player]');

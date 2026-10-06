@@ -1,0 +1,11 @@
+{
+  "config": {
+    "network": {
+      "allowed_domains": [
+        "fonts.googleapis.com",
+        "fonts.gstatic.com",
+        "jyuzvxhnolzwcviycljm.supabase.co"
+      ]
+    }
+  }
+}

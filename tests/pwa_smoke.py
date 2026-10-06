@@ -123,7 +123,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         players = page.locator('.home-players').bounding_box()
         heads = page.locator('#headsBtn').bounding_box()
         assert hero['y'] + hero['height'] <= players['y'] < uc['y'] < heads['y']
-        page.wait_for_function('navigator.serviceWorker.controller !== null')
+        page.wait_for_function('() => navigator.serviceWorker.controller !== null')
         registration = page.evaluate('''async () => {
           const reg = await navigator.serviceWorker.ready;
           return {scope: reg.scope, state: reg.active.state, updateViaCache: reg.updateViaCache};
@@ -145,7 +145,10 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           return (await cache.keys()).map(r => r.url);
         }''', cache)
         quiz360_images = json.loads((site / 'data/culture.quiz360.images.json').read_text())
-        assert len(shell) == 59 + len(quiz360_images), (len(shell), shell)
+        assert len(shell) == 65 + len(quiz360_images), len(shell)
+        for file in ['styles/accounts.css','vendor/supabase/supabase.js','scripts/supabase-config.js',
+                     'scripts/core/participants.js','scripts/core/cloud.js','scripts/app/accounts.js']:
+            assert any(url.endswith('/' + file) for url in shell), file
         for file in ['data/culture.quiz360.js', 'data/culture.quiz360.images.json', *quiz360_images]:
             assert base + file in shell
         assert base + 'styles/questions.css' in shell
@@ -380,7 +383,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         )
         root_page = root_context.new_page()
         root_page.goto(origin + '/', wait_until='load')
-        root_page.wait_for_function('navigator.serviceWorker.controller !== null')
+        root_page.wait_for_function('() => navigator.serviceWorker.controller !== null')
         assert root_page.evaluate('async () => (await navigator.serviceWorker.ready).scope') == origin + '/'
         assert not errors, errors
         root_context.close()

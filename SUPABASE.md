@@ -1,0 +1,147 @@
+# Comptes et statistiques de Jeu du Duc
+
+Le site reste une PWA statique, publiée sur GitHub Pages. Supabase fournit
+Auth, PostgreSQL et un bucket privé pour les avatars. Les invités continuent
+à jouer sans compte. Les profils et statistiques sont visibles uniquement
+aux utilisateurs connectés ; les emails restent dans Supabase Auth.
+
+## Activation sur le projet Supabase
+
+La migration est préparée et vérifiée localement. Elle n'a pas été exécutée
+sur le projet distant : l'environnement ne dispose d'aucun accès SQL ou
+d'administration Supabase, et le domaine du projet n'est pas autorisé par
+sa politique réseau actuelle.
+
+1. Dans **SQL Editor**, exécuter le contenu de
+   `supabase/migrations/202610060001_accounts_and_statistics.sql` une fois.
+   La transaction crée les profils, les résultats, les règles RLS, le calcul
+   des statistiques et le bucket privé `avatars`. Elle reprend aussi les
+   comptes éventuellement déjà présents. Ne pas réexécuter une migration
+   déjà appliquée ; conserver son historique pour les évolutions suivantes.
+2. Dans **Authentication → URL Configuration**, définir le Site URL sur
+   `https://francoisharan.github.io/Jeu-du-duc/` et ajouter cette même URL aux
+   Redirect URLs. Pour une prévisualisation, autoriser explicitement son URL
+   exacte. Aucune redirection fournie par un joueur n'est utilisée par le site.
+3. Dans les réglages du fournisseur **Email**, activer la confirmation des
+   emails et imposer au moins 12 caractères aux mots de passe. Activer la
+   protection contre les mots de passe compromis si le forfait la propose.
+   Conserver les limites de tentatives de Supabase Auth. Configurer un
+   service SMTP de production : le service email intégré de développement
+   peut limiter les destinataires et les envois. Le site n'envoie aucun email
+   lui-même et ne stocke jamais de mot de passe.
+4. Dans **Authentication → Email Templates**, utiliser les modèles
+   `supabase/email-confirmation.html` pour **Confirm signup** et
+   `supabase/email-recovery.html` pour **Reset password**. Ils affichent le
+   code à six chiffres `{{ .Token }}` : confirmation et récupération peuvent
+   ainsi se terminer dans la PWA, même si l'email s'ouvre dans une autre app.
+   Régler la durée de validité des codes à 10 minutes ; garder les limites
+   de tentatives et de renvoi d'Auth. Le lien de confirmation est aussi conservé.
+5. Vérifier sur deux comptes de contrôle : inscription, confirmation,
+   connexion, récupération du mot de passe, photo, partie avec un ami,
+   rechargement, déconnexion et résultat hors connexion puis synchronisé.
+   Les codes fonctionnent dans la PWA d'origine. Un éventuel lien de
+   récupération utilise PKCE et doit s'ouvrir dans le navigateur de la demande.
+
+La clé dans `scripts/supabase-config.js` est une clé **publishable** (ou anon),
+prévue pour un site public. Ne jamais y placer une clé secret, service_role,
+un mot de passe de base de données ou un jeton d'administration. Une nouvelle
+URL de projet nécessite aussi la mise à jour des domaines autorisés dans la
+Content Security Policy d'`index.html`.
+
+## Accès de cet environnement de développement
+
+Ajouter uniquement `jyuzvxhnolzwcviycljm.supabase.co` aux domaines autorisés,
+en conservant les autres domaines et les presets existants. La tentative
+d'enregistrement du brouillon a retourné `draft_not_editable` : le brouillon
+est verrouillé et sa modification n'a pas été enregistrée. Le fichier
+`supabase/environment-network.json` conserve la liste proposée. Si les
+paramètres ne sont plus modifiables dans cette conversation, ouvrir une
+nouvelle configuration depuis les paramètres de l'environnement. Enregistrer
+puis publier cette configuration avant de retester l'accès distant.
+
+Cet accès réseau permettra de tester Auth et l'API publique ; la clé
+publishable ne donne aucun droit pour créer les tables ou administrer Auth.
+L'application sur les téléphones n'utilise pas le proxy de développement.
+
+## Identités et résultats
+
+- Un invité reçoit un UUID local. Un compte garde l'UUID Supabase. Saisir un
+  prénom n'associe jamais un invité à un compte existant. Les anciennes
+  listes de prénoms sont reprises comme invités, sans attribution historique
+  de leurs scores à des comptes.
+- Les jeux conservent une copie des identités au départ de la partie. Les
+  changements de la bande ou du compte connecté ne changent pas ses joueurs.
+  Les homonymes sont distingués dans les libellés des parties.
+- Les comptes sont proposés six par six, avec le compte connecté en premier
+  puis les profils le plus souvent ajoutés depuis ce téléphone.
+- Les nouvelles parties Undercover et Géographie sont comptées à leur fin.
+  Devine Tête compte une manche comme une partie ; en équipes, les points et
+  mots de la manche reviennent aux membres de l'équipe qui devine. Une
+  correction remplace son résultat précédent.
+- Questions et défis comptent une partie au lancement. Culture G. compte
+  séparément les QCM/vrai-faux répondus et les réponses ouvertes dévoilées.
+  Une réponse dévoilée n'est jamais supposée correcte. Le mode personnalisé
+  compte sa partie dans « Personnalisé » et ses cartes dans leur catégorie.
+- Un événement garde un UUID et une révision, y compris après une coupure.
+  La file persistante est séparée par organisateur. Une reprise ne duplique
+  pas les résultats et un autre compte connecté ne peut pas envoyer ceux
+  de l'organisateur précédent. La synchronisation se fait quand l'application
+  est ouverte avec du réseau ; iOS ne garantit pas une tâche en arrière-plan.
+- Après une première connexion en ligne, les profils et dernières statistiques
+  synchronisées restent consultables hors connexion sur ce téléphone. La
+  déconnexion efface ce cache. Une photo indisponible revient à l'initiale.
+- Le navigateur peut effacer son stockage : les résultats déjà synchronisés
+  restent dans Supabase, les résultats encore uniquement locaux peuvent être
+  perdus. Le jeu signale une sauvegarde locale indisponible ou une attente de
+  synchronisation. Ne pas nettoyer le stockage avant d'avoir synchronisé.
+
+## Droits et données
+
+Les comptes connectés voient les prénoms, photos et statistiques de tous les
+comptes, comme demandé. Un organisateur peut attribuer des résultats aux
+comptes sélectionnés, sans invitation supplémentaire. Les scores reposent
+donc sur la confiance entre organisateurs : cette version n'est pas un
+classement compétitif protégé contre la triche. Un compte supplémentaire
+créé sur le site dispose de ces mêmes droits de jeu.
+
+Les tables de résultats ne sont pas directement modifiables depuis le client.
+La fonction `record_game_event` vérifie l'identité de l'organisateur, les
+comptes, les métriques et la révision dans une transaction. Les détails d'une
+partie sont lisibles par son organisateur et ses participants ; les autres
+comptes peuvent lire les statistiques partagées. Seul le propriétaire peut
+modifier son prénom ou sa photo. Les fichiers d'avatars sont limités à 2 Mo
+dans le bucket privé, avec URLs signées. Le navigateur réencode les photos
+en WebP de 384 pixels, sans conserver les métadonnées de la photo originale.
+
+La Content Security Policy refuse les scripts externes, les scripts inline
+et l'évaluation de chaînes en JavaScript. Le SDK Supabase 2.117.2 et sa licence
+MIT sont inclus dans `vendor/supabase/`, aussi pour le hors connexion.
+Les réponses Auth et API ne sont pas mises en cache par le service worker.
+
+La suppression d'un utilisateur dans Supabase Auth supprime son profil,
+ses résultats et les parties qu'il a organisées (y compris leurs résultats)
+par cascade. Les fichiers de sa photo doivent être supprimés
+du bucket par l'administrateur ; une suppression de compte autonome et des
+sauvegardes/restaurations de production restent à prévoir si souhaitées.
+Protéger le compte administrateur Supabase avec une authentification multifacteur.
+
+## Vérifications reproductibles
+
+```sh
+python tests/accounts_smoke.py
+python tests/pwa_smoke.py
+```
+
+Le premier utilise le vrai SDK avec une API de contrôle : aucune inscription
+ni aucun email ne sont envoyés au vrai service. Il vérifie les homonymes,
+la connexion, les photos, les jeux, les corrections, la file hors ligne et
+le changement de compte. Les contrôles de droits exécutent réellement la
+migration dans PostgreSQL embarqué, avec des schémas Auth/Storage de contrôle :
+
+```sh
+npm --cache /tmp/jdd-npm-cache install --prefix /tmp/jdd-db-check --no-audit --no-fund @electric-sql/pglite@0.3.14
+JDD_PGLITE_MODULE=/tmp/jdd-db-check/node_modules/@electric-sql/pglite/dist/index.js node tests/accounts_security.mjs
+```
+
+Ces contrôles locaux ne remplacent pas la vérification des réglages du projet
+Supabase et des emails réels après activation, ni les essais sur iPhone/Android.

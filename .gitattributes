@@ -1,0 +1,3 @@
+# Le SDK officiel contient des espaces littéraux dans ses chaînes JavaScript.
+# Conserver la distribution minifiée intacte.
+vendor/supabase/supabase.js -whitespace
