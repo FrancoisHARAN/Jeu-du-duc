@@ -10,13 +10,13 @@
   const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const words = value => String(value).split(/(\s+)/).map(part => /\s/.test(part) ? esc(part) : `<span class="foot-word">${esc(part)}</span>`).join('');
   let root, options, editor, data, byId, loading, clock, opened = false, request = 0, phase = 'setup', match = null;
-  let settings = { difficulty:'AMATEUR', mode:'classic', format:'individual', rounds:1, categories:[] };
+  let settings = { difficulty:'AMATEUR', format:'individual', categories:[] };
   let assignments = Object.create(null), reviewRound = 'all';
   let audio = null, feedbackSounds = null;
   const names = () => options.getSuggestedNames().slice();
   const categoryLabel = value => value || 'Non classées';
-  const sideIndex = () => match.mode === 'classic' ? match.round % match.sides.length : null;
-  const sideName = () => match.mode === 'classic' ? match.sides[sideIndex()].name : 'Shotgun';
+  const sideIndex = () => match.round % match.sides.length;
+  const sideName = () => match.sides[sideIndex()].name;
   const question = () => byId.get(match.deck[match.cursor]);
   const time = ms => `00:${String(Math.ceil(ms / 1000)).padStart(2, '0')}`.replace('00:60', '01:00');
   const button = (action, text, extra = '') => `<button type="button" class="foot-button ${extra}" data-foot="${action}">${text}</button>`;
@@ -76,7 +76,7 @@
       await loadData(); if (!opened || token !== request) return;
       if (match && (match.deck.some(id => !byId.has(id)) || match.rows.some(r => !byId.has(r.question)))) match = null;
       const categories = [...new Set(data.map(q => q.category))].sort((a,b) => categoryLabel(a).localeCompare(categoryLabel(b),'fr'));
-      screen('setup', panel(`<div class="foot-content"><div class="foot-intro"><img src="image/home/football.jpg" width="1254" height="1254" alt=""><h1>Grand Quiz Foot</h1></div>${match ? button('resume', match.finished ? 'Dernier classement' : 'Reprendre la partie', 'foot-button--green') : ''}<fieldset><legend>Difficulté</legend>${radios('difficulty',LEVELS)}</fieldset><fieldset><legend>Mode</legend>${radios('mode',{classic:'Classique',shotgun:'Shotgun'})}<p class="foot-help" id="foot-rules"></p></fieldset><fieldset><legend>Qui s’affronte ?</legend>${radios('format',{individual:'Chacun pour soi',teams:'2 équipes'})}</fieldset><fieldset><legend>Qui joue ?</legend><div id="foot-players"></div></fieldset><fieldset id="foot-teams" ${settings.format === 'teams' ? '' : 'hidden'}><legend>Les équipes</legend><div id="foot-team-list"></div>${button('shuffle','Mélanger les équipes','foot-button--pink')}</fieldset><details><summary>Catégories · <span id="foot-category-label"></span></summary><button class="foot-link" type="button" data-foot="all-categories">Tous les thèmes</button><div class="foot-categories">${categories.map((category,index) => `<label><input type="checkbox" data-foot-category="${index}" value="${esc(category)}" ${settings.categories.includes(category) ? 'checked' : ''}>${esc(categoryLabel(category))}</label>`).join('')}</div></details><fieldset><legend>Manches</legend>${radios('rounds',{1:'1 tour',2:'2 tours'})}</fieldset><p class="foot-help" id="foot-format"></p><p role="alert" id="foot-error" hidden></p>${button('start','Lancer la partie ↗')}</div>`, 'FOOTBALL'));
+      screen('setup', panel(`<div class="foot-content"><div class="foot-intro"><img src="image/home/football.jpg" width="1254" height="1254" alt=""><h1>Grand Quiz Foot</h1></div>${match ? button('resume', match.finished ? 'Dernier classement' : 'Reprendre la partie', 'foot-button--green') : ''}<fieldset><legend>Difficulté</legend>${radios('difficulty',LEVELS)}</fieldset><fieldset id="foot-roster"><legend>Qui joue ?</legend>${radios('format',{individual:'Chacun pour soi',teams:'2 équipes'})}<div id="foot-teams" ${settings.format === 'teams' ? '' : 'hidden'}><div id="foot-team-list" class="foot-team-tables"></div>${button('shuffle','Mélanger les équipes','foot-button--pink')}</div><div id="foot-players"></div></fieldset><details><summary>Catégories · <span id="foot-category-label"></span></summary><button class="foot-link" type="button" data-foot="all-categories">Tous les thèmes</button><div class="foot-categories">${categories.map((category,index) => `<label><input type="checkbox" data-foot-category="${index}" value="${esc(category)}" ${settings.categories.includes(category) ? 'checked' : ''}>${esc(categoryLabel(category))}</label>`).join('')}</div></details><p class="foot-help" id="foot-format"></p><p role="alert" id="foot-error" hidden></p>${button('start','Lancer la partie ↗')}</div>`, 'FOOTBALL'));
       editor = global.JDDPlayerEditor.mount(root.querySelector('#foot-players'), {getNames:names,addPlayer:options.addPlayer,removePlayer:options.removePlayer});
       updateSetup();
     } catch (_) {
@@ -110,13 +110,17 @@
   function updateSetup() {
     if (phase !== 'setup' || !opened) return;
     updateAssignments(); root.querySelector('#foot-teams').hidden = settings.format !== 'teams';
-    root.querySelector('#foot-team-list').innerHTML = names().map((name,index) => `<label class="foot-team-row"><span class="foot-team-name">${esc(name)}</span><select data-foot-team="${index}" aria-label="Équipe de ${esc(name)}"><option value="0" ${assignments[name] === 0 ? 'selected' : ''}>Équipe 1</option><option value="1" ${assignments[name] === 1 ? 'selected' : ''}>Équipe 2</option></select></label>`).join('');
-    root.querySelector('#foot-rules').textContent = settings.mode === 'shotgun'
-      ? '60 secondes pour tous. L’arbitre touche le premier qui répond juste.' : '60 secondes par camp. Le camp adverse lit et valide les réponses.';
+    root.querySelector('#foot-roster').dataset.format = settings.format;
+    root.querySelector('#foot-team-list').innerHTML = [0,1].map(team => {
+      const members = names().filter(name => assignments[name] === team);
+      return `<section class="foot-team-table" data-team="${team}" aria-labelledby="foot-team-title-${team}"><h2 id="foot-team-title-${team}">Équipe ${team + 1}</h2><ul>${members.map(name => {
+        const index = names().indexOf(name);
+        return `<li><span>${esc(name)}</span><button type="button" class="foot-team-remove" data-foot-remove="${index}" aria-label="Retirer ${esc(name)}">−</button><button type="button" class="foot-team-move" data-foot-move="${index}" aria-label="Passer ${esc(name)} dans l’équipe ${2 - team}" ${members.length <= 1 ? 'disabled' : ''}>${team ? '←' : '→'}</button></li>`;
+      }).join('')}</ul></section>`;
+    }).join('');
     root.querySelector('#foot-category-label').textContent = settings.categories.length ? `${settings.categories.length} sélectionnée${settings.categories.length > 1 ? 's' : ''}` : 'Tous les thèmes';
-    const total = settings.rounds * (settings.mode === 'classic' ? contenders().length : 1);
     root.querySelector('#foot-format').textContent = questionPool().length
-      ? `${total} manche${total > 1 ? 's' : ''} de 60 secondes${settings.mode === 'classic' ? ' · Même temps pour tous' : ''}`
+      ? '60 secondes par joueur ou équipe. Le camp adverse lit et valide.'
       : 'Aucune question avec ces thèmes et ce niveau.';
     root.querySelector('[data-foot="start"]').disabled = !names().length;
   }
@@ -130,12 +134,12 @@
   function start() {
     if (phase !== 'setup' || !names().length) return;
     updateAssignments(); const sides = contenders();
-    if ((settings.format === 'teams' || settings.mode === 'shotgun') && names().length < 2) { fail('Ajoute au moins 2 joueurs pour ce format.'); return; }
+    if (settings.format === 'teams' && names().length < 2) { fail('Ajoute au moins 2 joueurs pour ce format.'); return; }
     if (sides.some(side => !side.members.length)) { fail('Place au moins un joueur dans chaque équipe.'); return; }
     const pool = questionPool(); if (!pool.length) { fail('Aucune question à ce niveau dans ces thèmes.'); return; }
     const players = names();
-    match = {version:2,...settings,categories:settings.categories.slice(),players,sides,deck:shuffledDeck(pool),cursor:0,round:0,
-      totalRounds:settings.rounds * (settings.mode === 'classic' ? sides.length : 1),scores:sides.map(() => 0),rows:[],
+    match = {version:2,...settings,mode:'classic',rounds:1,categories:settings.categories.slice(),players,sides,deck:shuffledDeck(pool),cursor:0,round:0,
+      totalRounds:sides.length,scores:sides.map(() => 0),rows:[],
       stage:'ready',remaining:ROUND_MS,deadline:0,feedbackUntil:0,paused:false,finished:false,cloud:global.JDDCloud.begin('football',players)};
     saveSettings(); save(); renderReady();
   }
@@ -144,13 +148,12 @@
   }
   function renderReady() {
     stopClock();
-    const reader = match.mode === 'shotgun' ? 'L’arbitre' : match.sides.length > 1 ? match.sides[(sideIndex() + 1) % match.sides.length].name : 'Un ami';
-    screen('ready', panel(`<div class="foot-content foot-ready"><p class="foot-round-label">Manche ${match.round + 1} / ${match.totalRounds}</p><div class="foot-handoff"><strong>${esc(reader)}</strong><span>tient le téléphone</span><hr><strong>${match.mode === 'shotgun' ? 'Tout le monde' : esc(sideName())}</strong><span>répond aux questions</span></div><strong class="foot-ready-time">60 secondes</strong>${button('begin','GO !')}</div>`,match.mode === 'shotgun' ? 'SHOTGUN' : 'CLASSIQUE'));
+    const reader = match.sides.length > 1 ? match.sides[(sideIndex() + 1) % match.sides.length].name : 'Un ami';
+    screen('ready', panel(`<div class="foot-content foot-ready"><p class="foot-round-label">Manche ${match.round + 1} / ${match.totalRounds}</p><div class="foot-handoff"><strong>${esc(reader)}</strong><span>tient le téléphone</span><hr><strong>${esc(sideName())}</strong><span>répond aux questions</span></div><strong class="foot-ready-time">60 secondes</strong>${button('begin','GO !')}</div>`,'FOOTBALL'));
   }
   function roundPoints() { return match.rows.filter(r => r.round === match.round && r.winner !== null).length; }
   function answerControls() {
-    if (match.mode === 'classic') return `<div class="foot-verdicts"><button type="button" class="foot-verdict foot-verdict--wrong" data-foot="wrong"><span aria-hidden="true">✕</span>Incorrect</button><button type="button" class="foot-verdict foot-verdict--correct" data-foot="correct"><span aria-hidden="true">✓</span>Correct</button></div>`;
-    return `<div class="foot-shotgun-choices">${match.sides.map((side,i) => `<button type="button" class="foot-verdict foot-verdict--correct" data-foot-award="${i}" aria-label="Bonne réponse de ${esc(side.name)}">${esc(side.name)}<b>+1</b></button>`).join('')}</div>`;
+    return `<div class="foot-verdicts"><button type="button" class="foot-verdict foot-verdict--wrong" data-foot="wrong"><span aria-hidden="true">✕</span>Incorrect</button><button type="button" class="foot-verdict foot-verdict--correct" data-foot="correct"><span aria-hidden="true">✓</span>Correct</button></div>`;
   }
   function renderLive() {
     stopClock();
@@ -172,7 +175,7 @@
     } else delete body.dataset.feedback;
     root.querySelector('#foot-live-category').textContent = q ? `${LEVELS[q.difficulty]} · ${categoryLabel(q.category)}` : '';
     root.querySelector('#foot-score').textContent = roundPoints();
-    root.querySelectorAll('[data-foot="correct"], [data-foot="wrong"], [data-foot="pass"], [data-foot-award]').forEach(b => {b.disabled = match.stage !== 'playing' || !q;});
+    root.querySelectorAll('[data-foot="correct"], [data-foot="wrong"], [data-foot="pass"]').forEach(b => {b.disabled = match.stage !== 'playing' || !q;});
     phase = match.stage; root.dataset.screen = phase; fitText();
   }
   function begin() {
@@ -213,7 +216,7 @@
   function renderSummary() {
     if (match.finished) {renderResults(); return;}
     stopClock(); const rows = match.rows.filter(r => r.round === match.round), correct = rows.filter(r => r.winner !== null).length;
-    screen('round-end',panel(`<div class="foot-content foot-summary"><p class="foot-round-label">Manche ${match.round + 1} / ${match.totalRounds}</p><h1>${esc(sideName())}</h1><div class="foot-result-score"><strong>${correct}</strong><span>point${correct > 1 ? 's' : ''}</span></div><p class="foot-help">${rows.filter(r => r.reason === 'wrong').length} incorrectes · ${rows.filter(r => r.reason === 'pass').length} passées</p>${scores()}${button('next',match.mode === 'classic' ? `Au tour de ${esc(match.sides[(match.round + 1) % match.sides.length].name)} ↗` : 'Manche suivante ↗')}</div>`,'FIN DE MANCHE',true));
+    screen('round-end',panel(`<div class="foot-content foot-summary"><p class="foot-round-label">Manche ${match.round + 1} / ${match.totalRounds}</p><h1>${esc(sideName())}</h1><div class="foot-result-score"><strong>${correct}</strong><span>point${correct > 1 ? 's' : ''}</span></div><p class="foot-help">${rows.filter(r => r.reason === 'wrong').length} incorrectes · ${rows.filter(r => r.reason === 'pass').length} passées</p>${scores()}${button('next',`Au tour de ${esc(match.sides[(match.round + 1) % match.sides.length].name)} ↗`)}</div>`,'FIN DE MANCHE',true));
   }
   function next() {
     if (phase !== 'round-end' || match.finished) return;
@@ -227,11 +230,11 @@
     const best = Math.max(...match.scores);
     global.JDDCloud.record(match.cloud,match.players.map(name => {
       const side = match.sides.findIndex(s => s.members.includes(name));
-      const rows = match.rows.filter(r => match.mode === 'shotgun' || r.turn === side);
+      const rows = match.rows.filter(r => r.turn === side);
       const correct = rows.filter(r => r.winner === side).length;
       return {participant:match.cloud.participants.find(p => p.label === name),metrics:{
         games:1,wins:Number(match.sides.length > 1 && best > 0 && match.scores[side] === best),points:match.scores[side],
-        turns:match.rounds,questions_answered:match.mode === 'shotgun' ? correct : rows.filter(r => r.reason !== 'pass').length,correct_answers:correct,
+        turns:match.rounds,questions_answered:rows.filter(r => r.reason !== 'pass').length,correct_answers:correct,
       }};
     }), {quiz_mode:match.mode,format:match.format,difficulty:match.difficulty,categories:match.categories,round_seconds:60,rounds:match.totalRounds,
       team_accounts:match.sides.map(s => s.members.map(name => match.cloud.participants.find(p => p.label === name)).filter(p => p?.kind === 'account').map(p => p.id)),
@@ -252,11 +255,9 @@
     if (!match || !['round-end','results','review'].includes(phase)) return;
     reviewRound = filter;
     const list = match.rows.map((row,index) => ({...row,index})).filter(row => filter === 'all' || row.round === Number(filter));
-    screen('review',panel(`<div class="foot-content"><h1>VAR</h1><label class="foot-help" for="foot-review-round">Quelle manche ?</label><select id="foot-review-round"><option value="all">Toutes les manches</option>${Array.from({length:match.round + 1},(_,i) => `<option value="${i}" ${String(i) === filter ? 'selected' : ''}>Manche ${i + 1}${match.mode === 'classic' ? ` · ${esc(match.sides[i % match.sides.length].name)}` : ''}</option>`).join('')}</select><p class="foot-help">Touche le bon résultat pour corriger.</p><ul class="foot-review-list">${list.map(row => {
+    screen('review',panel(`<div class="foot-content"><h1>VAR</h1><label class="foot-help" for="foot-review-round">Quelle manche ?</label><select id="foot-review-round"><option value="all">Toutes les manches</option>${Array.from({length:match.round + 1},(_,i) => `<option value="${i}" ${String(i) === filter ? 'selected' : ''}>Manche ${i + 1} · ${esc(match.sides[i % match.sides.length].name)}</option>`).join('')}</select><p class="foot-help">Touche le bon résultat pour corriger.</p><ul class="foot-review-list">${list.map(row => {
       const q = byId.get(row.question);
-      return `<li data-status="${row.reason}"><span class="foot-review-context">Manche ${row.round + 1}${row.turn !== null ? ` · ${esc(match.sides[row.turn].name)}` : ''}</span><strong class="foot-unbroken">${words(q.question)}</strong><p class="foot-unbroken">${words(q.answer)}</p>${match.mode === 'classic'
-        ? `<div class="foot-review-verdicts"><button type="button" data-foot-review="${row.index}" data-result="wrong" aria-pressed="${row.reason !== 'correct'}" aria-label="Marquer la réponse ${row.index + 1} incorrecte">✕ Incorrect</button><button type="button" data-foot-review="${row.index}" data-result="correct" aria-pressed="${row.reason === 'correct'}" aria-label="Marquer la réponse ${row.index + 1} correcte">✓ Correct</button></div>`
-        : `<label class="foot-help" for="foot-winner-${row.index}">Le point revient à</label><select id="foot-winner-${row.index}" data-foot-review-winner="${row.index}"><option value="-1">Personne</option>${match.sides.map((s,i) => `<option value="${i}" ${row.winner === i ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>`}</li>`;
+      return `<li data-status="${row.reason}"><span class="foot-review-context">Manche ${row.round + 1} · ${esc(match.sides[row.turn].name)}</span><strong class="foot-unbroken">${words(q.question)}</strong><p class="foot-unbroken">${words(q.answer)}</p><div class="foot-review-verdicts"><button type="button" data-foot-review="${row.index}" data-result="wrong" aria-pressed="${row.reason !== 'correct'}" aria-label="Marquer la réponse ${row.index + 1} incorrecte">✕ Incorrect</button><button type="button" data-foot-review="${row.index}" data-result="correct" aria-pressed="${row.reason === 'correct'}" aria-label="Marquer la réponse ${row.index + 1} correcte">✓ Correct</button></div></li>`;
     }).join('')}</ul>${list.length ? '' : '<p class="foot-help">Aucune réponse validée dans cette manche.</p>'}${button('close-var','Valider la VAR ↗')}</div>`,'CORRECTIONS'));
   }
   function correctRow(index,winner) {
@@ -268,7 +269,7 @@
     match.scores = match.sides.map((_,i) => match.rows.filter(r => r.winner === i).length);
     if (match.finished) record(); save();
     // Actualiser la ligne sans déplacer la liste ni perdre le focus.
-    const item = root.querySelector(`[data-foot-review="${index}"], [data-foot-review-winner="${index}"]`)?.closest('li');
+    const item = root.querySelector(`[data-foot-review="${index}"]`)?.closest('li');
     if (item) {
       item.dataset.status = row.reason;
       item.querySelectorAll('[data-foot-review]').forEach(b => b.setAttribute('aria-pressed',String((b.dataset.result === 'correct') === (winner !== null))));
@@ -318,24 +319,24 @@
   function restore() {
     try {
       const s = JSON.parse(localStorage.getItem(SETTINGS));
-      if (s && LEVELS[s.difficulty] && ['classic','shotgun'].includes(s.mode) && ['individual','teams'].includes(s.format)
-        && Array.isArray(s.categories) && s.categories.every(c => typeof c === 'string')) settings = {difficulty:s.difficulty,mode:s.mode,format:s.format,categories:s.categories,rounds:[1,2].includes(s.rounds) ? s.rounds : 1};
+      if (s && LEVELS[s.difficulty] && ['individual','teams'].includes(s.format)
+        && Array.isArray(s.categories) && s.categories.every(c => typeof c === 'string')) settings = {difficulty:s.difficulty,format:s.format,categories:s.categories};
       const m = JSON.parse(localStorage.getItem(STORE));
-      if (!m || m.version !== 2 || !LEVELS[m.difficulty] || !['classic','shotgun'].includes(m.mode) || !['individual','teams'].includes(m.format)
-        || ![1,2].includes(m.rounds) || !Array.isArray(m.players) || !m.players.length || m.players.length > 30 || !m.players.every(n => typeof n === 'string')
+      if (!m || m.version !== 2 || !LEVELS[m.difficulty] || m.mode !== 'classic' || !['individual','teams'].includes(m.format)
+        || m.rounds !== 1 || !Array.isArray(m.players) || !m.players.length || m.players.length > 30 || !m.players.every(n => typeof n === 'string')
         || !Array.isArray(m.sides) || !m.sides.length || !m.sides.every(s => typeof s.name === 'string' && Array.isArray(s.members) && s.members.length && s.members.every(n => m.players.includes(n)))
         || m.sides.flatMap(s => s.members).length !== m.players.length || new Set(m.sides.flatMap(s => s.members)).size !== m.players.length
         || !Array.isArray(m.deck) || !m.deck.length || m.deck.length > 4631 || !m.deck.every(Number.isInteger) || new Set(m.deck).size !== m.deck.length
         || !Number.isInteger(m.cursor) || m.cursor < 0 || m.cursor > m.deck.length || !Array.isArray(m.rows) || m.rows.length > 10000
-        || !Number.isInteger(m.round) || m.round < 0 || m.round >= m.totalRounds || m.totalRounds !== m.rounds * (m.mode === 'classic' ? m.sides.length : 1)
+        || !Number.isInteger(m.round) || m.round < 0 || m.round >= m.totalRounds || m.totalRounds !== m.sides.length
         || !Array.isArray(m.categories) || !m.categories.every(c => typeof c === 'string') || !Array.isArray(m.scores) || m.scores.length !== m.sides.length
         || !['ready','playing','feedback','round-end','results'].includes(m.stage) || !Number.isFinite(m.remaining) || m.remaining < 0 || m.remaining > ROUND_MS
         || !Number.isFinite(m.deadline) || !Number.isFinite(m.feedbackUntil) || m.finished !== (m.stage === 'results')
         || (m.finished && m.round !== m.totalRounds - 1)
         || !m.rows.every(r => r && Number.isInteger(r.question) && Number.isInteger(r.round) && r.round >= 0 && r.round <= m.round
-          && ['correct','wrong','pass'].includes(r.reason) && r.turn === (m.mode === 'classic' ? r.round % m.sides.length : null)
+          && ['correct','wrong','pass'].includes(r.reason) && r.turn === r.round % m.sides.length
           && (r.winner === null || Number.isInteger(r.winner) && r.winner >= 0 && r.winner < m.sides.length)
-          && (r.reason === 'correct') === (r.winner !== null) && (m.mode !== 'classic' || r.winner === null || r.winner === r.turn))
+          && (r.reason === 'correct') === (r.winner !== null) && (r.winner === null || r.winner === r.turn))
         || m.scores.some((score,i) => score !== m.rows.filter(r => r.winner === i).length)
         || m.cursor !== m.rows.filter(r => r.round === m.round).length
         || (m.cloud && (!Array.isArray(m.cloud.participants) || typeof m.cloud.id !== 'string'))) return;
@@ -351,19 +352,26 @@
     root = document.getElementById('football'); options = config; restore();
     root.addEventListener('change',event => {
       const input = event.target;
-      if (phase === 'review' && input.matches('[data-foot-review-winner]')) {correctRow(Number(input.dataset.footReviewWinner),Number(input.value) < 0 ? null : Number(input.value)); return;}
       if (phase === 'review' && input.id === 'foot-review-round') {renderReview(input.value); return;}
       if (phase !== 'setup') return;
-      if (input.matches('[name^="foot-"]')) {const key = input.name.slice(5); settings[key] = key === 'rounds' ? Number(input.value) : input.value;}
+      if (input.matches('[name="foot-difficulty"], [name="foot-format"]')) settings[input.name.slice(5)] = input.value;
       else if (input.matches('[data-foot-category]')) settings.categories = [...root.querySelectorAll('[data-foot-category]:checked')].map(el => el.value);
-      else if (input.matches('[data-foot-team]')) assignments[names()[Number(input.dataset.footTeam)]] = Number(input.value);
       saveSettings(); updateSetup(); root.querySelector('#foot-error').hidden = true;
     });
     root.addEventListener('click',event => {
       const correction = event.target.closest('[data-foot-review]');
       if (correction && phase === 'review') {const i = Number(correction.dataset.footReview); correctRow(i,correction.dataset.result === 'correct' ? match.rows[i]?.turn : null); return;}
-      const award = event.target.closest('[data-foot-award]');
-      if (award && !award.disabled) {judge(Number(award.dataset.footAward),'correct'); return;}
+      const move = event.target.closest('[data-foot-move]');
+      if (move && !move.disabled && phase === 'setup' && settings.format === 'teams') {
+        const name = names()[Number(move.dataset.footMove)], team = assignments[name];
+        if (name && [0,1].includes(team) && names().filter(n => assignments[n] === team).length > 1) {
+          assignments[name] = 1 - team; updateSetup();
+          root.querySelector(`[data-foot-move="${move.dataset.footMove}"]`)?.focus({preventScroll:true});
+        }
+        return;
+      }
+      const remove = event.target.closest('[data-foot-remove]');
+      if (remove && phase === 'setup') {options.removePlayer(names()[Number(remove.dataset.footRemove)]); return;}
       const control = event.target.closest('[data-foot]'); if (!control || control.disabled) return;
       switch (control.dataset.foot) {
         case 'exit': pause(); opened = false; ++request; stopClock(); document.body.classList.remove('foot-open'); options.onExit(); break;
@@ -373,7 +381,7 @@
         case 'resume': resume(); break;
         case 'pause': pause(); break;
         case 'continue': if (phase === 'paused') {initializeAudio(); match.paused = false; match.stage = 'playing'; match.deadline = Date.now() + match.remaining; renderLive();} break;
-        case 'correct': if (match?.mode === 'classic') judge(sideIndex(),'correct'); break;
+        case 'correct': if (match) judge(sideIndex(),'correct'); break;
         case 'wrong': judge(null,'wrong'); break;
         case 'pass': judge(null,'pass'); break;
         case 'next': next(); break;

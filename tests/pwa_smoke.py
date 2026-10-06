@@ -288,36 +288,36 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
                 assert page.locator('.geo-pin--truth').count() == 1
             page.locator('[data-geo="exit"]').click()
         print('PASS: trois cartes vectorielles et données géographiques hors connexion', flush=True)
-        # Banque du classeur et les deux variantes du quiz disponibles en mode avion.
+        # Banque du classeur, chacun pour soi et équipes disponibles en mode avion.
         page.evaluate('window.footNow=Date.now;window.footOffset=0;Date.now=()=>footNow()+footOffset')
-        for mode in ['classic', 'shotgun']:
+        for format in ['individual', 'teams']:
             page.locator('#footballBtn').click()
             expect(page.locator('#football')).to_have_attribute('data-screen', 'setup')
-            page.locator(f'[name="foot-mode"][value="{mode}"]').check()
+            assert page.locator('[name="foot-mode"], [name="foot-rounds"]').count()==0
+            page.locator(f'[name="foot-format"][value="{format}"]').check()
+            if format=='teams': expect(page.locator('.foot-team-table')).to_have_count(2)
             page.locator('[data-foot="start"]').click()
-            page.locator('[data-foot="begin"]').click()
-            expect(page.locator('#football')).to_have_attribute('data-screen', 'playing')
-            assert page.locator('.foot-question').inner_text().strip()
-            assert page.locator('.foot-answer').inner_text().strip()
-            if mode == 'classic':
+            match=page.evaluate('JSON.parse(localStorage.getItem("jdd.football.v2"))')
+            assert match['mode']=='classic' and match['rounds']==1
+            for camp in range(match['totalRounds']):
+                page.locator('[data-foot="begin"]').click()
+                expect(page.locator('#football')).to_have_attribute('data-screen', 'playing')
+                assert page.locator('.foot-question').inner_text().strip()
+                assert page.locator('.foot-answer').inner_text().strip()
                 page.locator('[data-foot="correct"]').click()
-            else:
-                page.locator('[data-foot-award="1"]').click()
-            expect(page.locator('#football')).to_have_attribute('data-screen', 'feedback')
-            expect(page.locator('#football')).to_have_attribute('data-screen', 'playing')
-            page.evaluate('footOffset+=61000')
-            expect(page.locator('#football')).to_have_attribute('data-screen', 'round-end' if mode=='classic' else 'results')
+                expect(page.locator('#football')).to_have_attribute('data-screen', 'feedback')
+                expect(page.locator('#football')).to_have_attribute('data-screen', 'playing')
+                page.evaluate('footOffset+=61000')
+                expect(page.locator('#football')).to_have_attribute('data-screen', 'results' if camp==match['totalRounds']-1 else 'round-end')
+                if camp<match['totalRounds']-1: page.locator('[data-foot="next"]').click()
             page.locator('[data-foot="var"]').click()
-            if mode=='classic':
-                page.locator('[data-foot-review="0"][data-result="wrong"]').click()
-            else:
-                page.locator('[data-foot-review-winner="0"]').select_option('0')
+            page.locator('[data-foot-review="'+str(match['totalRounds']-1)+'"][data-result="wrong"]').click()
             scores=page.evaluate('JSON.parse(localStorage.getItem("jdd.football.v2")).scores')
-            assert scores[0]==(0 if mode=='classic' else 1) and scores[1]==0
+            assert scores==[1]*(match['totalRounds']-1)+[0]
             page.locator('[data-foot="close-var"]').click()
             page.locator('[data-foot="exit"]').click()
         page.evaluate('Date.now=footNow')
-        print('PASS: quiz foot classique et Shotgun, chrono, scores et VAR hors connexion', flush=True)
+        print('PASS: quiz foot chacun pour soi et équipes, un seul tour, chrono, scores et VAR hors connexion', flush=True)
         expect(page.locator('#setup')).to_be_visible()
         for mode in ['debut', 'hardcore', 'alcool', 'culture', 'custom']:
             page.locator(f'[data-mode="{mode}"]').click()

@@ -427,9 +427,9 @@ try:
         page.locator('#footballBtn').click()
         expect(page.locator('#football')).to_have_attribute('data-screen','setup')
         page.locator('[name="foot-format"][value="teams"]').check()
-        page.locator('[data-foot-team="0"]').select_option('1')  # Axel invité
-        page.locator('[data-foot-team="1"]').select_option('0')  # François compte
-        page.locator('[data-foot-team="2"]').select_option('0')  # Axel compte
+        page.locator('[data-foot-move="0"]').click()  # Axel invité
+        page.locator('[data-foot-move="1"]').click()  # François compte
+        expect(page.locator('[data-team="0"]')).to_contain_text('Axel')  # Axel compte
         page.locator('[data-foot="start"]').click()
         football_id=page.evaluate('JSON.parse(localStorage.getItem("jdd.football.v2")).cloud.id')
         page.evaluate('JDD.clearAccountPlayers()')

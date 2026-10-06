@@ -28,7 +28,7 @@ errors=[]
 try:
     with sync_playwright() as pw:
         browser=pw.chromium.launch(executable_path=os.environ.get('PWA_TEST_CHROMIUM') or shutil.which('chromium'),headless=True)
-        def home(people=None,width=393,height=852,fixture=None):
+        def home(people=None,width=393,height=852,fixture=None,old_settings=None):
             context=browser.new_context(viewport={'width':width,'height':height},is_mobile=width<900,has_touch=True,service_workers='block')
             context.add_init_script('''if (!localStorage.getItem('jdd.players')) localStorage.setItem('jdd.players', %s);
               const origin=Number(sessionStorage.getItem('test-foot-origin'))||Date.now();sessionStorage.setItem('test-foot-origin',origin);
@@ -43,6 +43,7 @@ try:
                 };
               }'''%json.dumps(json.dumps(people if people is not None else ['François','Solène'])))
             if fixture: context.route('**/data/football.questions.json',lambda route:route.fulfill(json={'questions':fixture}))
+            if old_settings: context.add_init_script('localStorage.setItem("jdd.football.settings.v1", %s)'%json.dumps(json.dumps(old_settings)))
             page=context.new_page();page.on('pageerror',lambda e:errors.append(str(e)));page.set_default_timeout(10000)
             page.goto(base,wait_until='load');page.locator('#footballBtn').click()
             expect(page.locator('#football')).to_have_attribute('data-screen','setup')
@@ -58,9 +59,8 @@ try:
         def advance(page,ms):
             page.evaluate('ms=>{offset+=ms;sessionStorage.setItem("test-foot-offset",offset);}',ms)
             page.wait_for_timeout(80)
-        def respond(page,action='correct',winner=None):
-            if winner is None: act(page,action)
-            else: page.locator(f'[data-foot-award="{winner}"]').click()
+        def respond(page,action='correct'):
+            act(page,action)
             expect(page.locator('#football')).to_have_attribute('data-screen','feedback')
             advance(page,501)
             expect(page.locator('#football')).to_have_attribute('data-screen','playing')
@@ -80,13 +80,17 @@ try:
                 q=page.locator('.foot-question').bounding_box();a=page.locator('.foot-answer').bounding_box()
                 assert q['y']>=body['y']-1 and a['y']+a['height']<=body['y']+body['height']+1,(page.viewport_size,q,a,body)
 
-        context,page=home()
+        context,page=home(old_settings={'difficulty':'AMATEUR','mode':'shotgun','rounds':2,'format':'individual','categories':[]})
+        assert page.locator('[name="foot-mode"], [name="foot-rounds"]').count()==0
+        assert page.locator('#football fieldset').count()==2
+        assert page.locator('#foot-roster [name="foot-format"]').count()==2
+        assert page.locator('#foot-roster #foot-players').count()==1
         page.locator('[name="foot-difficulty"][value="EXPERT"]').check()
         page.locator('#football details summary').click()
         page.locator('[data-foot-category][value="Équipe de France"]').check()
         page.locator('[data-foot-category][value="Coupe du Monde"]').check()
         act(page,'start');m=saved(page)
-        assert m['totalRounds']==2 and m['players']==['François','Solène']
+        assert m['totalRounds']==2 and m['rounds']==1 and m['mode']=='classic' and m['players']==['François','Solène']
         assert all(lookup[q]['difficulty']=='EXPERT' and lookup[q]['category'] in ['Équipe de France','Coupe du Monde'] for q in m['deck'])
         expect(page.locator('.foot-handoff')).to_contain_text('Solène')
         act(page,'begin');expect(page.locator('#foot-timer')).to_have_text('01:00')
@@ -146,26 +150,49 @@ try:
 
         context,page=home(['Axel','Nico','François','Solène'])
         page.locator('[name="foot-format"][value="teams"]').check()
-        page.locator('[name="foot-rounds"][value="2"]').check()
-        act(page,'start');assert saved(page)['totalRounds']==4
-        for r in range(4):
+        assert page.locator('#foot-roster .foot-choices').evaluate('el=>el.nextElementSibling.id==="foot-teams"')
+        expect(page.locator('.foot-team-table')).to_have_count(2)
+        page.locator('[data-foot-move="0"]').click()
+        expect(page.locator('[data-team="1"]')).to_contain_text('Axel')
+        expect(page.locator('[data-team="0"]')).not_to_contain_text('Axel')
+        page.locator('[data-foot-move="1"]').click()
+        expect(page.locator('[data-team="0"]')).to_contain_text('Nico')
+        page.locator('[name="foot-format"][value="individual"]').check()
+        expect(page.locator('#foot-teams')).to_be_hidden()
+        expect(page.locator('#foot-players .jdd-player-list')).to_be_visible()
+        page.locator('[name="foot-format"][value="teams"]').check()
+        expect(page.locator('#foot-players .jdd-player-list')).to_be_hidden()
+        assert page.locator('.foot-team-table li > span').all_text_contents()==['Nico','François','Axel','Solène']
+        page.screenshot(path=str(OUT/'setup-teams-393.png'),full_page=True)
+        act(page,'start');assert saved(page)['totalRounds']==2 and saved(page)['rounds']==1
+        for r in range(2):
             assert saved(page)['round']==r
-            expect(page.locator('.foot-handoff strong').first).to_have_text('Équipe 2' if r%2==0 else 'Équipe 1')
-            act(page,'begin');respond(page,'correct' if r%2==0 else 'wrong');end(page)
-            if r<3:act(page,'next')
-        assert saved(page)['scores']==[2,0]
-        assert [sum(row['turn']==i for row in saved(page)['rows']) for i in [0,1]]==[2,2]
-        context.close();print('PASS: deux équipes, lecteur adverse, deux tours et même nombre de manches',flush=True)
+            expect(page.locator('.foot-handoff strong').first).to_have_text('Équipe 2' if r==0 else 'Équipe 1')
+            act(page,'begin');respond(page,'correct' if r==0 else 'wrong');end(page)
+            if r==0:act(page,'next')
+        assert saved(page)['scores']==[1,0]
+        assert [sum(row['turn']==i for row in saved(page)['rows']) for i in [0,1]]==[1,1]
+        assert saved(page)['finished'] and page.locator('[data-foot="next"]').count()==0
+        act(page,'setup');act(page,'start')
+        assert saved(page)['round']==0 and saved(page)['scores']==[0,0] and saved(page)['totalRounds']==2
+        act(page,'exit');page.locator('#footballBtn').click()
+        page.get_by_role('button',name='Retirer Nico',exact=True).click()
+        assert 'Nico' not in page.evaluate('JSON.parse(localStorage.getItem("jdd.players"))')
+        page.locator('#foot-players input[type="text"]').fill('Emma');page.locator('#foot-players .jdd-player-add').click()
+        act(page,'shuffle')
+        assert sorted(page.locator('.foot-team-table li > span').all_text_contents())==['Axel','Emma','François','Solène']
+        assert [table.locator('li').count() for table in page.locator('.foot-team-table').all()]==[2,2]
+        context.close();print('PASS: équipes sous le choix, flèches gauche/droite, un seul tour et nouvelle partie à zéro',flush=True)
 
-        context,page=home(['Axel','Nico'])
-        page.locator('[name="foot-mode"][value="shotgun"]').check();act(page,'start');act(page,'begin')
-        respond(page,winner=0);respond(page,winner=1);end(page)
-        assert [round(s['duration'],2) for s in sounds(page)]==[.55,.55]
+        context,page=home(['Axel','Nico']);act(page,'start')
+        for r in range(2):
+            act(page,'begin');respond(page);end(page)
+            if r==0:act(page,'next')
         expect(page.locator('#football h1')).to_have_text('Égalité !')
-        act(page,'var');page.locator('[data-foot-review-winner="0"]').select_option('1');act(page,'close-var')
-        assert saved(page)['scores']==[0,2]
-        expect(page.locator('#football h1')).to_have_text('Nico gagne !')
-        context.close();print('PASS: Shotgun en un appui, attribution VAR, égalité et vainqueur recalculé',flush=True)
+        act(page,'var');page.locator('[data-foot-review="1"][data-result="wrong"]').click();act(page,'close-var')
+        assert saved(page)['scores']==[1,0]
+        expect(page.locator('#football h1')).to_have_text('Axel gagne !')
+        context.close();print('PASS: chacun joue une fois, égalité et vainqueur recalculé par la VAR',flush=True)
 
         context,page=home();act(page,'start');act(page,'begin')
         advance(page,7000);act(page,'pause');remaining=saved(page)['remaining'];assert remaining==53000
@@ -207,9 +234,9 @@ try:
 
         context,page=home([]);expect(page.locator('[data-foot="start"]')).to_be_disabled()
         page.locator('#foot-players input[type="text"]').fill('Invité');page.locator('.jdd-player-add').click()
-        page.locator('[name="foot-mode"][value="shotgun"]').check();act(page,'start')
+        page.locator('[name="foot-format"][value="teams"]').check();act(page,'start')
         expect(page.locator('#foot-error')).to_contain_text('au moins 2')
-        page.locator('[name="foot-mode"][value="classic"]').check()
+        page.locator('[name="foot-format"][value="individual"]').check()
         page.locator('#football details summary').click()
         page.locator('[data-foot-category][value="Entraîneurs / sélectionneurs"]').check()
         page.locator('[name="foot-difficulty"][value="FOOTIX"]').check();act(page,'start')
@@ -222,7 +249,15 @@ try:
         for width,height in [(320,568),(360,800),(393,852),(430,932),(844,390),(1280,800)]:
             context,page=home(width=width,height=height,fixture=[longest,compound])
             page.locator('[name="foot-difficulty"][value="MIXED"]').check()
-            page.locator('[name="foot-format"][value="teams"]').check();act(page,'start')
+            page.locator('[name="foot-format"][value="teams"]').check()
+            layout(page)
+            tables=page.locator('.foot-team-table').all()
+            left,right=[table.bounding_box() for table in tables]
+            assert abs(left['y']-right['y'])<1 and left['x']+left['width']<=right['x']
+            for control in page.locator('.foot-team-table button').all():
+                box=control.bounding_box();assert box['width']>=44 and box['height']>=44
+            page.screenshot(path=str(OUT/f'setup-teams-{width}.png'),full_page=True)
+            act(page,'start')
             page.screenshot(path=str(OUT/f'chrono-ready-{width}.png'),full_page=True)
             act(page,'begin');layout(page,live=True)
             assert page.locator('.foot-word').evaluate_all('els=>els.every(el=>getComputedStyle(el).whiteSpace==="nowrap")')
