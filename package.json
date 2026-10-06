@@ -1,0 +1,14 @@
+{
+  "name": "jeu-du-duc",
+  "private": true,
+  "description": "Outils cloud de Jeu du Duc ; le jeu reste un site statique.",
+  "scripts": {
+    "supabase:check": "node --use-env-proxy tools/check-supabase.mjs"
+  },
+  "engines": {
+    "node": ">=24.5.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.117.2"
+  }
+}
