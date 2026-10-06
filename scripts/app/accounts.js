@@ -6,6 +6,9 @@
   let user = null, profiles = [], statistics = [], directories = [], selectedStats = '', generation = 0;
   let dialog, accountForm, formMode = 'login', loading = false, directoryError = false, statsError = false, refreshTimer;
   let confirmationEmail = '', recoveryEmail = '';
+  // Brouillons non secrets, conservés seulement tant que cette page reste ouverte.
+  let emailDraft = null, nameDraft = '';
+  const readOnlyStates = new WeakMap();
   const pendingKey = 'jdd.auth-pending.v1';
   try {
     const pending = JSON.parse(localStorage.getItem(pendingKey) || 'null');
@@ -228,7 +231,14 @@
     return Object.hasOwn(messages,error?.code) ? messages[error.code]
       : error?.status === 429 ? messages.over_request_rate_limit : fallback;
   }
+  function rememberDraft() {
+    const email = document.getElementById('accountEmail');
+    if (email && !email.readOnly) emailDraft = email.value.trim();
+    if (formMode === 'signup') nameDraft = document.getElementById('accountName')?.value || '';
+  }
   function open(mode = user ? 'profile' : ['confirm','verify-reset'].includes(formMode) ? formMode : 'login') {
+    if (loading) return;
+    rememberDraft();
     formMode = mode; loading = false;
     renderForm(); if (!dialog.open) dialog.showModal();
   }
@@ -237,13 +247,33 @@
     const verification = ['confirm', 'verify-reset'].includes(formMode);
     document.getElementById('accountDialogTitle').textContent = profileMode ? 'Mon compte' : signup ? 'Créer mon compte' : verification ? 'Confirmer mon email' : recovery ? 'Nouveau mot de passe' : reset ? 'Retrouver mon compte' : 'Se connecter';
     accountForm.replaceChildren(); status('');
+    accountForm.name = `account-${formMode}`;
+    accountForm.method = 'post'; accountForm.autocomplete = 'on';
+    const formUrl = new URL(redirectUrl()); formUrl.searchParams.set('account', formMode);
+    accountForm.action = formUrl.href;
     let submitContainer = accountForm;
     const field = (id, title, type, autocomplete, value = '', container = accountForm) => {
       const label = el('label', '', title); label.htmlFor = id; const input = el('input');
-      Object.assign(input, { id, name: id, type, autocomplete, value, required: true });
-      if (type === 'password') { input.maxLength = 128; if (signup || recovery) input.minLength = 12; }
-      if (id === 'accountName') { input.maxLength = 40; input.autocapitalize = 'words'; }
-      container.append(label, input); return input;
+      const name = {accountEmail:'username',accountPassword:'password',accountName:'given-name',accountCode:'one-time-code'}[id];
+      Object.assign(input, { id, name, type, autocomplete, value, required: true });
+      input.spellcheck = false;
+      if (id === 'accountEmail') { input.maxLength = 254; input.inputMode = 'email'; input.autocapitalize = 'none'; input.enterKeyHint = reset ? 'send' : 'next'; }
+      if (id === 'accountName') { input.maxLength = 40; input.autocapitalize = 'words'; input.enterKeyHint = 'done'; }
+      container.append(label);
+      if (type === 'password') {
+        input.maxLength = 128; input.autocapitalize = 'none'; input.enterKeyHint = signup ? 'next' : 'go';
+        if (signup || recovery) { input.minLength = 12; input.setAttribute('passwordrules', 'minlength: 12; maxlength: 128;'); }
+        const box = el('div', 'account-password-field'), toggle = el('button', 'account-password-toggle', 'Voir');
+        toggle.type = 'button'; toggle.setAttribute('aria-controls', id); toggle.setAttribute('aria-pressed', 'false');
+        toggle.setAttribute('aria-label', 'Afficher le mot de passe');
+        toggle.addEventListener('click', () => {
+          const show = input.type === 'password'; input.type = show ? 'text' : 'password';
+          toggle.textContent = show ? 'Masquer' : 'Voir'; toggle.setAttribute('aria-pressed', String(show));
+          toggle.setAttribute('aria-label', show ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+        });
+        box.append(input, toggle); container.append(box);
+      } else container.append(input);
+      return input;
     };
     if (profileMode) {
       const p = profiles.find(p => p.id === user?.id);
@@ -272,9 +302,10 @@
       code.inputMode = 'numeric'; code.pattern = '[0-9]{6}'; code.minLength = code.maxLength = 6;
       submitContainer = fields;
     } else {
-      if (signup) field('accountName', 'Prénom', 'text', 'given-name');
-      if (!recovery) field('accountEmail', 'Email', 'email', 'email', confirmationEmail || recoveryEmail);
+      const email = field('accountEmail', 'Email', 'email', 'username', recovery ? user?.email || recoveryEmail : emailDraft ?? (confirmationEmail || recoveryEmail));
+      if (recovery) email.readOnly = true;
       if (!reset) field('accountPassword', signup || recovery ? 'Mot de passe · 12 caractères minimum' : 'Mot de passe', 'password', signup || recovery ? 'new-password' : 'current-password');
+      if (signup) field('accountName', 'Prénom', 'text', 'given-name', nameDraft);
     }
     const submit = el('button', 'account-button', profileMode ? 'Enregistrer' : signup ? 'Créer mon compte' : verification ? 'Confirmer le code' : recovery ? 'Enregistrer le mot de passe' : reset ? 'Recevoir l’email' : 'Se connecter');
     submit.type = 'submit'; submitContainer.append(submit);
@@ -302,7 +333,16 @@
   }
   function busy(value) {
     loading = value;
-    dialog.querySelectorAll('button:not(.account-dialog-close), input').forEach(node => { node.disabled = value; });
+    // Laisser les identifiants lisibles par le gestionnaire lors de l’envoi AJAX.
+    dialog.querySelectorAll('button:not(.account-dialog-close), input[type="file"]').forEach(node => { node.disabled = value; });
+    accountForm.querySelectorAll('input:not([type="file"])').forEach(input => {
+      if (value) {
+        if (!readOnlyStates.has(input)) readOnlyStates.set(input, input.readOnly);
+        input.readOnly = true;
+      } else if (readOnlyStates.has(input)) {
+        input.readOnly = readOnlyStates.get(input); readOnlyStates.delete(input);
+      }
+    });
     accountForm.setAttribute('aria-busy', String(value));
   }
   // Utiliser le dossier public de la PWA, sans paramètres ni fragments de connexion.
@@ -310,8 +350,10 @@
   async function submit(event) {
     event.preventDefault(); if (loading) return;
     if (!client) { status('La connexion n’est pas disponible pour le moment.', true); return; }
+    const values = Object.fromEntries(['accountEmail','accountPassword','accountName','accountCode'].map(id => [id, document.getElementById(id)?.value || '']));
+    const value = id => values[id] || '';
+    rememberDraft();
     busy(true); status('');
-    const value = id => document.getElementById(id)?.value || '';
     if (['signup','profile'].includes(formMode) && !value('accountName').trim()) {
       status('Entre un prénom.', true); busy(false); return;
     }
@@ -341,7 +383,7 @@
         ['confirm','verify-reset'].includes(formMode) && [400,401,403].includes(error.status) ? 'Code invalide ou expiré. Demande un nouvel email.'
         : formMode === 'login' && [400,401].includes(error.status) ? 'Vérifie ton email, ton mot de passe et la confirmation du compte.'
         : 'Impossible de terminer. Vérifie ta connexion puis réessaie.'), true);
-    } finally { busy(false); const password = document.getElementById('accountPassword'); if (password) password.value = ''; }
+    } finally { busy(false); }
   }
   async function signOut() {
     busy(true);
@@ -407,7 +449,8 @@
     dialog = document.getElementById('accountDialog'); accountForm = document.getElementById('accountForm');
     document.getElementById('accountButton').addEventListener('click', () => open());
     document.getElementById('closeAccountDialog').addEventListener('click', () => dialog.close());
-    dialog.addEventListener('close', () => { const password = document.getElementById('accountPassword'); if (password) password.value = ''; });
+    // Retirer le formulaire fermé : aucun mot de passe conservé dans un champ caché.
+    dialog.addEventListener('close', () => { if (!dialog.open) { rememberDraft(); accountForm.replaceChildren(); } });
     accountForm.addEventListener('submit', submit);
     mountDirectory(document.getElementById('accountPlayers')); mountDirectory(document.getElementById('dialogAccountPlayers'));
     renderAccountButton(); renderStatistics();

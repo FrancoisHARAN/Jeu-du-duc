@@ -168,9 +168,81 @@ try:
         def add_account(page, uid):
             page.locator(f'#accountPlayers [data-account-id="{uid}"]').click()
 
+        def credential_form(page, mode):
+            form=page.locator('#accountForm')
+            expect(form).to_have_attribute('method','post')
+            expect(form).to_have_attribute('autocomplete','on')
+            expect(form).to_have_attribute('name','account-'+mode)
+            action=urlsplit(form.get_attribute('action'))
+            assert (action.scheme,action.netloc,action.path)==(urlsplit(base).scheme,urlsplit(base).netloc,urlsplit(base).path) and parse_qs(action.query)=={'account':[mode]}
+            email=page.locator('#accountEmail')
+            expect(email).to_have_attribute('type','email')
+            expect(email).to_have_attribute('name','username')
+            expect(email).to_have_attribute('autocomplete','username')
+            expect(email).to_have_attribute('inputmode','email')
+            expect(email).to_have_attribute('autocapitalize','none')
+            expect(email).to_have_attribute('spellcheck','false')
+            if mode!='reset':
+                password=page.locator('#accountPassword')
+                expect(password).to_have_attribute('name','password')
+                expect(password).to_have_attribute('autocomplete','current-password' if mode=='login' else 'new-password')
+                expect(password).to_have_attribute('type','password')
+                if mode!='login': expect(password).to_have_attribute('minlength','12')
+            if mode=='signup':
+                assert form.locator('input').evaluate_all('els=>els.map(el=>el.id)')==['accountEmail','accountPassword','accountName']
+                expect(page.locator('#accountName')).to_have_attribute('name','given-name')
+                expect(page.locator('#accountName')).to_have_attribute('autocomplete','given-name')
+
+        # Prénom séparé de l'identifiant ; remplissage direct comme un gestionnaire.
+        context,page=home()
+        page.locator('#accountButton').click();credential_form(page,'login')
+        page.evaluate('()=>{accountDialog.close();JDDAccounts.open("login");}')
+        page.wait_for_timeout(50);credential_form(page,'login')
+        page.locator('#accountEmail').fill('francois@example.test')
+        page.locator('#accountActions').get_by_text('Créer un compte',exact=True).click()
+        credential_form(page,'signup')
+        expect(page.locator('#accountEmail')).to_have_value('francois@example.test')
+        page.locator('#accountName').fill('François')
+        page.locator('#accountPassword').fill('a-generated-password-long')
+        page.get_by_role('button',name='Afficher le mot de passe',exact=True).click()
+        expect(page.locator('#accountPassword')).to_have_attribute('type','text')
+        page.get_by_role('button',name='Masquer le mot de passe',exact=True).click()
+        expect(page.locator('#accountPassword')).to_have_attribute('type','password')
+        page.locator('#accountActions').get_by_text('J’ai déjà un compte',exact=True).click()
+        credential_form(page,'login')
+        expect(page.locator('#accountEmail')).to_have_value('francois@example.test')
+        expect(page.locator('#accountPassword')).to_have_value('')
+        page.locator('#accountActions').get_by_text('Mot de passe oublié',exact=True).click()
+        credential_form(page,'reset')
+        expect(page.locator('#accountEmail')).to_have_value('francois@example.test')
+        page.locator('#accountActions').get_by_text('J’ai déjà un compte',exact=True).click()
+        page.locator('#accountActions').get_by_text('Créer un compte',exact=True).click()
+        expect(page.locator('#accountName')).to_have_value('François')
+        page.evaluate('''()=>{accountEmail.value="francois@example.test";accountPassword.value="a-generated-password-long";}''')
+        # Pendant la requête, les champs restent dans FormData et ne sont pas désactivés.
+        pending=[]
+        context.route(HOST+'/auth/v1/signup*',lambda route:backend(route) if route.request.method=='OPTIONS' else pending.append(route))
+        page.locator('#accountForm button[type="submit"]').click()
+        page.wait_for_function('accountForm.getAttribute("aria-busy")==="true"')
+        expect(page.locator('#accountEmail')).to_be_enabled()
+        expect(page.locator('#accountPassword')).to_be_enabled()
+        assert not page.locator('#accountPassword').is_editable()
+        assert page.evaluate('Object.fromEntries(new FormData(accountForm))')=={'username':'francois@example.test','password':'a-generated-password-long','given-name':'François'}
+        assert pending
+        backend(pending[0])
+        expect(page.locator('#accountDialogTitle')).to_have_text('Confirmer mon email')
+        call=next(c for c in reversed(auth_calls) if c['path']=='/auth/v1/signup')
+        assert call['data']['email']=='francois@example.test' and call['data']['password']=='a-generated-password-long'
+        assert call['data']['data']['display_name']=='François'
+        assert page.locator('#accountPassword').count()==0
+        assert page.evaluate('!Object.values(localStorage).some(v=>v.includes("a-generated-password-long"))')
+        context.close()
+        print('PASS: formulaires POST distincts, email identifiant, prénom séparé, mot de passe suggéré, brouillons et envoi lisible sans stockage du secret',flush=True)
+
         context,page=home()
         page.locator('#accountButton').click()
         page.locator('#accountActions').get_by_text('Créer un compte',exact=True).click()
+        credential_form(page,'signup')
         page.locator('#accountName').fill('François')
         page.locator('#accountEmail').fill('francois@example.test')
         page.locator('#accountPassword').fill('a-test-password-long')
@@ -179,6 +251,7 @@ try:
         expect(page.locator('#accountCode')).not_to_be_visible()
         page.locator('.account-code-details summary').click()
         expect(page.locator('#accountCode')).to_be_visible()
+        expect(page.locator('#accountCode')).to_have_attribute('autocomplete','one-time-code')
         page.locator('#accountCode').fill('999999')
         page.locator('#accountForm button[type="submit"]').click()
         expect(page.locator('#accountStatus')).to_contain_text('Code invalide')
@@ -190,6 +263,7 @@ try:
         context,page=home()
         page.locator('#accountButton').click()
         page.locator('#accountActions').get_by_text('Mot de passe oublié',exact=True).click()
+        credential_form(page,'reset')
         page.locator('#accountEmail').fill('francois@example.test')
         page.locator('#accountForm button[type="submit"]').click()
         page.locator('.account-code-details summary').click()
@@ -197,6 +271,9 @@ try:
         page.locator('#accountCode').fill('123456')
         page.locator('#accountForm button[type="submit"]').click()
         expect(page.locator('#accountPassword')).to_be_visible()
+        credential_form(page,'recovery')
+        expect(page.locator('#accountEmail')).to_have_value('private@example.test')
+        assert not page.locator('#accountEmail').is_editable()
         page.locator('#accountPassword').fill('a-new-test-password-long')
         page.locator('#accountForm button[type="submit"]').click()
         expect(page.locator('#accountDialog')).not_to_be_visible()
@@ -300,10 +377,19 @@ try:
         context, page = home(old_heads=True)
         expect(page.locator('#accountButton')).to_have_text('Se connecter')
         page.locator('#accountButton').click()
+        credential_form(page,'login')
+        page.locator('#accountEmail').fill('François')
+        page.locator('#accountPassword').fill('wrong-password')
+        tokens_before=len([c for c in auth_calls if c['path']=='/auth/v1/token'])
+        page.locator('#accountForm button[type="submit"]').click()
+        assert not page.locator('#accountEmail').evaluate('el=>el.validity.valid')
+        assert len([c for c in auth_calls if c['path']=='/auth/v1/token'])==tokens_before
         page.locator('#accountEmail').fill('francois@example.test')
         page.locator('#accountPassword').fill('wrong-password')
         page.locator('#accountForm button[type="submit"]').click()
         expect(page.locator('#accountStatus')).to_contain_text('Vérifie ton email')
+        expect(page.locator('#accountPassword')).to_have_value('wrong-password')
+        expect(page.locator('#accountPassword')).to_be_editable()
         page.locator('#accountPassword').fill('a-test-password-long')
         page.locator('#accountForm button[type="submit"]').click()
         expect(page.locator('#accountDialog')).not_to_be_visible()
@@ -459,6 +545,7 @@ try:
         revised=next(e for e in page.evaluate('JSON.parse(localStorage.getItem("jdd.cloud-outbox.v1"))') if e['id']==football_id)
         assert revised['id']==football_id and revised['revision']==2
         assert all(p['metrics']['points']==4 and p['metrics']['games']==1 for p in revised['participants'])
+        page.wait_for_function('() => JDDCloud.status().state === "error"')
         control['block_rpc']=False
         page.evaluate('JDDCloud.flush()'); settled(page)
         assert len([e for e in events if e==football_id])==1
@@ -532,6 +619,24 @@ try:
         print('PASS: PWA relancée hors ligne, comptes connus disponibles, données Auth/API absentes du cache worker',flush=True)
 
         for width,height in [(320,568),(393,852),(430,932),(852,393)]:
+            context,page=home(width,height)
+            page.locator('#accountButton').click()
+            for mode in ['login','signup','reset']:
+                if mode=='signup': page.locator('#accountActions').get_by_text('Créer un compte',exact=True).click()
+                if mode=='reset':
+                    page.locator('#accountActions').get_by_text('J’ai déjà un compte',exact=True).click()
+                    page.locator('#accountActions').get_by_text('Mot de passe oublié',exact=True).click()
+                credential_form(page,mode)
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                bounds=page.locator('#accountDialog').bounding_box()
+                assert bounds['x']>=0 and bounds['y']>=0 and bounds['x']+bounds['width']<=width+1 and bounds['y']+bounds['height']<=height+1
+                if mode!='reset':
+                    toggle=page.locator('.account-password-toggle').bounding_box()
+                    assert toggle['width']>=44 and toggle['height']>=44
+                if width in [320,393]: page.screenshot(path=str(OUT/f'{mode}-{width}.png'))
+            page.locator('#closeAccountDialog').click()
+            expect(page.locator('#accountForm input')).to_have_count(0)
+            context.close()
             context,page=home(width,height,signed=True)
             expect(page.locator('#accountPlayers .account-profile')).to_have_count(6)
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')

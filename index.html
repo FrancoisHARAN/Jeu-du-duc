@@ -24,7 +24,7 @@
   <link rel="stylesheet" href="styles/players.css?v=20261006e">
   <link rel="stylesheet" href="styles/geography.css?v=20261006e">
   <link rel="stylesheet" href="styles/football.css?v=20261006c">
-  <link rel="stylesheet" href="styles/accounts.css?v=20261006c">
+  <link rel="stylesheet" href="styles/accounts.css?v=20261006d">
 </head>
 <body>
   <main id="setup" class="home">
@@ -186,7 +186,7 @@
 
   <dialog id="accountDialog" class="account-dialog" aria-labelledby="accountDialogTitle" aria-describedby="accountStatus">
     <header class="home-player-window"><h2 id="accountDialogTitle">Se connecter</h2><button id="closeAccountDialog" class="account-dialog-close" type="button" aria-label="Fermer le compte">×</button></header>
-    <div class="account-dialog-content"><form id="accountForm"></form><p id="accountStatus" class="account-status" role="status" aria-live="polite"></p><div id="accountActions"></div></div>
+    <div class="account-dialog-content"><form id="accountForm" method="post" autocomplete="on"></form><p id="accountStatus" class="account-status" role="status" aria-live="polite"></p><div id="accountActions"></div></div>
   </dialog>
 
   <div id="game" class="card game-screen hidden" data-category="debut">
@@ -257,7 +257,7 @@
   <script src="vendor/supabase/supabase.js?v=2.117.2" defer></script>
   <script src="scripts/supabase-config.js?v=20261006a" defer></script>
   <script src="scripts/core/cloud.js?v=20261006a" defer></script>
-  <script src="scripts/app/accounts.js?v=20261006e" defer></script>
+  <script src="scripts/app/accounts.js?v=20261006f" defer></script>
 
   <!-- FEATURE MODULES -->
   <script src="vendor/leaflet/leaflet.js?v=1.9.4" defer></script>
