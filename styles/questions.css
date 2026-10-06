@@ -210,3 +210,6 @@ body:has(#game:not(.hidden))::before {
 @media (prefers-reduced-motion: reduce) {
   #game *, #game *::before, #game *::after { animation: none !important; transition: none !important; }
 }
+/* composition des équipes sous une carte Picolo « war » */
+#game .game-teams { margin: 0 0 18px; font-size: 14px; font-weight: 800; }
+#game .game-teams.hidden { display: none; }

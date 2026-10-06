@@ -5,7 +5,7 @@
  */
 const APP_ROOT = new URL('./', self.location.href);
 const CACHE_PREFIX = `jeu-du-duc-${encodeURIComponent(APP_ROOT.pathname)}-`;
-const CACHE_NAME = `${CACHE_PREFIX}2026-10-06-v23`;
+const CACHE_NAME = `${CACHE_PREFIX}2026-10-06-v24`;
 const QUIZ_IMAGES_ORIGIN = 'https://quizimagescm.s3.eu-west-3.amazonaws.com';
 const SHELL_FILES = [
   './',
@@ -30,6 +30,7 @@ const SHELL_FILES = [
   'scripts/core/init.js',
   'scripts/core/history.js',
   'scripts/core/showQuestion.js',
+  'scripts/core/picolo.js',
   'scripts/app/undercover.js',
   'scripts/app/main-game.js',
   'scripts/app/heads-up.js',
@@ -40,6 +41,7 @@ const SHELL_FILES = [
   'data/debut.text.js',
   'data/hardcore.text.js',
   'data/alcool.text.js',
+  'data/picolo.cards.js',
   'data/culture.text.js',
   'data/culture.mcq.js',
   'data/culture.imported.js',

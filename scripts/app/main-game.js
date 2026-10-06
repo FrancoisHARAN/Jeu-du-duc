@@ -45,6 +45,7 @@
     cultureToggleContainer: document.getElementById('cultureToggleContainer'),
     cultureToggle: document.getElementById('cultureToggle'),
     gorgeesText: document.getElementById('gorgeesText'),
+    teamsText: document.getElementById('teamsText'),
     mcqBox: document.getElementById('mcqBox'),
     mcqGrid: document.getElementById('mcqGrid'),
     undercoverButton: document.getElementById('undercoverBtn'),
@@ -83,6 +84,11 @@
     TOUS: 'var(--green)',
     'CULTURE G.': 'var(--cyan)',
     'RAPIDITÉ': 'var(--orange)',
+    // cartes Picolo : règles sur plusieurs cartes et cartes en équipes
+    'RÈGLE': '#9b6bff',
+    'FIN DE RÈGLE': '#9b6bff',
+    'SUITE': '#9b6bff',
+    'ÉQUIPES': '#ff6b6b',
   };
 
   const TYPE_LABELS = {
@@ -587,8 +593,23 @@
     fitCultureText();
   }
 
+  function showPicoloCard(mode, card) {
+    elements.typeBox.textContent = TYPE_LABELS[card.type] || card.type;
+    setBackground(card.type);
+    elements.currentQuestion.textContent = card.text;
+    if (card.teams && elements.teamsText) {
+      elements.teamsText.textContent = card.teams;
+      elements.teamsText.classList.remove('hidden');
+    }
+    recordCard(mode, card.addressed);
+  }
+
   function showPartyCard(mode, pool) {
     const raw = window.JDD.drawCard(mode, pool);
+    if (raw && typeof raw === 'object' && window.JDD.renderPicolo) {
+      showPicoloCard(mode, window.JDD.renderPicolo(raw, players));
+      return;
+    }
     if (typeof raw !== 'string') return;
     const separator = raw.indexOf('|');
     const type = normalizeType(separator > -1 ? raw.slice(0, separator) : 'ACTION');
@@ -620,6 +641,15 @@
     state.rapidityMode = false;
     elements.cultureToggleContainer.classList.add('hidden');
     elements.gorgeesText.classList.add('hidden');
+    if (elements.teamsText) elements.teamsText.classList.add('hidden');
+
+    // Fin d'une règle Picolo en cours ou suite d'un mini-jeu : prioritaire sur le tirage
+    const due = window.JDD.picoloDue ? window.JDD.picoloDue(players) : null;
+    if (due) {
+      showCategory(due.mode);
+      showPicoloCard(due.mode, due);
+      return;
+    }
 
     const mode = state.currentMode === 'custom' ? pickCustomMode() : state.currentMode;
     const data = (window.JDD && window.JDD.DATA) || {};
@@ -635,7 +665,8 @@
       return;
     }
 
-    showPartyCard(mode, Array.isArray(data[mode]) ? data[mode] : []);
+    const pool = window.JDD.partyPool ? window.JDD.partyPool(mode, players.length) : data[mode];
+    showPartyCard(mode, Array.isArray(pool) ? pool : []);
   }
 
   function nextQuestion(event) {
@@ -675,6 +706,7 @@
     if (elements.playersDialog.open) elements.playersDialog.close();
     elements.setupScreen.classList.add('hidden');
     elements.gameScreen.classList.remove('hidden');
+    if (window.JDD.resetPicolo) window.JDD.resetPicolo();
     partySession = window.JDDCloud.begin(state.currentMode, players);
     window.JDDCloud.record(partySession, partySession.participants.map(participant => ({ participant, metrics: { games: 1 } })));
     showQuestion();
