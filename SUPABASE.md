@@ -5,6 +5,38 @@ Auth, PostgreSQL et un bucket privé pour les avatars. Les invités continuent
 à jouer sans compte. Les profils et statistiques sont visibles uniquement
 aux utilisateurs connectés ; les emails restent dans Supabase Auth.
 
+## Si l'email renvoie vers localhost:3000
+
+Dans le [tableau de bord du projet](https://supabase.com/dashboard/project/jyuzvxhnolzwcviycljm/auth/url-configuration),
+ouvrir **Authentication → URL Configuration**, puis enregistrer :
+
+```text
+Site URL : https://francoisharan.github.io/Jeu-du-duc/
+Redirect URLs : https://francoisharan.github.io/Jeu-du-duc/
+```
+
+L'application fournit déjà cette adresse de retour dans les demandes
+d'inscription, de renvoi et de récupération. Si cette adresse n'est pas
+autorisée, Supabase peut revenir vers sa Site URL par défaut (`localhost:3000`).
+La clé publishable du site ne permet pas de modifier ces réglages.
+
+Le modèle d'email par défaut contient uniquement un lien. L'application accepte
+ce parcours : confirmer le lien puis se connecter avec l'email et le mot de passe.
+Le code est proposé dans **Mon email contient un code**, uniquement s'il figure
+dans l'email. L'étape et l'adresse attendue sont conservées sur le téléphone en
+cas de redémarrage ; aucun mot de passe n'est conservé par ce mécanisme.
+
+Pour utiliser un code dans la PWA, ouvrir **Authentication → Email Templates →
+Confirm signup**, coller `supabase/email-confirmation.html`, puis enregistrer.
+Faire de même dans **Reset password** avec `supabase/email-recovery.html`.
+Supabase ne lit pas les fichiers du dépôt : ces modèles doivent être collés
+explicitement dans son tableau de bord. `{{ .Token }}` affiche le code.
+
+Après modification, demander un **nouvel email** depuis le jeu. Un ancien lien
+ne change pas après avoir corrigé les réglages et peut déjà avoir été utilisé.
+Si le lien a été validé avant de tomber sur localhost, le compte peut déjà être
+confirmé : essayer directement **J'ai confirmé mon email**, puis la connexion.
+
 ## Activation sur le projet Supabase
 
 Les migrations sont préparées et vérifiées localement. Elles n'ont pas été exécutées

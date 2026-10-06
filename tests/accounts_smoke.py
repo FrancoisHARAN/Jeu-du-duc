@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 import threading
 import time
+from urllib.parse import parse_qs, urlsplit
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from playwright.sync_api import expect, sync_playwright
 
@@ -20,8 +21,8 @@ profiles = [{'id': A, 'display_name': 'François', 'avatar_path': None, 'created
             {'id': B, 'display_name': 'Axel', 'avatar_path': None, 'created_at': '2026-10-02'}]
 profiles += [{'id': f'10000000-0000-4000-8000-{i:012d}', 'display_name': name, 'avatar_path': None, 'created_at': '2026-10-03'}
              for i, name in enumerate(['Nico', 'Léa', 'Lou', 'Paul', 'Emma', 'Zoé'], 3)]
-events, calls, uploads = {}, [], []
-control = {'drop_answer': False, 'block_rpc': False, 'offline': False}
+events, calls, uploads, auth_calls = {}, [], [], []
+control = {'drop_answer': False, 'block_rpc': False, 'offline': False, 'email_confirmed': True}
 
 
 def user(uid):
@@ -52,13 +53,21 @@ def backend(route):
     request = route.request
     path = request.url.split(HOST)[-1].split('?')[0]
     data = request.post_data_json if request.method in ['POST', 'PATCH'] and 'application/json' in request.headers.get('content-type', '') else {}
+    if path.startswith('/auth/v1/') and request.method != 'OPTIONS':
+        auth_calls.append({'path':path, 'url':request.url, 'data':data})
+        if path in ['/auth/v1/signup','/auth/v1/recover','/auth/v1/resend']:
+            # L'adresse de retour doit être le dossier du site, sans paramètres Auth.
+            redirect = parse_qs(urlsplit(request.url).query).get('redirect_to',[None])[0]
+            assert redirect == base, (path,redirect,base)
     headers = {'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*'}
     def reply(value, status=200):
         route.fulfill(status=status, content_type='application/json', body=json.dumps(value), headers=headers)
     if request.method == 'OPTIONS':
         reply({})
     elif path == '/auth/v1/token':
-        if data.get('password') == 'wrong-password':
+        if not control['email_confirmed']:
+            reply({'msg':'Email not confirmed','code':'email_not_confirmed'},400)
+        elif data.get('password') == 'wrong-password':
             reply({'msg': 'Invalid login credentials', 'code': 'invalid_credentials'}, 400)
         else:
             reply(session(B if data.get('email', '').startswith('axel') else A))
@@ -162,6 +171,9 @@ try:
         page.locator('#accountEmail').fill('francois@example.test')
         page.locator('#accountPassword').fill('a-test-password-long')
         page.locator('#accountForm button[type="submit"]').click()
+        expect(page.locator('#accountDialogTitle')).to_have_text('Confirmer mon email')
+        expect(page.locator('#accountCode')).not_to_be_visible()
+        page.locator('.account-code-details summary').click()
         expect(page.locator('#accountCode')).to_be_visible()
         page.locator('#accountCode').fill('999999')
         page.locator('#accountForm button[type="submit"]').click()
@@ -176,6 +188,7 @@ try:
         page.locator('#accountActions').get_by_text('Mot de passe oublié',exact=True).click()
         page.locator('#accountEmail').fill('francois@example.test')
         page.locator('#accountForm button[type="submit"]').click()
+        page.locator('.account-code-details summary').click()
         expect(page.locator('#accountCode')).to_be_visible()
         page.locator('#accountCode').fill('123456')
         page.locator('#accountForm button[type="submit"]').click()
@@ -185,6 +198,44 @@ try:
         expect(page.locator('#accountDialog')).not_to_be_visible()
         context.close()
         print('PASS: inscription, confirmation et récupération par code dans la PWA',flush=True)
+
+        # L'email Supabase par défaut contient uniquement un lien : aucun code exigé.
+        control['email_confirmed']=False
+        context,page=home()
+        page.goto(base+'index.html?campaign=home#custom',wait_until='load')
+        page.locator('#accountButton').click()
+        page.locator('#accountActions').get_by_text('Créer un compte',exact=True).click()
+        page.locator('#accountName').fill('François')
+        page.locator('#accountEmail').fill('francois@example.test')
+        page.locator('#accountPassword').fill('a-test-password-long')
+        page.locator('#accountForm button[type="submit"]').click()
+        expect(page.locator('#accountCode')).not_to_be_visible()
+        expect(page.locator('#accountForm')).to_contain_text('son lien')
+        page.screenshot(path=str(OUT/'confirmation-email.png'),full_page=True)
+        page.locator('#accountActions').get_by_text('Renvoyer l’email',exact=True).click()
+        expect(page.locator('#accountStatus')).to_contain_text('un email vient d’être envoyé')
+        assert next(c for c in reversed(auth_calls) if c['path']=='/auth/v1/resend')['data']['email']=='francois@example.test'
+        page.reload(wait_until='load'); page.locator('#accountButton').click()
+        expect(page.locator('#accountDialogTitle')).to_have_text('Confirmer mon email')
+        assert page.evaluate('JSON.parse(localStorage.getItem("jdd.auth-pending.v1")).email')=='francois@example.test'
+        assert 'password' not in page.evaluate('localStorage.getItem("jdd.auth-pending.v1")')
+        before=len([c for c in auth_calls if c['path']=='/auth/v1/verify'])
+        page.locator('#accountForm').get_by_text('J’ai confirmé mon email',exact=True).click()
+        expect(page.locator('#accountEmail')).to_have_value('francois@example.test')
+        page.locator('#accountPassword').fill('a-test-password-long')
+        page.locator('#accountForm button[type="submit"]').click()
+        expect(page.locator('#accountStatus')).to_contain_text('la confirmation du compte')
+        assert page.evaluate('JDDAccounts.getUser()') is None
+        # La confirmation reste vérifiée par Auth ; le bouton n'accorde aucun accès.
+        control['email_confirmed']=True
+        page.locator('#accountPassword').fill('a-test-password-long')
+        page.locator('#accountForm button[type="submit"]').click()
+        expect(page.locator('#accountDialog')).not_to_be_visible()
+        expect(page.locator('#accountButton')).to_contain_text('François')
+        assert len([c for c in auth_calls if c['path']=='/auth/v1/verify'])==before
+        assert page.evaluate('localStorage.getItem("jdd.auth-pending.v1")') is None
+        context.close()
+        print('PASS: email à lien seul, redirection propre, renvoi, confirmation persistante et connexion sans code',flush=True)
 
         context, page = home(old_heads=True)
         expect(page.locator('#accountButton')).to_have_text('Se connecter')

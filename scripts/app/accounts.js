@@ -6,6 +6,22 @@
   let user = null, profiles = [], statistics = [], directories = [], selectedStats = '', generation = 0;
   let dialog, accountForm, formMode = 'login', loading = false, directoryError = false, statsError = false, refreshTimer;
   let confirmationEmail = '', recoveryEmail = '';
+  const pendingKey = 'jdd.auth-pending.v1';
+  try {
+    const pending = JSON.parse(localStorage.getItem(pendingKey) || 'null');
+    if (pending && ['confirm','verify-reset'].includes(pending.mode) && typeof pending.email === 'string'
+      && pending.email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(pending.email)) {
+      formMode = pending.mode;
+      if (pending.mode === 'confirm') confirmationEmail = pending.email;
+      else recoveryEmail = pending.email;
+    }
+  } catch (_) { /* stockage facultatif */ }
+  function rememberPending(mode, email) {
+    try { localStorage.setItem(pendingKey, JSON.stringify({mode, email})); } catch (_) { /* facultatif */ }
+  }
+  function clearPending() {
+    try { localStorage.removeItem(pendingKey); } catch (_) { /* facultatif */ }
+  }
   let hasSnapshot = false, usingCached = false;
   const usageKey = 'jdd.account-frequency.v1';
   const cacheKey = 'jdd.account-cache.v1';
@@ -201,14 +217,15 @@
   function renderForm() {
     const signup = formMode === 'signup', profileMode = formMode === 'profile', recovery = formMode === 'recovery', reset = formMode === 'reset';
     const verification = ['confirm', 'verify-reset'].includes(formMode);
-    document.getElementById('accountDialogTitle').textContent = profileMode ? 'Mon compte' : signup ? 'Créer mon compte' : verification ? 'Code reçu par email' : recovery ? 'Nouveau mot de passe' : reset ? 'Retrouver mon compte' : 'Se connecter';
+    document.getElementById('accountDialogTitle').textContent = profileMode ? 'Mon compte' : signup ? 'Créer mon compte' : verification ? 'Confirmer mon email' : recovery ? 'Nouveau mot de passe' : reset ? 'Retrouver mon compte' : 'Se connecter';
     accountForm.replaceChildren(); status('');
-    const field = (id, title, type, autocomplete, value = '') => {
+    let submitContainer = accountForm;
+    const field = (id, title, type, autocomplete, value = '', container = accountForm) => {
       const label = el('label', '', title); label.htmlFor = id; const input = el('input');
       Object.assign(input, { id, name: id, type, autocomplete, value, required: true });
       if (type === 'password') { input.maxLength = 128; if (signup || recovery) input.minLength = 12; }
       if (id === 'accountName') { input.maxLength = 40; input.autocapitalize = 'words'; }
-      accountForm.append(label, input); return input;
+      container.append(label, input); return input;
     };
     if (profileMode) {
       const p = profiles.find(p => p.id === user?.id);
@@ -221,26 +238,41 @@
       const removePhoto = el('button', 'account-text-button', 'Retirer la photo'); removePhoto.type = 'button'; removePhoto.hidden = !p?.avatar_path;
       removePhoto.addEventListener('click', removeAvatar); accountForm.append(removePhoto);
     } else if (verification) {
-      const code = field('accountCode', 'Code à 6 chiffres', 'text', 'one-time-code');
+      accountForm.append(el('p', 'account-help', formMode === 'confirm'
+        ? 'Ouvre l’email de confirmation, appuie sur son lien puis reviens te connecter.'
+        : 'Ouvre le lien reçu par email pour choisir un nouveau mot de passe.'));
+      if (formMode === 'confirm') {
+        const confirmed = el('button', 'account-button', 'J’ai confirmé mon email'); confirmed.type = 'button';
+        confirmed.addEventListener('click', () => open('login')); accountForm.append(confirmed);
+      }
+      const details = el('details', 'account-code-details');
+      details.append(el('summary', '', 'Mon email contient un code'));
+      const fields = el('div', 'account-code-fields'); details.append(fields); accountForm.append(details);
+      const code = field('accountCode', 'Code à 6 chiffres', 'text', 'one-time-code', '', fields);
       code.inputMode = 'numeric'; code.pattern = '[0-9]{6}'; code.minLength = code.maxLength = 6;
+      submitContainer = fields;
     } else {
       if (signup) field('accountName', 'Prénom', 'text', 'given-name');
-      if (!recovery) field('accountEmail', 'Email', 'email', 'email');
+      if (!recovery) field('accountEmail', 'Email', 'email', 'email', confirmationEmail || recoveryEmail);
       if (!reset) field('accountPassword', signup || recovery ? 'Mot de passe · 12 caractères minimum' : 'Mot de passe', 'password', signup || recovery ? 'new-password' : 'current-password');
     }
-    const submit = el('button', 'account-button', profileMode ? 'Enregistrer' : signup ? 'Créer mon compte' : verification ? 'Confirmer le code' : recovery ? 'Enregistrer le mot de passe' : reset ? 'Recevoir le code' : 'Se connecter');
-    submit.type = 'submit'; accountForm.append(submit);
+    const submit = el('button', 'account-button', profileMode ? 'Enregistrer' : signup ? 'Créer mon compte' : verification ? 'Confirmer le code' : recovery ? 'Enregistrer le mot de passe' : reset ? 'Recevoir l’email' : 'Se connecter');
+    submit.type = 'submit'; submitContainer.append(submit);
     const actions = document.getElementById('accountActions'); actions.replaceChildren();
     const action = (text, fn) => { const button = el('button', 'account-text-button', text); button.type = 'button'; button.addEventListener('click', fn); actions.append(button); };
     if (profileMode) action('Se déconnecter', signOut);
     else if (verification) {
-      action(formMode === 'confirm' ? 'J’ai déjà confirmé mon email' : 'Renvoyer un code', () => open(formMode === 'confirm' ? 'login' : 'reset'));
-      if (formMode === 'confirm') action('Renvoyer un code', async () => {
+      action('Changer d’adresse email', () => open(formMode === 'confirm' ? 'signup' : 'reset'));
+      if (formMode === 'verify-reset') {
+        action('Renvoyer l’email', () => open('reset'));
+        action('Retour à la connexion', () => open('login'));
+      }
+      if (formMode === 'confirm') action('Renvoyer l’email', async () => {
         if (loading || !client) return; busy(true);
         try {
           const { error } = await client.auth.resend({ type: 'signup', email: confirmationEmail, options: { emailRedirectTo: redirectUrl() } });
-          if (error) throw error; status('Si le compte attend une confirmation, un code vient d’être envoyé.');
-        } catch (_) { status('Le code n’a pas pu être renvoyé. Réessaie dans un moment.', true); }
+          if (error) throw error; status('Si le compte attend une confirmation, un email vient d’être envoyé.');
+        } catch (_) { status('L’email n’a pas pu être renvoyé. Réessaie dans un moment.', true); }
         finally { busy(false); }
       });
     } else if (!recovery) {
@@ -253,7 +285,8 @@
     dialog.querySelectorAll('button:not(.account-dialog-close), input').forEach(node => { node.disabled = value; });
     accountForm.setAttribute('aria-busy', String(value));
   }
-  const redirectUrl = () => new URL('./', location.href).href;
+  // Utiliser le dossier public de la PWA, sans paramètres ni fragments de connexion.
+  const redirectUrl = () => new URL('./', document.querySelector('link[rel="manifest"]').href).href;
   async function submit(event) {
     event.preventDefault(); if (loading) return;
     if (!client) { status('La connexion n’est pas disponible pour le moment.', true); return; }
@@ -274,15 +307,15 @@
       if (formMode === 'profile') result = await client.from('profiles').update({ display_name: value('accountName').trim() }).eq('id', user.id);
       if (result?.error) throw result.error;
       if (formMode === 'signup' && !result.data.session) {
-        confirmationEmail = value('accountEmail').trim(); formMode = 'confirm'; renderForm(); status('Entre le code reçu par email, ou confirme avec le lien.');
+        confirmationEmail = value('accountEmail').trim(); formMode = 'confirm'; rememberPending(formMode, confirmationEmail); renderForm();
       } else if (formMode === 'reset') {
-        recoveryEmail = value('accountEmail').trim(); formMode = 'verify-reset'; renderForm(); status('Si un compte correspond à cet email, un code vient d’être envoyé.');
+        recoveryEmail = value('accountEmail').trim(); formMode = 'verify-reset'; rememberPending(formMode, recoveryEmail); renderForm(); status('Si un compte correspond à cet email, un email vient d’être envoyé.');
       } else if (formMode === 'verify-reset') { formMode = 'recovery'; renderForm(); }
       else if (formMode === 'profile') { await refresh(); status('Prénom enregistré.'); }
-      else { if (formMode === 'recovery') formMode = 'profile'; dialog.close(); }
+      else { clearPending(); formMode = user ? 'profile' : 'login'; dialog.close(); }
     } catch (error) {
       status(error.status === 429 ? 'Trop de tentatives. Réessaie dans un moment.'
-        : ['confirm','verify-reset'].includes(formMode) && [400,401,403].includes(error.status) ? 'Code invalide ou expiré. Demande un nouveau code.'
+        : ['confirm','verify-reset'].includes(formMode) && [400,401,403].includes(error.status) ? 'Code invalide ou expiré. Demande un nouvel email.'
         : formMode === 'login' && [400,401].includes(error.status) ? 'Vérifie ton email, ton mot de passe et la confirmation du compte.'
         : 'Impossible de terminer. Vérifie ta connexion puis réessaie.', true);
     } finally { busy(false); const password = document.getElementById('accountPassword'); if (password) password.value = ''; }
@@ -291,7 +324,7 @@
     busy(true);
     try {
       const { error } = await client.auth.signOut({ scope: 'local' }); if (error) throw error;
-      applySession(null); global.JDD.clearAccountPlayers?.(); dialog.close();
+      applySession(null); formMode = 'login'; clearPending(); global.JDD.clearAccountPlayers?.(); dialog.close();
     } catch (_) { status('La déconnexion n’a pas abouti. Réessaie.', true); }
     finally { busy(false); }
   }
@@ -343,6 +376,7 @@
       if (previous && !user) global.JDD.clearAccountPlayers?.();
     }
     cloud.setUser(user); renderAccountButton(); updateDirectories(); renderStatistics(); renderSync();
+    if (user) clearPending();
     if (user) void refresh();
     if (recovery) open('recovery');
   }
