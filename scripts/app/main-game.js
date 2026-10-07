@@ -54,7 +54,6 @@
     geographyButton: document.getElementById('geographyBtn'),
     footballButton: document.getElementById('footballBtn'),
     duelButton: document.getElementById('duelBtn'),
-    rapiditeAudio: document.getElementById('rapidite-audio'),
   };
 
   const sliderElements = {
@@ -66,7 +65,6 @@
 
   const state = {
     currentMode: 'debut',
-    rapidityMode: false,
     weights: {
       debut: 25,
       hardcore: 25,
@@ -97,7 +95,6 @@
     ACTION: 'var(--pink)',
     TOUS: 'var(--green)',
     'CULTURE G.': 'var(--cyan)',
-    'RAPIDITÉ': 'var(--orange)',
     // cartes Picolo : règles sur plusieurs cartes et cartes en équipes
     'RÈGLE': '#9b6bff',
     'FIN DE RÈGLE': '#9b6bff',
@@ -114,7 +111,6 @@
     hardcore: { label: 'Sexy pas raffiné', image: 'hardcore.webp' },
     alcool: { label: 'Torgnole express', image: 'torgnole.webp' },
     culture: { label: 'Culture G.', image: 'culture.webp' },
-    rapidite: { label: 'Rapidité', image: 'lancer.webp' },
   };
 
   // Dans un mix personnalisé, l'illustration suit la banque de la carte tirée.
@@ -580,18 +576,6 @@
     return 'culture';
   }
 
-  function showRapidity() {
-    state.rapidityMode = true;
-    showCategory('rapidite');
-    elements.typeBox.textContent = 'RAPIDITÉ';
-    setBackground('RAPIDITÉ');
-    elements.currentQuestion.textContent = '⚡ Question de rapidité pour tout le monde ! (Touchez pour révéler)';
-    if (elements.rapiditeAudio) {
-      elements.rapiditeAudio.currentTime = 0;
-      window.JDDSound.play(elements.rapiditeAudio);
-    }
-  }
-
   function showCulture(data) {
     const open = Array.isArray(data.culture) ? data.culture : [];
     const mcq = Array.isArray(data.cultureMcq) ? data.cultureMcq : [];
@@ -662,7 +646,6 @@
     elements.currentQuestion.textContent = '';
     elements.typeBox.textContent = '';
     hideQuestionArea();
-    state.rapidityMode = false;
     elements.cultureToggleContainer.classList.add('hidden');
     elements.gorgeesText.classList.add('hidden');
     if (elements.teamsText) elements.teamsText.classList.add('hidden');
@@ -678,11 +661,6 @@
     const mode = state.currentMode === 'custom' ? pickCustomMode() : state.currentMode;
     const data = (window.JDD && window.JDD.DATA) || {};
     showCategory(mode);
-
-    if (mode !== 'culture' && Math.random() < 0.02) {
-      showRapidity();
-      return;
-    }
 
     if (mode === 'culture') {
       showCulture(data);
@@ -701,14 +679,6 @@
       return;
     }
     if (event.clientX <= window.innerWidth / 2) {
-      return;
-    }
-    if (state.rapidityMode) {
-      const pool = (window.JDD && window.JDD.RAPIDITY) || [];
-      const draw = window.JDD.drawCard('rapidite', pool);
-      elements.currentQuestion.textContent = draw || '⚡ Pas de question de rapidité disponible.';
-      recordCard('rapidite');
-      state.rapidityMode = false;
       return;
     }
     showQuestion();

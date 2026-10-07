@@ -1,7 +1,7 @@
 # Cartes importées de Picolo
 
 `Jeu_a_boire_Picolo_regles_fr.xlsx` (5 569 règles, packs default, silly, war,
-hot et bar) est ajouté aux cartes de soirée, sans retirer les cartes existantes.
+hot et bar) complète les banques de cartes de soirée après les exclusions ci-dessous.
 
 ## Cartes retirées
 
@@ -11,7 +11,9 @@ hot et bar) est ajouté aux cartes de soirée, sans retirer les cartes existante
 - les cartes de pub (« si tu n'as pas l'appli », « note-la 5 étoiles »…) et celles où il faut
   agir sur les réseaux sociaux ou se servir de son téléphone (publier, liker, ajouter en ami, envoyer un snap,
   un texto ou une photo, lire ses SMS, prêter son portable…) ;
-- les défis où il faut sortir ou aller voir des voisins ou des inconnus.
+- les défis où il faut sortir ou aller voir des voisins ou des inconnus ;
+- les défis de vitesse, de réflexe et de réponse dans un temps limité, ainsi
+  que leurs suites. La catégorie Rapidité et son déclenchement aléatoire sont retirés du jeu.
 
 Les aveux sur ses habitudes (« Ceux qui ont déjà posté bourrés sur un réseau social boivent »),
 les jeux de listes et les « tu préfères » qui parlent de réseaux sociaux restent.
@@ -29,7 +31,7 @@ trois catégories, avec son type (Vérité, Action ou Tout le monde) :
   trash ou extrêmes.
 
 Le classement est enregistré dans `tools/picolo_classification.json`.
-Les 503 cartes de suite (fins de règle, suites de mini-jeux) suivent la
+Les cartes de suite retenues (fins de règle, suites de mini-jeux) suivent la
 catégorie de leur carte de départ.
 
 ## Conversion des textes
@@ -54,6 +56,7 @@ catégorie de leur carte de départ.
   la même tant que la liste de joueurs ne change pas.
 - Les règles en cours et les équipes sont gardées après un rechargement et
   remises à zéro au lancement d'une nouvelle partie.
+- Les suites sauvegardées dont le texte a été retiré de la banque sont ignorées.
 
 ## Reproduire l'import
 

@@ -5,7 +5,7 @@
  */
 const APP_ROOT = new URL('./', self.location.href);
 const CACHE_PREFIX = `jeu-du-duc-${encodeURIComponent(APP_ROOT.pathname)}-`;
-const CACHE_NAME = `${CACHE_PREFIX}2026-10-07-v50`;
+const CACHE_NAME = `${CACHE_PREFIX}2026-10-07-v51`;
 const QUIZ_IMAGES_ORIGIN = 'https://quizimagescm.s3.eu-west-3.amazonaws.com';
 const SHELL_FILES = [
   './',
@@ -58,7 +58,6 @@ const SHELL_FILES = [
   'data/culture.imported.js',
   'data/culture.quiz360.js',
   'data/culture.quiz360.images.json',
-  'data/rapidite.questions.js',
   'data/undercover.pairs.js',
   'data/heads.words.js',
   'data/heads.imported.js',
@@ -91,7 +90,6 @@ const SHELL_FILES = [
   'fonts/Montserrat-700.ttf',
   'fonts/Montserrat-800.ttf',
   'fonts/Montserrat-900.ttf',
-  'song/rapidite.mp3',
 ];
 
 self.addEventListener('install', (event) => {

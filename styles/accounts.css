@@ -30,7 +30,7 @@
 .account-mode-stats--undercover summary, .account-mode-stats--football summary { background: #aac7e4; }
 .account-mode-stats--heads summary, .account-mode-stats--hardcore summary { background: #f7c3d0; }
 .account-mode-stats--geography summary, .account-mode-stats--culture summary { background: #a7d5bc; }
-.account-mode-stats--debut summary, .account-mode-stats--rapidite summary { background: #ffd938; }
+.account-mode-stats--debut summary { background: #ffd938; }
 .account-mode-stats--alcool summary { background: #f49e73; }
 .account-metrics { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; margin: 0; padding: 14px; font: 14px/1.4 Arial, sans-serif; }
 .account-metrics dd { margin: 0; font-weight: 800; font-variant-numeric: tabular-nums; }
