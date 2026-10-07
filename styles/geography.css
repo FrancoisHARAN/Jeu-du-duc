@@ -80,6 +80,8 @@ body.geo-open { justify-content: flex-start; padding: 0; background: #6b62cc !im
 .geo-map--cities .leaflet-pane > svg { overflow: visible; }
 .geo-map--cities .leaflet-pane path { vector-effect: non-scaling-stroke; }
 .geo-map .leaflet-geoPhysical-pane, .geo-map .geo-relief-shape, .geo-map .geo-river-line { pointer-events: none; }
+.geo-map .geo-relief-shape { transition: fill-opacity .15s ease-out; }
+@media (prefers-reduced-motion: reduce) { .geo-map .geo-relief-shape { transition: none; } }
 
 /* Jackpot transparent, ancré à la carte et sans interception des gestes. */
 .geo-map-stage { position: relative; isolation: isolate; }

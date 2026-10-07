@@ -96,6 +96,12 @@
     if (match.guess === code) return { ...baseStyle(), fillColor: match.result && !match.result.neighbor ? '#f1a4b6' : '#ffd938', color: '#252124', weight: 3 };
     return baseStyle();
   }
+  function departmentStyle(feature) {
+    const style = answerStyle(feature), code = feature.properties.code;
+    // Les terres ont leur propre fond ; seules les réponses colorent le calque supérieur.
+    return { ...style, opacity: 1, weight: Math.max(1.25, style.weight),
+      fillOpacity: code === match.guess || (match.result && code === target().id) ? 1 : 0 };
+  }
   function icon(kind) {
     return global.L.divIcon({ className: `geo-pin geo-pin--${kind}`, html: `<span><b>${kind === 'truth' ? '✓' : '●'}</b></span>`, iconSize: [32, 40], iconAnchor: [16, 39] });
   }
@@ -120,10 +126,18 @@
     map.createPane('geoLand').style.zIndex = '350';
     L.control.zoom({ position: 'topright', zoomInTitle: 'Zoomer', zoomOutTitle: 'Dézoomer' }).addTo(map);
     const countries = match.mode !== 'departments';
+    if (!countries) {
+      map.getContainer().classList.add('geo-map--departments');
+      map.createPane('geoDepartments').style.zIndex = '410';
+      L.geoJSON(data.physical.metropole?.land || data.departments, {
+        pane: 'geoLand', interactive: false, style: { ...baseStyle(), stroke: false },
+      }).addTo(map);
+      map.setMaxBounds([[40.8, -5.8], [51.6, 10.3]]);
+    }
     regions = L.geoJSON(countries ? data.countries : data.departments, {
-      pane: 'geoLand',
+      pane: countries ? 'geoLand' : 'geoDepartments',
       noClip: isCity(), // Garder les contours complets pendant le déplacement/zoom des villes.
-      style: f => isCity() ? baseStyle() : answerStyle(f),
+      style: f => isCity() ? baseStyle() : countries ? answerStyle(f) : departmentStyle(f),
       onEachFeature(feature, layer) {
         if (isCity()) return;
         // Aucun nom avant la validation : les frontières restent seules visibles.
@@ -131,7 +145,7 @@
           L.DomEvent.stopPropagation(event);
           if (phase !== 'playing') return;
           match.guess = feature.properties.code;
-          regions.setStyle(answerStyle);
+          regions.setStyle(countries ? answerStyle : departmentStyle);
           layer.bringToFront();
           root.querySelector('#geo-selection').textContent = 'Zone sélectionnée. Tu peux changer ton choix.';
           root.querySelector('[data-geo="validate"]').disabled = false;
@@ -169,7 +183,18 @@
     const L = global.L, pane = map.createPane('geoPhysical');
     pane.style.zIndex = '390'; pane.style.pointerEvents = 'none';
     const common = { pane: 'geoPhysical', interactive: false, noClip: isCity() };
-    const relief = L.geoJSON(null, { ...common, style: { stroke: false, fillColor: '#d8c7a7', fillOpacity: .58, className: 'geo-relief-shape' } }).addTo(map);
+    // Le mode Département lit exclusivement les tracés découpés à la métropole.
+    const source = match.mode === 'departments'
+      ? data.physical.metropole || { relief: { features: [] }, rivers: { features: [] } } : data.physical;
+    const reliefStyle = feature => {
+      const altitude = feature.properties.elevation_m || 1000;
+      const opacity = altitude === 400 ? .22 : altitude === 2000 ? .22 : .24;
+      const fade = Math.min(1, .35 + Math.max(0, map.getZoom() - (feature.properties.min_zoom || 0)) * .9);
+      return { stroke: false, fillColor: '#d5c8ab', fillOpacity: opacity * fade, className: 'geo-relief-shape' };
+    };
+    const relief = L.geoJSON(null, { ...common, smoothFactor: .4, style: reliefStyle, onEachFeature(feature, layer) {
+      layer.on('add', () => layer.getElement()?.setAttribute('data-geo-elevation', feature.properties.elevation_m || 1000));
+    } }).addTo(map);
     const riverStyle = feature => ({ color: '#75a8bf', opacity: .95, weight: Math.min(2.8, 1.05 + map.getZoom() * .14) + (feature.properties.rank <= 2 ? .25 : 0), lineCap: 'round', lineJoin: 'round', className: 'geo-river-line' });
     const rivers = L.geoJSON(null, { ...common, style: riverStyle, onEachFeature(feature, layer) {
       layer.on('add', () => layer.getElement()?.setAttribute('data-geo-river', feature.properties.name));
@@ -178,10 +203,10 @@
     const refresh = (views = [{ bounds: map.getBounds().pad(.25), zoom: map.getZoom() }]) => {
       for (const [key, layer] of [['relief', relief], ['rivers', rivers]]) {
         const features = [], ids = [];
-        data.physical[key].features.forEach((feature, index) => {
+        source[key].features.forEach((feature, index) => {
           for (const offset of offsets) {
             const [west, south, east, north] = feature.bbox;
-            if (!views.some(view => (key !== 'rivers' || view.zoom >= feature.properties.min_zoom)
+            if (!views.some(view => view.zoom >= (feature.properties.min_zoom || 0)
               && west + offset <= view.bounds.getEast() && east + offset >= view.bounds.getWest()
               && south <= view.bounds.getNorth() && north >= view.bounds.getSouth())) continue;
             features.push(shiftedFeature(feature, offset)); ids.push(`${index}:${offset}`);
@@ -192,6 +217,7 @@
           layer.clearLayers(); layer.addData({ type: 'FeatureCollection', features }); signatures.set(key, signature);
         }
       }
+      relief.setStyle(reliefStyle);
       rivers.setStyle(riverStyle);
     };
     physicalLayers = {
@@ -226,7 +252,7 @@
     disposeMap(); setPhase(match.result ? 'answer' : 'playing');
     const current = player(), index = match.index % match.players.length;
     const prompt = isCity() ? `Où est ${target().name} ?` : `Trouve : ${target().name}${match.mode === 'departments' ? ` (${target().id})` : ''}`;
-    root.innerHTML = `${topbar()}<section class="geo-panel geo-turn">${windowBar(MODES[match.mode])}<div class="geo-stats"><strong id="geo-current-player">${escape(current)}</strong><span>Manche ${match.index + 1} / ${match.targets.length}</span><span id="geo-score">${match.scores[index]} pts</span><strong id="geo-timer" aria-label="Temps restant">${Math.ceil(match.remaining / 1000)} s</strong></div><h1 class="geo-prompt">${escape(prompt)}</h1><div class="geo-map-stage"><div id="geo-map" class="geo-map" role="region" aria-label="Carte interactive, déplacement et zoom à deux doigts"></div>${isCity() ? '<div id="geo-mega-win" class="geo-mega-win" hidden aria-hidden="true"><img class="geo-mega-win-art" src="image/geography/mega-win.webp" width="768" height="768" alt="" decoding="async" draggable="false"></div>' : ''}</div><div class="geo-answer"><p id="geo-selection" class="geo-help" role="status">${isCity() ? 'Touche la carte pour placer ton épingle.' : 'Touche une zone sur la carte.'}</p><div id="geo-result" role="status"></div><button type="button" class="geo-button" data-geo="validate" ${match.guess ? '' : 'disabled'}>Valider</button></div><details class="geo-map-sources"><summary>Données cartographiques</summary><p>Frontières, fleuves et grands reliefs : Natural Earth (domaine public). Départements : IGN / Admin Express via France GeoJSON (Licence ouverte). Carte : Leaflet.</p></details><div class="geo-floor" aria-hidden="true"></div></section>`;
+    root.innerHTML = `${topbar()}<section class="geo-panel geo-turn">${windowBar(MODES[match.mode])}<div class="geo-stats"><strong id="geo-current-player">${escape(current)}</strong><span>Manche ${match.index + 1} / ${match.targets.length}</span><span id="geo-score">${match.scores[index]} pts</span><strong id="geo-timer" aria-label="Temps restant">${Math.ceil(match.remaining / 1000)} s</strong></div><h1 class="geo-prompt">${escape(prompt)}</h1><div class="geo-map-stage"><div id="geo-map" class="geo-map" role="region" aria-label="Carte interactive, déplacement et zoom à deux doigts"></div>${isCity() ? '<div id="geo-mega-win" class="geo-mega-win" hidden aria-hidden="true"><img class="geo-mega-win-art" src="image/geography/mega-win.webp" width="768" height="768" alt="" decoding="async" draggable="false"></div>' : ''}</div><div class="geo-answer"><p id="geo-selection" class="geo-help" role="status">${isCity() ? 'Touche la carte pour placer ton épingle.' : 'Touche une zone sur la carte.'}</p><div id="geo-result" role="status"></div><button type="button" class="geo-button" data-geo="validate" ${match.guess ? '' : 'disabled'}>Valider</button></div><details class="geo-map-sources"><summary>Données cartographiques</summary><p>Frontières et fleuves : Natural Earth. Relief : ETOPO / NOAA. Départements : IGN / Admin Express via France GeoJSON. Carte : Leaflet.</p></details><div class="geo-floor" aria-hidden="true"></div></section>`;
     makeMap();
     if (match.result) reveal();
     global.scrollTo(0, 0);
@@ -345,7 +371,7 @@
         else map.setView(point, zoom, { animate: false });
       }
     } else {
-      regions.setStyle(answerStyle);
+      regions.setStyle(match.mode === 'departments' ? departmentStyle : answerStyle);
       const bounds = L.latLngBounds([]);
       regions.eachLayer(layer => {
         if ([target().id, match.guess].includes(layer.feature.properties.code)) {

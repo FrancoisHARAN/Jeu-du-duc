@@ -20,7 +20,9 @@ cities = json.loads((REPO / 'data/geography/cities.json').read_text())
 physical = json.loads((REPO / 'data/geography/physical.json').read_text())
 river_names = {f['properties']['name'] for f in physical['rivers']['features']}
 assert {'Loire','Seine','Rhône','Garonne','Dordogne','Amazonas','Nile','Congo','Mississippi','Chang Jiang','Murray'} <= river_names
-assert (REPO / 'data/geography/physical.json').stat().st_size < 3_000_000
+assert (REPO / 'data/geography/physical.json').stat().st_size < 5_000_000
+assert physical['schema'] == 2
+assert {f['properties']['elevation_m'] for f in physical['relief']['features']} == {400, 1000, 2000}
 for kind in ['rivers','relief']:
     for feature in physical[kind]['features']:
         west,south,east,north=feature['bbox']
@@ -411,18 +413,37 @@ try:
         page.evaluate('() => {testMap.setView([45.8,6.8],7,{animate:false});}')
         assert page.locator('.geo-relief-shape').count()>0
         assert page.locator('.geo-relief-shape').evaluate_all('nodes => nodes.every(n => getComputedStyle(n).pointerEvents === "none")')
+        assert page.locator('.geo-relief-shape').evaluate_all('nodes => nodes.every(n => Number(n.getAttribute("fill-opacity")) <= .24)')
+        assert page.locator('[data-geo-elevation="400"]').count()>0
+        page.locator('#geo-map').screenshot(path=str(OUT/'relief-alpes.png'))
         page.evaluate('() => {testMap.setView([20,0],2,{animate:false});}')
         expect(page.locator('#geography')).to_have_attribute('data-screen','playing')
         assert page.locator('[data-geo-river="Nile"]').count()>0
         assert page.locator('[data-geo-river="Amazonas"]').count()>0
         assert page.locator('.geo-river-line').count()<150, 'Le monde garde seulement les grands fleuves à ce zoom.'
+        assert page.locator('[data-geo-elevation="400"]').count()==0, 'Les petits reliefs disparaissent à l’échelle du monde.'
+        page.evaluate('() => {testMap.setView([32,87],3.25,{animate:false});}')
+        page.locator('#geo-map').screenshot(path=str(OUT/'relief-asie.png'))
         action(page,'exit');context.close()
         context,page=home(['Alice']);start(page,'departments')
+        assert page.evaluate('() => Number(testMap.getPane("geoDepartments").style.zIndex)>Number(testMap.getPane("geoPhysical").style.zIndex)')
+        assert page.locator('.leaflet-geoDepartments-pane path').count()==96
+        assert page.locator('.leaflet-geoDepartments-pane path').evaluate_all('nodes=>nodes.every(n=>n.getAttribute("stroke-opacity")==="1"&&n.getAttribute("fill-opacity")==="0")')
+        assert page.locator('[data-geo-river="Danube"]').count()==0
+        shown = page.evaluate('''() => { const features=[];
+          testMap.eachLayer(layer=>{if(layer.feature && layer.options.pane==='geoPhysical')features.push(layer.feature);});
+          return features; }''')
+        clipped = physical['metropole']['relief']['features'] + physical['metropole']['rivers']['features']
+        assert shown and all(f in clipped for f in shown), 'Aucun tracé physique mondial ne doit passer sur la carte Département.'
+        page.locator('#geo-map').screenshot(path=str(OUT/'departements-france.png'))
+        page.evaluate('() => {testMap.setView([45.8,6.8],7,{animate:false});}')
+        page.locator('#geo-map').screenshot(path=str(OUT/'departements-alpes.png'))
         select_region(page,'74','departments') # Le relief alpin ne masque pas la sélection.
         assert state(page)['guess']=='74'
+        assert page.locator('[data-geo-code="74"]').get_attribute('fill-opacity')=='1'
         action(page,'validate');expect(page.locator('#geography')).to_have_attribute('data-screen','answer')
         action(page,'exit');context.close()
-        print('PASS: Loire à Orléans, relief alpin, fleuves mondiaux filtrés par zoom, clics libres et départements sélectionnables sous le relief',flush=True)
+        print('PASS: fleuves inchangés, relief altimétrique discret selon le zoom, carte métropolitaine et frontières départementales opaques au-dessus',flush=True)
 
         for width, height in [(320, 568), (360, 640), (393, 852), (430, 932), (852, 393), (1440, 900)]:
             context, page = home(['Alice'], width, height)

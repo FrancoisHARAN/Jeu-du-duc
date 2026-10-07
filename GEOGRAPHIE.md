@@ -59,12 +59,20 @@ l'illustration apparaît, sans rebond ni particules.
 Les villes utilisent des marqueurs déplaçables et une ligne suivant le plus
 court arc terrestre. Aucun fond en image, serveur de tuiles ni clé d'API.
 
-Les trois cartes affichent les grands fleuves en bleu doux et les massifs,
-plateaux et piémonts dans une seconde nuance beige. Les fleuves secondaires
-apparaissent progressivement avec le zoom ; aucun nom de ville n'est ajouté.
-Les reliefs représentent les grandes régions physiques de Natural Earth,
-pas une altitude mesurée ni une courbe de niveau. Leurs zones sont fusionnées
-pour éviter les taches de couleurs superposées, puis découpées au littoral.
+Les trois cartes affichent les grands fleuves en bleu doux. Leurs tracés et leur
+style sont conservés ; les fleuves secondaires apparaissent avec le zoom.
+Le relief utilise des contours d'altitude ETOPO10 (NOAA), à 400, 1 000 et
+2 000 mètres, lissés et découpés au littoral. Les niveaux sont superposés dans
+un beige proche du fond, à 22–24 % d'opacité par niveau. Les collines de
+400 mètres apparaissent à partir du zoom 3,75 ; les détails des petits massifs
+à partir du zoom 5,5. La grille d'origine a un pas de dix minutes d'arc, soit
+environ 18 km à l'équateur : ces repères restent régionaux, sans précision locale.
+
+La carte Département contient exclusivement la France métropolitaine, Corse
+comprise. Les fleuves et reliefs sont découpés suivant l'union des 96 départements.
+Le fond terrestre est au niveau 350, les repères physiques à 390, et les
+frontières départementales, opaques, à 410. Les zones non sélectionnées gardent
+un remplissage transparent ; une sélection ou réponse conserve sa couleur pleine.
 Les nouvelles couches n'interceptent aucun clic ou geste. Seules les formes
 de la zone visible sont montées ; la destination est préparée avant le vol
 de révélation, y compris lorsque la réponse traverse l'antiméridien.
@@ -84,13 +92,17 @@ Sources récupérées le 6 octobre 2026 :
   chaque polygone partage une ligne de frontière : 238 paires, symétriques.
 - [Leaflet 1.9.4](https://github.com/Leaflet/Leaflet/tree/v1.9.4), distribution
   locale issue du paquet officiel sur jsDelivr.
-- [Natural Earth, fleuves 1:10 millions](https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_10m_rivers_lake_centerlines.geojson)
-  et [régions physiques 1:10 millions](https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_10m_geography_regions_polys.geojson),
-  domaine public. `physical.json` conserve 1 155 tracés hydrographiques et
-  189 zones issues de 297 régions de relief. Les données sont simplifiées
-  pour le jeu (environ 110 m en France/alentours et 440 m ailleurs pour les
-  fleuves, coordonnées arrondies à quatre décimales) : elles gardent les grands
-  méandres mais ne constituent pas une carte locale de précision.
+- [Natural Earth, fleuves 1:10 millions](https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_10m_rivers_lake_centerlines.geojson),
+  domaine public. `physical.json` conserve les 1 155 tracés hydrographiques
+  existants, généralisés à environ 110 m en France/alentours et 440 m ailleurs.
+  Les 41 segments métropolitains sont découpés uniquement pour le mode Département.
+- [ETOPO10](https://github.com/g2e/etopo10), grille de dix minutes d'arc dérivée
+  d'[ETOPO1 NOAA](https://doi.org/10.7289/V5C8276M), données du domaine public.
+  Source récupérée le 7 octobre 2026. Les seuils d'altitude donnent 1 441 contours
+  mondiaux et 18 contours découpés en métropole. Le lissage léger et la
+  interpolation et la généralisation des polygones évitent les limites en escalier
+  de la grille. La licence MIT de la distribution est conservée dans
+  `data/geography/etopo-license.txt`.
 
 `data/geography/` contient 242 formes pays/territoires, dont 159 pays choisis
 pour les questions, 96 départements, 81 villes françaises et 140 villes du monde.
@@ -113,17 +125,19 @@ du service worker. Une première ouverture en ligne télécharge ces ressources 
 les trois jeux peuvent ensuite fonctionner hors connexion. Le réseau reste
 prioritaire lors des mises à jour, selon le mécanisme PWA existant.
 
-`tools/prepare-geography-physical.py` reproduit les données physiques à partir
-des deux GeoJSON Natural Earth, avec Python et Shapely (outil de préparation,
-aucune dépendance supplémentaire dans le navigateur) :
+`tools/prepare-geography-physical.py` reproduit le relief et le découpage français
+avec Python, NumPy, SciPy, ContourPy et Shapely, uniquement pendant la préparation.
+Télécharger `etopo10_ice_g_i2.bin` et son `.hdr` depuis la source ci-dessus ; les
+fleuves mondiaux approuvés sont repris sans modification du fichier existant :
 
 ```sh
-python tools/prepare-geography-physical.py --rivers /chemin/fleuves.geojson --regions /chemin/regions.geojson
+python tools/prepare-geography-physical.py --elevation /chemin/etopo10_ice_g_i2.bin --header /chemin/etopo10_ice_g_i2.hdr
 ```
 
-Le fichier enregistre les empreintes SHA-256 des sources. Les tracés détaillés
-des fleuves sont généralisés, les massifs sont fusionnés et limités aux terres
-de `countries.geojson`. Le fichier local pèse environ 2,6 Mio avant compression.
+Le fichier enregistre les empreintes SHA-256 des sources. Le navigateur lit
+directement les polygones préparés, sans grille raster ni calcul de contours.
+Le fichier local pèse environ 4,29 Mio avant compression (environ 1,41 Mio
+compressé), sans nouvelle requête ni dépendance d'exécution.
 
 `python tools/prepare-department-neighbors.py` régénère les voisins à partir des
 contours locaux avec Shapely, sans déplacer les coordonnées. Cette préparation
