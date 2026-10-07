@@ -1,0 +1,12 @@
+# Données et distributions conservées sans modification.
+data/
+scripts/supabase-config.js
+vendor/
+archive/
+image/
+fonts/
+package-lock.json
+# Le DOM et les feuilles de style sont des contrats visuels de cette remise à plat.
+index.html
+styles/
+supabase/templates/

@@ -20,26 +20,37 @@
   function clearCelebration(root) {
     const active = celebrations.get(root);
     if (!active) return;
-    clearTimeout(active.timer); active.node.remove(); celebrations.delete(root);
+    clearTimeout(active.timer);
+    active.node.remove();
+    celebrations.delete(root);
   }
   function celebrate(root, image) {
     clearCelebration(root);
     const node = document.createElement('div');
-    node.className = 'jdd-celebration'; node.setAttribute('aria-hidden', 'true');
+    node.className = 'jdd-celebration';
+    node.setAttribute('aria-hidden', 'true');
     const art = document.createElement('img');
-    art.src = image; art.alt = ''; art.className = 'jdd-celebration-art'; art.draggable = false;
+    art.src = image;
+    art.alt = '';
+    art.className = 'jdd-celebration-art';
+    art.draggable = false;
     node.appendChild(art);
     for (let i = 0; i < 12; i++) {
       const particle = document.createElement('i');
       particle.className = 'jdd-celebration-spark';
-      const angle = i * Math.PI / 6;
+      const angle = (i * Math.PI) / 6;
       particle.style.setProperty('--spark-x', `${Math.cos(angle) * 42}vmin`);
       particle.style.setProperty('--spark-y', `${Math.sin(angle) * 42}vmin`);
-      particle.style.setProperty('--spark-delay', `${i % 4 * 35}ms`);
+      particle.style.setProperty('--spark-delay', `${(i % 4) * 35}ms`);
       node.appendChild(particle);
     }
     root.appendChild(node);
     celebrations.set(root, { node, timer: setTimeout(() => clearCelebration(root), 2000) });
   }
-  global.JDDVisuals = { arrow, streak, updateStreak, celebrate, clearCelebration };
+  const icons = Object.freeze({
+    home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9"/></svg>',
+    pause:
+      '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>',
+  });
+  global.JDDVisuals = { icons, arrow, streak, updateStreak, celebrate, clearCelebration };
 })(window);

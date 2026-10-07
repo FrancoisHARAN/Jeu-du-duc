@@ -10,7 +10,8 @@
     k: '<path d="M22 5h4v4h4v4h-4v5h-4v-5h-4V9h4Z"/><path d="M24 19c-10-7-15 1-11 8l5 6h12l5-6c4-7-1-15-11-8Z"/><path d="m18 33-4 5h20l-4-5Z"/>',
   };
   function piece(type, color) {
-    const fill = color === 'w' ? '#fff9e9' : '#57476c', shine = color === 'w' ? '#c9b3ef' : '#9a80c5';
+    const fill = color === 'w' ? '#fff9e9' : '#57476c',
+      shine = color === 'w' ? '#c9b3ef' : '#9a80c5';
     return `<svg class="chess-piece chess-piece--${color}" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><g fill="${fill}" stroke="#252124" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" color="#252124">${shapes[type] || shapes.p}<path d="M11 38h26l2 5H9Z"/></g><path d="M13 40h21" stroke="${shine}" stroke-width="1.5" stroke-linecap="round"/></svg>`;
   }
   global.JDDChessPieces = { piece };

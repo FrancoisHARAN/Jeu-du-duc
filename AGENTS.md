@@ -35,3 +35,14 @@ tout le formulaire ni ramener la page en haut pour une modification locale.
 Un rechargement automatique conserve également la position de lecture.
 Cette règle s'applique à toutes les pages actuelles et futures. Le retour en
 haut reste adapté à l'ouverture volontaire d'un nouvel écran ou d'une partie.
+
+# Architecture et maintenance
+
+Lire `README.md`, `docs/architecture.md` et `docs/maintenance.md` avant une
+modification structurelle. Le site reste statique, avec ses chemins publics et
+ses formats de stockage existants. Les outils et tests sont organisés par rôle ;
+les données générées, distributions tierces et archives gardent leur contenu.
+Utiliser les helpers partagés existants lorsque leur comportement correspond
+exactement au besoin. Ne pas fusionner des logiques de jeux seulement parce
+qu'elles se ressemblent. Vérifier les contrats de compatibilité et les parcours
+concernés ; documenter toute évolution intentionnelle de ces contrats.

@@ -17,9 +17,12 @@
     home: '<svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M16 4 3 15h4v12h7v-8h4v8h7V15h4z"/></svg>',
     next: global.JDDVisuals.arrow(),
     // silhouettes des cartes (garçon / fille) avec le point d'interrogation
-    cardBoy: '<svg viewBox="0 0 100 120"><path fill="#fff" d="M22 118c0-18 10-27 22-29v-8c-11-4-19-14-19-28 0-8 2-14 6-19l-10-3 10-4-5-10 13 4c6-6 14-8 22-7 14 2 22 13 22 27l-1 9 6 10c1 2 0 4-2 4h-4v8c0 5-4 8-9 8h-9v8c12 2 22 11 22 29z"/><text x="57" y="66" text-anchor="middle" font-family="Montserrat,Arial,sans-serif" font-weight="900" font-size="36" fill="#f6b400">?</text></svg>',
-    cardGirl: '<svg viewBox="0 0 100 120"><path fill="#fff" d="M20 118c0-18 11-27 24-29v-6c-14-3-24-13-24-31 0-22 16-38 36-38 18 0 30 14 30 30l-1 8 6 9c1 2 0 4-2 4h-4v8c0 5-4 8-9 8h-10v8c12 2 22 11 22 29z"/><text x="57" y="66" text-anchor="middle" font-family="Montserrat,Arial,sans-serif" font-weight="900" font-size="36" fill="#f6b400">?</text></svg>',
-    silhouette: '<svg class="uc-sil" viewBox="0 0 100 120"><path fill="rgba(255,255,255,.95)" d="M22 118c0-18 10-27 22-29v-8c-11-4-19-14-19-28 0-8 2-14 6-19l-10-3 10-4-5-10 13 4c6-6 14-8 22-7 14 2 22 13 22 27l-1 9 6 10c1 2 0 4-2 4h-4v8c0 5-4 8-9 8h-9v8c12 2 22 11 22 29z"/></svg>',
+    cardBoy:
+      '<svg viewBox="0 0 100 120"><path fill="#fff" d="M22 118c0-18 10-27 22-29v-8c-11-4-19-14-19-28 0-8 2-14 6-19l-10-3 10-4-5-10 13 4c6-6 14-8 22-7 14 2 22 13 22 27l-1 9 6 10c1 2 0 4-2 4h-4v8c0 5-4 8-9 8h-9v8c12 2 22 11 22 29z"/><text x="57" y="66" text-anchor="middle" font-family="Montserrat,Arial,sans-serif" font-weight="900" font-size="36" fill="#f6b400">?</text></svg>',
+    cardGirl:
+      '<svg viewBox="0 0 100 120"><path fill="#fff" d="M20 118c0-18 11-27 24-29v-6c-14-3-24-13-24-31 0-22 16-38 36-38 18 0 30 14 30 30l-1 8 6 9c1 2 0 4-2 4h-4v8c0 5-4 8-9 8h-10v8c12 2 22 11 22 29z"/><text x="57" y="66" text-anchor="middle" font-family="Montserrat,Arial,sans-serif" font-weight="900" font-size="36" fill="#f6b400">?</text></svg>',
+    silhouette:
+      '<svg class="uc-sil" viewBox="0 0 100 120"><path fill="rgba(255,255,255,.95)" d="M22 118c0-18 10-27 22-29v-8c-11-4-19-14-19-28 0-8 2-14 6-19l-10-3 10-4-5-10 13 4c6-6 14-8 22-7 14 2 22 13 22 27l-1 9 6 10c1 2 0 4-2 4h-4v8c0 5-4 8-9 8h-9v8c12 2 22 11 22 29z"/></svg>',
   };
 
   function roleIcon(role) {
@@ -31,10 +34,15 @@
     return `<svg viewBox="0 0 64 64"><g fill="${fill}"${stroke} stroke-linejoin="round"><path d="M21 21c0-9 4-14 11-14s11 5 11 14z"/><path d="M12 22c0-2 2-3 4-3h32c2 0 4 1 4 3s-2 3-4 3H16c-2 0-4-1-4-3z"/><path d="M22 27h20c0 9-4 15-10 15s-10-6-10-15z"/><path d="M14 62l2-11c1-6 7-9 16-9s15 3 16 9l2 11z"/></g></svg>`;
   }
 
-
   // ---------------------------------------------------------------- état
   let root = null;
-  let options = { onExit: function () {}, getSuggestedNames: function () { return []; }, editPlayers: function () {} };
+  let options = {
+    onExit: function () {},
+    getSuggestedNames: function () {
+      return [];
+    },
+    editPlayers: function () {},
+  };
   let store = null;
   let modal = null;
   let whiteCelebrationPending = false;
@@ -44,7 +52,13 @@
   let toastTimer = null;
 
   function freshStore() {
-    return { players: [], bench: [], settings: Object.assign({ count: 5 }, defaultRoles(5)), game: null, usedPairs: [] };
+    return {
+      players: [],
+      bench: [],
+      settings: Object.assign({ count: 5 }, defaultRoles(5)),
+      game: null,
+      usedPairs: [],
+    };
   }
 
   function load() {
@@ -53,9 +67,25 @@
       if (!data || !Array.isArray(data.players) || !data.settings) return freshStore();
       const base = freshStore();
       return {
-        players: data.players.filter((p) => p && p.id && typeof p.name === 'string').map((p) => ({ id: p.id, name: p.name, score: Number(p.score) || 0, participant: p.participant || null })),
+        players: data.players
+          .filter((p) => p && p.id && typeof p.name === 'string')
+          .map((p) => ({
+            id: p.id,
+            name: p.name,
+            score: Number(p.score) || 0,
+            participant: p.participant || null,
+          })),
         // joueurs retirés de la bande : leurs points les attendent s'ils reviennent
-        bench: Array.isArray(data.bench) ? data.bench.filter((p) => p && p.id && typeof p.name === 'string').map((p) => ({ id: p.id, name: p.name, score: Number(p.score) || 0, participant: p.participant || null })) : [],
+        bench: Array.isArray(data.bench)
+          ? data.bench
+              .filter((p) => p && p.id && typeof p.name === 'string')
+              .map((p) => ({
+                id: p.id,
+                name: p.name,
+                score: Number(p.score) || 0,
+                participant: p.participant || null,
+              }))
+          : [],
         settings: Object.assign(base.settings, data.settings),
         game: data.game && Array.isArray(data.game.slots) ? data.game : null,
         usedPairs: Array.isArray(data.usedPairs) ? data.usedPairs : [],
@@ -73,16 +103,16 @@
     }
   }
 
-  function escapeHtml(value) {
-    return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  }
+  const escapeHtml = global.JDD.escapeHtml;
 
   function uid() {
     return `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
   }
 
   function shuffle(list) {
-    return global.JDD && global.JDD.shuffle ? global.JDD.shuffle(list) : list.sort(() => Math.random() - 0.5);
+    return global.JDD && global.JDD.shuffle
+      ? global.JDD.shuffle(list)
+      : list.sort(() => Math.random() - 0.5);
   }
 
   function playerById(id) {
@@ -115,7 +145,10 @@
 
   function clampSettings() {
     const s = store.settings;
-    s.count = Math.min(MAX_PLAYERS, Math.max(MIN_PLAYERS, Number(s.count) || 5, store.players.length));
+    s.count = Math.min(
+      MAX_PLAYERS,
+      Math.max(MIN_PLAYERS, Number(s.count) || 5, store.players.length)
+    );
     if (store.players.length > s.count) store.players.length = s.count;
     const max = maxInfiltrators(s.count);
     s.undercover = Math.max(0, Math.min(Number(s.undercover) || 0, max));
@@ -154,7 +187,8 @@
   }
 
   function pickPair() {
-    const all = (global.JDD && Array.isArray(global.JDD.UNDERCOVER_PAIRS)) ? global.JDD.UNDERCOVER_PAIRS : [];
+    const all =
+      global.JDD && Array.isArray(global.JDD.UNDERCOVER_PAIRS) ? global.JDD.UNDERCOVER_PAIRS : [];
     const pool = all;
     if (!pool.length) return { civil: 'Chat', under: 'Chien' };
     const used = new Set(store.usedPairs);
@@ -170,17 +204,19 @@
   }
 
   function normalizeWord(value) {
-    return String(value || '')
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      // un article n'est retiré que s'il est suivi d'un espace (Lapin, Dés restent entiers) ; ’ = apostrophe iPhone
-      .replace(/^(?:(?:les|le|la|une|un|des|du|de la)\s+|l['’]\s*)/, '')
-      // pluriel retiré mot par mot (Film X ≠ Film)
-      .split(/[^a-z0-9]+/)
-      .filter(Boolean)
-      .map((word) => (word.length > 2 ? word.replace(/[sx]$/, '') : word))
-      .join('');
+    return (
+      String(value || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        // un article n'est retiré que s'il est suivi d'un espace (Lapin, Dés restent entiers) ; ’ = apostrophe iPhone
+        .replace(/^(?:(?:les|le|la|une|un|des|du|de la)\s+|l['’]\s*)/, '')
+        // pluriel retiré mot par mot (Film X ≠ Film)
+        .split(/[^a-z0-9]+/)
+        .filter(Boolean)
+        .map((word) => (word.length > 2 ? word.replace(/[sx]$/, '') : word))
+        .join('')
+    );
   }
 
   // ---------------------------------------------------------------- partie
@@ -208,9 +244,14 @@
     const pair = pickPair();
     const swap = Math.random() < 0.5;
     store.game = {
-      cloud: global.JDDCloud.begin('undercover', store.players.map(p => p.name)),
+      cloud: global.JDDCloud.begin(
+        'undercover',
+        store.players.map((p) => p.name)
+      ),
       phase: 'distribute',
-      words: swap ? { civil: pair.under, under: pair.civil } : { civil: pair.civil, under: pair.under },
+      words: swap
+        ? { civil: pair.under, under: pair.civil }
+        : { civil: pair.civil, under: pair.under },
       slots: roles.map((role, index) => ({
         pid: store.players[index] ? store.players[index].id : null,
         role,
@@ -236,7 +277,9 @@
   }
 
   function aliveSlots() {
-    return game().slots.map((slot, index) => ({ slot, index })).filter((entry) => entry.slot.alive);
+    return game()
+      .slots.map((slot, index) => ({ slot, index }))
+      .filter((entry) => entry.slot.alive);
   }
 
   function startDescribe() {
@@ -294,16 +337,32 @@
     g.deltas = deltas;
     g.phase = 'end';
     if (g.cloud) {
-      global.JDDCloud.record(g.cloud, g.slots.map((slot, index) => {
-        const participant = g.cloud.participants.find(p => p.label === playerById(slot.pid)?.name);
-        const won = deltas[index] > 0;
-        return { participant, metrics: { games: 1, wins: Number(won), points: deltas[index],
-          [`${slot.role}_games`]: 1, [`${slot.role}_wins`]: Number(won) } };
-      }), { result, roles: g.slots.map(slot => slot.role) });
+      global.JDDCloud.record(
+        g.cloud,
+        g.slots.map((slot, index) => {
+          const participant = g.cloud.participants.find(
+            (p) => p.label === playerById(slot.pid)?.name
+          );
+          const won = deltas[index] > 0;
+          return {
+            participant,
+            metrics: {
+              games: 1,
+              wins: Number(won),
+              points: deltas[index],
+              [`${slot.role}_games`]: 1,
+              [`${slot.role}_wins`]: Number(won),
+            },
+          };
+        }),
+        { result, roles: g.slots.map((slot) => slot.role) }
+      );
     }
     save();
     modal = { type: 'end' };
-    whiteCelebrationPending = g.slots.some((slot, index) => slot.role === 'white' && deltas[index] > 0);
+    whiteCelebrationPending = g.slots.some(
+      (slot, index) => slot.role === 'white' && deltas[index] > 0
+    );
   }
 
   function afterElimination() {
@@ -355,11 +414,17 @@
     root.querySelectorAll('.uc-word, .uc-end-word > span:last-child').forEach((element) => {
       element.style.fontSize = '';
       const style = getComputedStyle(element);
-      const width = element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      const width =
+        element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
       context.font = style.font;
-      const widest = Math.max(...element.textContent.trim().split(/\s+/).map((word) => context.measureText(word).width));
+      const widest = Math.max(
+        ...element.textContent
+          .trim()
+          .split(/\s+/)
+          .map((word) => context.measureText(word).width)
+      );
       if (width > 0 && widest > width) {
-        element.style.fontSize = `${Math.floor(parseFloat(style.fontSize) * width / widest * 2) / 2}px`;
+        element.style.fontSize = `${Math.floor(((parseFloat(style.fontSize) * width) / widest) * 2) / 2}px`;
       }
     });
   }
@@ -370,12 +435,19 @@
     const names = options.getSuggestedNames().slice(0, MAX_PLAYERS);
     store.players = names.map((name) => {
       const participant = global.JDDParticipants.get(name);
-      const existing = previous.find(player => participant?.kind === 'account'
-        ? player.participant?.kind === 'account' && player.participant.id === participant.id
-        : player.participant?.kind !== 'account' && player.name.toLowerCase() === name.toLowerCase());
-      return existing ? { ...existing, name, participant } : { id: uid(), name, score: 0, participant };
+      const existing = previous.find((player) =>
+        participant?.kind === 'account'
+          ? player.participant?.kind === 'account' && player.participant.id === participant.id
+          : player.participant?.kind !== 'account' &&
+            player.name.toLowerCase() === name.toLowerCase()
+      );
+      return existing
+        ? { ...existing, name, participant }
+        : { id: uid(), name, score: 0, participant };
     });
-    store.bench = previous.filter((p) => p.score > 0 && !store.players.some((q) => q.id === p.id)).slice(-30);
+    store.bench = previous
+      .filter((p) => p.score > 0 && !store.players.some((q) => q.id === p.id))
+      .slice(-30);
     const count = Math.max(MIN_PLAYERS, store.players.length);
     if (count !== store.settings.count) Object.assign(store.settings, defaultRoles(count));
     store.settings.count = count;
@@ -436,18 +508,25 @@
     const hasScores = players.some((p) => p.score > 0);
     if (!playersBox._editor) {
       playersBox._editor = global.JDDPlayerEditor.mount(playersBox, {
-        getNames: options.getSuggestedNames, addPlayer: options.addPlayer,
-        removePlayer: options.removePlayer, maximum: MAX_PLAYERS,
+        getNames: options.getSuggestedNames,
+        addPlayer: options.addPlayer,
+        removePlayer: options.removePlayer,
+        maximum: MAX_PLAYERS,
       });
     } else playersBox._editor.update();
     let reset = playersBox.parentElement.querySelector('[data-act="reset-scores"]');
     if (hasScores && !reset) {
-      reset = document.createElement('button'); reset.type = 'button'; reset.className = 'uc-link';
-      reset.dataset.act = 'reset-scores'; reset.textContent = 'Remettre les scores à zéro';
+      reset = document.createElement('button');
+      reset.type = 'button';
+      reset.className = 'uc-link';
+      reset.dataset.act = 'reset-scores';
+      reset.textContent = 'Remettre les scores à zéro';
       playersBox.after(reset);
     } else if (!hasScores && reset) reset.remove();
     const start = root.querySelector('[data-act="start"]');
-    if (start) start.disabled = players.length < MIN_PLAYERS || options.getSuggestedNames().length > MAX_PLAYERS;
+    if (start)
+      start.disabled =
+        players.length < MIN_PLAYERS || options.getSuggestedNames().length > MAX_PLAYERS;
   }
 
   function renderInfos() {
@@ -473,14 +552,20 @@
         ? `<h2>Joueur ${nextNewPlayerNumber()}</h2><p>Choisis une carte</p>`
         : '<h2>Distribution</h2><p>Touche ta pastille pour lire ton mot secret</p>';
     } else if (g.phase === 'vote') {
-      head = '<h2>Élimination</h2><p>Discutez qui éliminer puis votez tous en même temps en pointant du doigt !</p>';
-      bottom = '<button class="uc-btn uc-btn--green uc-btn--sm" data-act="describe-again">Décrire à nouveau</button>';
+      head =
+        '<h2>Élimination</h2><p>Discutez qui éliminer puis votez tous en même temps en pointant du doigt !</p>';
+      bottom =
+        '<button class="uc-btn uc-btn--green uc-btn--sm" data-act="describe-again">Décrire à nouveau</button>';
     } else {
-      head = '<h2>Description</h2><p>Décrivez votre mot secret dans l\'ordre indiqué, en utilisant juste un mot ou une phrase.</p>';
-      if (g.phase === 'describe') bottom = '<button class="uc-btn uc-btn--orange" data-act="to-vote">Passer au vote</button>';
+      head =
+        "<h2>Description</h2><p>Décrivez votre mot secret dans l'ordre indiqué, en utilisant juste un mot ou une phrase.</p>";
+      if (g.phase === 'describe')
+        bottom = '<button class="uc-btn uc-btn--orange" data-act="to-vote">Passer au vote</button>';
     }
-    const headClass = g.phase === 'vote' ? 'uc-head--vote' : g.phase === 'distribute' ? '' : 'uc-head--describe';
-    const knownWaiting = g.phase === 'distribute' && hasBlankSlot() && g.slots.some((slot) => slot.pid && !slot.seen);
+    const headClass =
+      g.phase === 'vote' ? 'uc-head--vote' : g.phase === 'distribute' ? '' : 'uc-head--describe';
+    const knownWaiting =
+      g.phase === 'distribute' && hasBlankSlot() && g.slots.some((slot) => slot.pid && !slot.seen);
 
     return `
       <div class="uc-screen">
@@ -502,7 +587,8 @@
     const g = game();
     if (!slot.pid) {
       const art = index % 2 === 0 ? SVG.cardBoy : SVG.cardGirl;
-      const clickable = g.phase === 'distribute' ? ' data-act="pick-card" data-slot="' + index + '"' : '';
+      const clickable =
+        g.phase === 'distribute' ? ' data-act="pick-card" data-slot="' + index + '"' : '';
       return `<button class="uc-card"${clickable} aria-label="Carte face cachée">${art}</button>`;
     }
     const player = playerById(slot.pid);
@@ -541,9 +627,12 @@
   }
 
   function bigAvatar(name, color, role) {
-    const badge = role === 'white'
-      ? `<span class="uc-role-badge">${roleIcon('white')}</span><span class="uc-role-label">Mr. White</span>`
-      : role ? `<span class="uc-role-badge">${roleIcon(role)}</span>` : '';
+    const badge =
+      role === 'white'
+        ? `<span class="uc-role-badge">${roleIcon('white')}</span><span class="uc-role-label">Mr. White</span>`
+        : role
+          ? `<span class="uc-role-badge">${roleIcon(role)}</span>`
+          : '';
     const face = name ? initial(name) : SVG.silhouette;
     return `<div class="uc-big-avatar" style="background:${color}">${face}${badge}</div>`;
   }
@@ -580,17 +669,23 @@
       case 'name': {
         const color = slotColor(modal.slot);
         const used = new Set(store.players.map((p) => p.name.toLowerCase()));
-        const suggestions = (options.getSuggestedNames() || []).filter((name) => !used.has(String(name).toLowerCase())).slice(0, 12);
+        const suggestions = (options.getSuggestedNames() || [])
+          .filter((name) => !used.has(String(name).toLowerCase()))
+          .slice(0, 12);
         return overlay(`
           <div class="uc-modal">
             ${bigAvatar(modal.value, color)}
             <input class="uc-input" id="uc-name-input" maxlength="16" placeholder="Choisis un nom" value="${escapeHtml(modal.value)}" autocomplete="off" data-autofocus>
             <div class="uc-helper">Saisis ton nom pour dévoiler ton mot secret</div>
-            ${suggestions.length ? `
+            ${
+              suggestions.length
+                ? `
               <div class="uc-suggest">
                 <div class="uc-suggest-title">Ou touche ton prénom :</div>
                 <div class="uc-chips">${suggestions.map((name) => `<button class="uc-chip" data-act="suggest" data-name="${escapeHtml(name)}">${escapeHtml(name)}</button>`).join('')}</div>
-              </div>` : ''}
+              </div>`
+                : ''
+            }
             <div class="uc-modal-spacer"></div>
             <button class="uc-btn uc-btn--green" data-act="submit-name" id="uc-name-submit" ${modal.value.trim() ? '' : 'style="visibility:hidden"'}>Lis ton mot secret</button>
           </div>`);
@@ -614,7 +709,7 @@
           <div class="uc-modal">
             ${bigAvatar(player.name, slotColor(modal.slot), isWhite ? 'white' : null)}
             <div class="uc-player-name">${escapeHtml(player.name)}</div>
-            <p class="uc-sub uc-muted">${isWhite ? 'Tu n\'as pas de mot secret' : 'Ton mot secret est'}</p>
+            <p class="uc-sub uc-muted">${isWhite ? "Tu n'as pas de mot secret" : 'Ton mot secret est'}</p>
             <div class="uc-word ${isWhite ? 'uc-word--white' : ''}">${isWhite ? 'Tu es Mr. White' : escapeHtml(word)}</div>
             <div class="uc-modal-spacer"></div>
             <button class="uc-btn uc-btn--green" data-act="word-ok">OK</button>
@@ -632,7 +727,11 @@
           </div>`);
 
       case 'eliminated': {
-        const titles = { civil: '1 Civil(e) en moins !', undercover: '1 Undercover en moins !', white: '1 Mr. White en moins !' };
+        const titles = {
+          civil: '1 Civil(e) en moins !',
+          undercover: '1 Undercover en moins !',
+          white: '1 Mr. White en moins !',
+        };
         return overlay(`
           <div class="uc-modal">
             <h3 class="uc-modal-title-white">${titles[slot.role]}</h3>
@@ -702,7 +801,11 @@
         title = 'Mr. White a gagné !';
         heroRole = 'white';
       } else {
-        title = hasWhite ? 'Les Infiltrés ont gagné !' : underCount > 1 ? 'Les Undercovers ont gagné !' : "L'Undercover a gagné !";
+        title = hasWhite
+          ? 'Les Infiltrés ont gagné !'
+          : underCount > 1
+            ? 'Les Undercovers ont gagné !'
+            : "L'Undercover a gagné !";
         heroRole = 'undercover';
       }
     }
@@ -722,13 +825,17 @@
         <div class="uc-trophy-card"><span class="uc-trophy">🏆</span>${roleIcon(heroRole)}</div>
         <div class="uc-ribbon">Les scores de la bande</div>
         <div class="uc-scores">
-          ${rows.map(({ slot, index, player }) => `
+          ${rows
+            .map(
+              ({ slot, index, player }) => `
             <div class="uc-score-row ${slot.alive ? '' : 'uc-score-row--out'}">
               <span class="uc-mini" style="background:${slotColor(index)}">${initial(player.name)}</span>
               <span class="uc-score-name">${escapeHtml(player.name)}</span>
               <span class="uc-score-pts">${g.deltas[index] ? `<span class="uc-plus">+${g.deltas[index]}</span>` : ''}${player.score}<small>PTS</small></span>
               <span class="uc-score-role">${roleIcon(slot.role)}</span>
-            </div>`).join('')}
+            </div>`
+            )
+            .join('')}
         </div>
         <div class="uc-end-actions">
           <button class="uc-round" data-act="end-home" aria-label="Retour aux réglages">${SVG.home}<span>Réglages</span></button>
@@ -738,7 +845,10 @@
   }
 
   function overlay(content) {
-    const charted = content.replace(/(<div class="uc-(?:modal|dialog)[^"]*">)/, `$1${windowBar('UNDERCOVER')}`);
+    const charted = content.replace(
+      /(<div class="uc-(?:modal|dialog)[^"]*">)/,
+      `$1${windowBar('UNDERCOVER')}`
+    );
     return `<div class="uc-overlay" role="dialog" aria-modal="true" aria-label="Undercover">${charted}</div>`;
   }
 
@@ -789,7 +899,9 @@
     g.slots[modal.slot].seen = true;
     if (g.slots.every((slot) => slot.seen)) {
       // ordre des joueurs = ordre des cartes, pour la partie suivante
-      store.players = g.slots.map((slot) => playerById(slot.pid)).filter(Boolean)
+      store.players = g.slots
+        .map((slot) => playerById(slot.pid))
+        .filter(Boolean)
         .concat(store.players.filter((p) => !g.slots.some((slot) => slot.pid === p.id)));
       startDescribe();
       modal = null;
@@ -839,7 +951,9 @@
         break;
       }
       case 'reset-scores':
-        store.players.forEach((p) => { p.score = 0; });
+        store.players.forEach((p) => {
+          p.score = 0;
+        });
         store.bench = [];
         save();
         syncSetup();
@@ -902,7 +1016,8 @@
         }
         break;
       case 'eliminate':
-        if (!modal || modal.type !== 'confirmVote' || Date.now() - confirmOpenedAt < CONFIRM_DELAY) break;
+        if (!modal || modal.type !== 'confirmVote' || Date.now() - confirmOpenedAt < CONFIRM_DELAY)
+          break;
         g.slots[modal.slot].alive = false;
         save();
         modal = { type: 'eliminated', slot: modal.slot };
@@ -977,7 +1092,9 @@
     root.addEventListener('click', onClick);
     root.addEventListener('input', onInput);
     root.addEventListener('keydown', onKeyDown);
-    global.addEventListener('resize', () => { if (!root.classList.contains('hidden')) fitSecretWords(); });
+    global.addEventListener('resize', () => {
+      if (!root.classList.contains('hidden')) fitSecretWords();
+    });
   }
 
   function onOpen() {
@@ -997,5 +1114,10 @@
   }
 
   global.JDDModules = global.JDDModules || {};
-  global.JDDModules.undercover = { init, onOpen, onPlayersChanged, hasActiveGame: () => Boolean(store && game()) };
+  global.JDDModules.undercover = {
+    init,
+    onOpen,
+    onPlayersChanged,
+    hasActiveGame: () => Boolean(store && game()),
+  };
 })(window);

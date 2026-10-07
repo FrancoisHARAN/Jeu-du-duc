@@ -5,7 +5,7 @@
  */
 const APP_ROOT = new URL('./', self.location.href);
 const CACHE_PREFIX = `jeu-du-duc-${encodeURIComponent(APP_ROOT.pathname)}-`;
-const CACHE_NAME = `${CACHE_PREFIX}2026-10-07-v63`;
+const CACHE_NAME = `${CACHE_PREFIX}2026-10-08-v64`;
 const QUIZ_IMAGES_ORIGIN = 'https://quizimagescm.s3.eu-west-3.amazonaws.com';
 const SHELL_FILES = [
   './',
@@ -29,6 +29,7 @@ const SHELL_FILES = [
   'vendor/leaflet/leaflet.css',
   'vendor/leaflet/leaflet.js',
   'scripts/core/init.js',
+  'scripts/core/dom.js',
   'scripts/core/sound.js',
   'scripts/core/visual-feedback.js',
   'scripts/core/duel-physics.js',
@@ -51,6 +52,7 @@ const SHELL_FILES = [
   'scripts/core/showQuestion.js',
   'scripts/core/picolo.js',
   'scripts/app/undercover.js',
+  'scripts/app/culture-questions.js',
   'scripts/app/main-game.js',
   'scripts/app/heads-up.js',
   'scripts/app/player-editor.js',
@@ -105,26 +107,40 @@ const SHELL_FILES = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil((async () => {
-    const cache = await caches.open(CACHE_NAME);
-    await cache.addAll(SHELL_FILES.map((file) => new Request(new URL(file, APP_ROOT), { cache: 'no-cache' })));
-    // Les visuels livrés avec le jeu restent disponibles même s'ils n'ont jamais été vus.
-    for (const manifest of ['data/culture.quiz360.images.json', 'data/culture.flags.images.json']) {
-      const imageList = await cache.match(new URL(manifest, APP_ROOT));
-      const images = await imageList.json();
-      await cache.addAll(images.map((file) => new Request(new URL(file, APP_ROOT), { cache: 'no-cache' })));
-    }
-    await self.skipWaiting();
-  })());
+  event.waitUntil(
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      await cache.addAll(
+        SHELL_FILES.map((file) => new Request(new URL(file, APP_ROOT), { cache: 'no-cache' }))
+      );
+      // Les visuels livrés avec le jeu restent disponibles même s'ils n'ont jamais été vus.
+      for (const manifest of [
+        'data/culture.quiz360.images.json',
+        'data/culture.flags.images.json',
+      ]) {
+        const imageList = await cache.match(new URL(manifest, APP_ROOT));
+        const images = await imageList.json();
+        await cache.addAll(
+          images.map((file) => new Request(new URL(file, APP_ROOT), { cache: 'no-cache' }))
+        );
+      }
+      await self.skipWaiting();
+    })()
+  );
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil((async () => {
-    const names = await caches.keys();
-    await Promise.all(names.filter((name) => name.startsWith(CACHE_PREFIX) && name !== CACHE_NAME)
-      .map((name) => caches.delete(name)));
-    await self.clients.claim();
-  })());
+  event.waitUntil(
+    (async () => {
+      const names = await caches.keys();
+      await Promise.all(
+        names
+          .filter((name) => name.startsWith(CACHE_PREFIX) && name !== CACHE_NAME)
+          .map((name) => caches.delete(name))
+      );
+      await self.clients.claim();
+    })()
+  );
 });
 
 function cacheKey(url) {
@@ -179,7 +195,11 @@ async function networkFirst(event, allowOpaque = false) {
   // « no-cache » : le serveur est toujours interrogé, mais un fichier inchangé répond 304 sans être retéléchargé.
   const network = fetch(new Request(request, { cache: 'no-cache' })).then(async (response) => {
     const cache = await cachePromise;
-    if (cache && (response.status === 200 || (allowOpaque && response.type === 'opaque')) && !range) {
+    if (
+      cache &&
+      (response.status === 200 || (allowOpaque && response.type === 'opaque')) &&
+      !range
+    ) {
       try {
         await cache.put(key, response.clone());
       } catch (error) {
@@ -189,26 +209,42 @@ async function networkFirst(event, allowOpaque = false) {
     return response;
   });
   // Si le réseau est lent, il continue à actualiser le cache en arrière-plan.
-  event.waitUntil(network.then(() => undefined, () => undefined));
+  event.waitUntil(
+    network.then(
+      () => undefined,
+      () => undefined
+    )
+  );
   const cache = await cachePromise;
-  const cached = cache && await cache.match(key);
+  const cached = cache && (await cache.match(key));
   if (!cached) return network;
   const fallback = offlineResponse(cached, range);
   let timeout;
   return Promise.race([
     network.catch(() => fallback),
-    new Promise((resolve) => { timeout = setTimeout(() => resolve(fallback), 4000); }),
+    new Promise((resolve) => {
+      timeout = setTimeout(() => resolve(fallback), 4000);
+    }),
   ]).finally(() => clearTimeout(timeout));
 }
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   // Les photos du classeur sont externes : garder celles déjà consultées hors ligne.
-  if (event.request.method === 'GET' && event.request.destination === 'image' && url.origin === QUIZ_IMAGES_ORIGIN) {
+  if (
+    event.request.method === 'GET' &&
+    event.request.destination === 'image' &&
+    url.origin === QUIZ_IMAGES_ORIGIN
+  ) {
     event.respondWith(networkFirst(event, true));
     return;
   }
-  if (event.request.method !== 'GET' || url.origin !== APP_ROOT.origin
-      || !url.pathname.startsWith(APP_ROOT.pathname) || url.href === self.location.href) return;
+  if (
+    event.request.method !== 'GET' ||
+    url.origin !== APP_ROOT.origin ||
+    !url.pathname.startsWith(APP_ROOT.pathname) ||
+    url.href === self.location.href
+  )
+    return;
   event.respondWith(networkFirst(event).then(browserResponse));
 });

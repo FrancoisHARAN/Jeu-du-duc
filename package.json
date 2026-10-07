@@ -1,14 +1,28 @@
 {
   "name": "jeu-du-duc",
   "private": true,
-  "description": "Outils cloud de Jeu du Duc ; le jeu reste un site statique.",
+  "description": "Jeu du Duc : site statique PWA et outils de maintenance.",
   "scripts": {
-    "supabase:check": "node --use-env-proxy tools/check-supabase.mjs"
+    "serve": "python3 -m http.server 8000",
+    "check": "node tools/maintenance/check_project.mjs",
+    "test": "python3 tools/maintenance/run_tests.py",
+    "test:unit": "python3 tools/maintenance/run_tests.py --unit",
+    "test:browser": "python3 tools/maintenance/run_tests.py --browser",
+    "format:check": "prettier --check \"scripts/**/*.js\" \"tools/**/*.mjs\" \"tests/**/*.mjs\" \"tests/**/*.cjs\" service-worker.js",
+    "format": "prettier --write \"scripts/**/*.js\" \"tools/**/*.mjs\" \"tests/**/*.mjs\" \"tests/**/*.cjs\" service-worker.js",
+    "format:python:check": "python3 -m black --check tools tests",
+    "format:python": "python3 -m black tools tests",
+    "supabase:check": "node --use-env-proxy tools/cloud/check_supabase.mjs"
   },
   "engines": {
     "node": ">=24.5.0"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.117.2"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
+    "acorn": "8.15.0",
+    "prettier": "3.6.2"
   }
 }

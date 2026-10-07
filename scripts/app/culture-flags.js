@@ -21,21 +21,29 @@
     const skip = button('flag-skip', 'Passer');
     const actions = node('div', 'flag-spelling-actions');
     const normalized = JDD.normalizeFlagName(question.answer);
-    const expected = [...normalized].filter(char => /[A-Z]/.test(char));
-    const letters = JDD.shuffle([...expected, ...JDD.shuffle([...'ABCDEFGHIJKLMNOPQRSTUVWXYZ']).slice(0, 3)]);
-    const letterButtons = letters.map(letter => button('flag-letter', letter));
+    const expected = [...normalized].filter((char) => /[A-Z]/.test(char));
+    const letters = JDD.shuffle([
+      ...expected,
+      ...JDD.shuffle([...'ABCDEFGHIJKLMNOPQRSTUVWXYZ']).slice(0, 3),
+    ]);
+    const letterButtons = letters.map((letter) => button('flag-letter', letter));
     const slotButtons = [];
     const filled = Array(expected.length).fill(null);
     let done = false;
     const update = () => {
-      submit.disabled = done || filled.some(value => value === null);
+      submit.disabled = done || filled.some((value) => value === null);
       skip.hidden = done;
       slotButtons.forEach((slot, index) => {
         slot.textContent = filled[index] === null ? '' : letters[filled[index]];
         slot.disabled = done || filled[index] === null;
-        slot.setAttribute('aria-label', `Lettre ${index + 1}${slot.textContent ? ` : ${slot.textContent}, retirer` : ', vide'}`);
+        slot.setAttribute(
+          'aria-label',
+          `Lettre ${index + 1}${slot.textContent ? ` : ${slot.textContent}, retirer` : ', vide'}`
+        );
       });
-      letterButtons.forEach((choice, index) => { choice.disabled = done || filled.includes(index); });
+      letterButtons.forEach((choice, index) => {
+        choice.disabled = done || filled.includes(index);
+      });
     };
     // Un groupe par mot, ponctuation conservée ; aucune coupure au milieu d'un mot.
     for (const word of normalized.split(/\s+/)) {
@@ -48,7 +56,12 @@
         }
         const index = slotButtons.length;
         const slot = button('flag-letter-slot', '');
-        slot.addEventListener('click', () => { if (!done) { filled[index] = null; update(); } });
+        slot.addEventListener('click', () => {
+          if (!done) {
+            filled[index] = null;
+            update();
+          }
+        });
         slotButtons.push(slot);
         group.append(slot);
       }
@@ -57,19 +70,26 @@
     letterButtons.forEach((choice, index) => {
       choice.addEventListener('click', () => {
         const slot = filled.indexOf(null);
-        if (!done && slot >= 0) { filled[slot] = index; update(); }
+        if (!done && slot >= 0) {
+          filled[slot] = index;
+          update();
+        }
       });
       alphabet.append(choice);
     });
     submit.addEventListener('click', () => {
       if (submit.disabled || done) return;
-      const correct = filled.map(index => letters[index]).join('') === expected.join('');
+      const correct = filled.map((index) => letters[index]).join('') === expected.join('');
       done = true;
       root.classList.add(correct ? 'flag-answer-correct' : 'flag-answer-wrong');
       update();
-      finish(correct, { spelling: filled.map(index => letters[index]).join('') }, question.answer);
+      finish(
+        correct,
+        { spelling: filled.map((index) => letters[index]).join('') },
+        question.answer
+      );
     });
-    skip.addEventListener('click', event => {
+    skip.addEventListener('click', (event) => {
       event.stopPropagation();
       if (done) return;
       done = true;
@@ -92,7 +112,8 @@
     const pairs = JDD.shuffle([...question.pairs]);
     const countries = JDD.shuffle([...question.pairs]);
     const matched = new Set();
-    let selected = null, errors = 0;
+    let selected = null,
+      errors = 0;
     const flagButtons = pairs.map((pair, index) => {
       const choice = button('flag-match-image');
       choice.setAttribute('aria-label', `Drapeau ${index + 1}`);
@@ -101,7 +122,7 @@
       choice.addEventListener('click', () => {
         if (matched.has(pair.code)) return;
         selected = pair;
-        flagButtons.forEach(other => {
+        flagButtons.forEach((other) => {
           const active = other === choice;
           other.classList.toggle('flag-match-selected', active);
           other.setAttribute('aria-pressed', String(active));
@@ -110,7 +131,7 @@
       flags.append(choice);
       return choice;
     });
-    const nameButtons = countries.map(pair => {
+    const nameButtons = countries.map((pair) => {
       const choice = button('flag-match-name', pair.label);
       choice.dataset.flagCode = pair.code;
       choice.addEventListener('click', () => {
@@ -124,7 +145,7 @@
           return;
         }
         matched.add(pair.code);
-        const flag = flagButtons.find(other => other.dataset.flagCode === pair.code);
+        const flag = flagButtons.find((other) => other.dataset.flagCode === pair.code);
         flag.disabled = choice.disabled = true;
         flag.classList.remove('flag-match-selected');
         flag.setAttribute('aria-pressed', 'false');
@@ -133,19 +154,28 @@
         choice.classList.remove('flag-match-error');
         selected = null;
         status.textContent = `${matched.size} / 4`;
-        if (matched.size === pairs.length) finish(errors === 0, { matching_errors: errors },
-          errors ? 'Associations terminées avec erreur.' : '✓');
+        if (matched.size === pairs.length)
+          finish(
+            errors === 0,
+            { matching_errors: errors },
+            errors ? 'Associations terminées avec erreur.' : '✓'
+          );
       });
       names.append(choice);
       return choice;
     });
     root.append(flags, names, status);
-    return { options: pairs.map(pair => ({ image: pair.image })), buttons: [...flagButtons, ...nameButtons] };
+    return {
+      options: pairs.map((pair) => ({ image: pair.image })),
+      buttons: [...flagButtons, ...nameButtons],
+    };
   }
 
   JDD.renderFlagInteraction = (question, root, finish, onSkip) => {
     // Les taps de réponse ne doivent jamais déclencher « question suivante ».
-    root.onclick = event => event.stopPropagation();
-    return question.interaction === 'spell' ? spelling(question, root, finish, onSkip) : matching(question, root, finish);
+    root.onclick = (event) => event.stopPropagation();
+    return question.interaction === 'spell'
+      ? spelling(question, root, finish, onSkip)
+      : matching(question, root, finish);
   };
 })();

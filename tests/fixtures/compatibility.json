@@ -1,0 +1,152 @@
+{
+  "baselineCommit": "385a4a82de0b4afc48d5ed7672ea78ac69f3093f",
+  "groups": {
+    "data": {
+      "sha256": "5b172bd23e9f2e2b7d8df3aba3836a669d4c5e1625d74c733ae76827375fdfa8",
+      "files": 21,
+      "paths": null,
+      "prefix": "data/",
+      "excluded": [
+        "data/killer.gestures.js"
+      ]
+    },
+    "styles": {
+      "sha256": "c38c0d1f8fb95653246a800a7aac43b863efb549cffe165648dfde6e14f9e1eb",
+      "files": 13,
+      "paths": null,
+      "prefix": "styles/",
+      "excluded": []
+    },
+    "images": {
+      "sha256": "720ad9ea84fbb71cabf79fa8126b73e107c7f28e6fc46e8a4a17c9696ad63a8d",
+      "files": 841,
+      "paths": null,
+      "prefix": "image/",
+      "excluded": [
+        "image/NEW IMAGE"
+      ]
+    },
+    "fonts": {
+      "sha256": "f17fb25ebe9b490431f573cc1c9af6356c38c27a12d7803826f54a3251125e54",
+      "files": 6,
+      "paths": null,
+      "prefix": "fonts/",
+      "excluded": []
+    },
+    "vendor": {
+      "sha256": "ce9253707125fd658d448225e9dfa57992f47c3299d82c1b7d43df67d31fce43",
+      "files": 8,
+      "paths": {
+        "vendor/chess/LICENSE": "vendor/chess/LICENSE",
+        "vendor/chess/README.md": "vendor/chess/README.md",
+        "vendor/chess/chess.js": "vendor/chess/chess.js",
+        "vendor/leaflet/LICENSE": "vendor/leaflet/LICENSE",
+        "vendor/leaflet/leaflet.css": "vendor/leaflet/leaflet.css",
+        "vendor/leaflet/leaflet.js": "vendor/leaflet/leaflet.js",
+        "vendor/supabase/LICENSE": "vendor/supabase/LICENSE",
+        "vendor/supabase/supabase.js": "vendor/supabase/supabase.js"
+      },
+      "prefix": "vendor/",
+      "excluded": []
+    },
+    "migrations": {
+      "sha256": "51598f813d3e9675332f1d0594faa6591e3604ce0d42415fbd96ad6470c0fe5a",
+      "files": 4,
+      "paths": null,
+      "prefix": "supabase/migrations/",
+      "excluded": []
+    },
+    "import-config": {
+      "sha256": "0bfee9550ff56ed87c38dcc0278e187b7db5171fb111b49d7472849d565e0f50",
+      "files": 3,
+      "paths": {
+        "tools/picolo_classification.json": "tools/imports/config/picolo_classification.json",
+        "tools/picolo_excluded.json": "tools/imports/config/picolo_excluded.json",
+        "tools/quiz360_review.json": "tools/imports/config/quiz360_review.json"
+      },
+      "prefix": "tools/",
+      "excluded": []
+    }
+  },
+  "files": {
+    "manifest.webmanifest": "c31c055eaa171c133a49879b06eb21b318eaf8ca11de8f80d06969d677437acb",
+    "scripts/supabase-config.js": "ca3fa7c502cc36465ecd53434f0ed544b600524e4be0e5d296a1b9cd52e8cf9f",
+    "supabase/templates/email-confirmation.html": "0156242e8ba61ce7e1831ac121413559def53f5c6b7671495ca585c7498c3975",
+    "supabase/templates/email-recovery.html": "54201c9741f59fd4b512cb7746547b9349f44bde3a72f515ab979859e407922e",
+    "archive/prototypes/killer/killer.js": "8c8cecb77d0a01cdd0a5fbbc877f69110a6e49b3037b0a3a5e66889d3adc21b3",
+    "archive/prototypes/killer/gestures.js": "c76761f3e52f04648df07274293c54609de3ee5c808ca321908dda5c9dddbfdc"
+  },
+  "indexMarkup": "c56b9bc3b49fb3f0d8f0a099172a99383218afa3e88589a27d11bec080892ac5",
+  "originalScripts": [
+    "scripts/core/init.js",
+    "scripts/core/visual-feedback.js",
+    "scripts/core/duel-physics.js",
+    "scripts/core/duel-ball.js",
+    "vendor/chess/chess.js",
+    "scripts/core/chess-match.js",
+    "scripts/core/chess-pieces.js",
+    "scripts/core/sound.js",
+    "scripts/core/feedback-sounds.js",
+    "scripts/core/history.js",
+    "scripts/core/showQuestion.js",
+    "scripts/core/picolo.js",
+    "scripts/core/participants.js",
+    "vendor/supabase/supabase.js",
+    "scripts/supabase-config.js",
+    "scripts/core/cloud.js",
+    "scripts/core/statistics.js",
+    "scripts/app/accounts.js",
+    "vendor/leaflet/leaflet.js",
+    "scripts/app/player-editor.js",
+    "scripts/app/undercover.js",
+    "scripts/app/heads-up.js",
+    "scripts/app/geography.js",
+    "scripts/app/football.js",
+    "scripts/app/duel-football.js",
+    "scripts/app/chess.js",
+    "scripts/app/culture-flags.js",
+    "data/debut.text.js",
+    "data/hardcore.text.js",
+    "data/alcool.text.js",
+    "data/picolo.cards.js",
+    "data/culture.text.js",
+    "data/culture.mcq.js",
+    "data/undercover.pairs.js",
+    "data/heads.words.js",
+    "data/heads.imported.js",
+    "data/culture.flags.js",
+    "scripts/core/culture-flags.js",
+    "scripts/app/main-game.js",
+    "data/culture.imported.js",
+    "data/culture.quiz360.js",
+    "scripts/pwa.js"
+  ],
+  "engineAsts": {
+    "scripts/core/chess-match.js": "b31a111e37bc0633aa0eea0c9af70e08018a32ceee5af4679a777fc4cbe20aa6",
+    "scripts/core/chess-pieces.js": "238d3d3eb338aaec3a2aeb9b5b126398d29def9181ddd0f8de0de720a3b4662f",
+    "scripts/core/cloud.js": "bb6c00be370e552e00256ae0187e432a92ff9ecb31d6db13da4065c705e61646",
+    "scripts/core/culture-flags.js": "1e56f0a5bbd22bbf5892e2fbb3821d4120ed224e9e3f1f171c8ef4b88ab8434e",
+    "scripts/core/duel-ball.js": "1b1e7b6936031ce27b7cab0366fd6917515784e74f5b32e89d2de53ed7b3f5b2",
+    "scripts/core/duel-physics.js": "739a009a4c8c483071de49d19ef1de84b5d0b40eeebec20da12571e12f86dd0f",
+    "scripts/core/feedback-sounds.js": "003374f06c27d24000cb11f5fc45c2fc64b597a3b7b2e54eb279eca4bb5be4cd",
+    "scripts/core/history.js": "b6bba35894ea9513ec64c7a8f63e207953383b61dd662f02c7a9ef83cd30a987",
+    "scripts/core/participants.js": "083e66a772c6d7dc8faf721cf716f8d709b100aa8201d20f5fbb5904c1e39559",
+    "scripts/core/picolo.js": "a40ae5fa6e1cca3781c404eac00ec3a9febf160f463c69b1713043adf28084bc",
+    "scripts/core/showQuestion.js": "0b4e3bc5b425dcf39eef97764b877ec39d4c60eb08a75dc1182af8e7f2774f55",
+    "scripts/core/sound.js": "8f5cee631ff25f2752ec53511ab1d2328b340b9e2afdd6d4bf7fee8c403d681d",
+    "scripts/core/statistics.js": "3d5b39dd07220c6b1f57517536752e2c6e04d48badd0b0e9951c02ce589afbce",
+    "scripts/app/accounts.js": "ced71d8110217014d22c2f7a0f773cf59d64e89a605a49892e1ef987d38b6729",
+    "scripts/app/culture-flags.js": "833579629ccc733105391daccb3419b65b792e48d805817147c1d132d0e73cf3",
+    "scripts/pwa.js": "5d59bbf3a6e03870d91b238d1a2c4384cba49a07dc48245189208af9a8d0c85d"
+  },
+  "cultureFunctions": {
+    "markCultureResponse": "8b793af4c334343830c6f0a6d83315a649548cafe06816173bab60dbf36c4cb6",
+    "addressPlayer": "4084469ab591b5e54c611867fb3c680ee857e29be028887a82fddb2d9c8e8bd1",
+    "hideQuestionArea": "9807801ea64554751dd73227b7f16828eae8863122fb0e39b5e9f90f7eee13f9",
+    "showCultureExtras": "76c232b8b6633b6e9887ca151064e9971b4e9af6674f7f40c7bc400b928130bb",
+    "renderQuizImages": "d713af9e621f5f783ea5408a808934ebb98419ddb11cb4fdbc9f23dd037c4828",
+    "renderMcq": "7e61d1fe1fb5c43dfe301a2ad0d4ebd66186bb45216591169f703acfa8dcb85a",
+    "fitCultureText": "2ae4a5923862b6d82d9c555bec9835d8931709fd0644d5385750dcf68a1e4e9d",
+    "renderOpenQuestion": "8195e28c07c09cf3dac5e9d7f5d1171937eaccce1e3c348b6ffb7aa3834c402c"
+  }
+}

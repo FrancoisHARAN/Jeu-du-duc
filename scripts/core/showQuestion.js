@@ -1,19 +1,31 @@
 // Paquets de cartes : chaque carte sort une fois avant que le paquet ne soit remélangé.
 // Les cartes déjà vues sont mémorisées par une empreinte de leur texte, pas par leur position :
 // une mise à jour qui ajoute ou retire des cartes ne fait pas revoir celles déjà jouées.
-(function(){
+(function () {
   const STORAGE_KEY = 'jdd.decks';
   let decks = {};
-  try { decks = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}; } catch (e) { decks = {}; }
+  try {
+    decks = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {};
+  } catch (e) {
+    decks = {};
+  }
 
-  function save(){
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(decks)); } catch (e) { /* stockage indisponible */ }
+  function save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(decks));
+    } catch (e) {
+      /* stockage indisponible */
+    }
   }
 
   // Empreinte courte et stable (FNV-1a 32 bits) : quelques caractères par carte vue.
-  function cardId(card){
-    const text = typeof card === 'string' ? card : card.flagKind ? card.id
-      : `${card.question || card.text || ''}|${card.answer || ''}`;
+  function cardId(card) {
+    const text =
+      typeof card === 'string'
+        ? card
+        : card.flagKind
+          ? card.id
+          : `${card.question || card.text || ''}|${card.answer || ''}`;
     let hash = 0x811c9dc5;
     for (let i = 0; i < text.length; i++) {
       hash ^= text.charCodeAt(i);
@@ -23,7 +35,7 @@
   }
 
   const idCache = new WeakMap();
-  function idsOf(pool){
+  function idsOf(pool) {
     let ids = idCache.get(pool);
     if (!ids || ids.length !== pool.length) {
       ids = pool.map(cardId);
@@ -32,7 +44,7 @@
     return ids;
   }
 
-  JDD.drawCard = function(key, pool){
+  JDD.drawCard = function (key, pool) {
     if (!Array.isArray(pool) || !pool.length) return null;
     const ids = idsOf(pool);
     const old = decks[key] || {};
@@ -47,7 +59,9 @@
       seen = new Set();
     }
     let candidates = [];
-    ids.forEach((id, i) => { if (!seen.has(id)) candidates.push(i); });
+    ids.forEach((id, i) => {
+      if (!seen.has(id)) candidates.push(i);
+    });
     if (!candidates.length) {
       seen.clear();
       candidates = ids.map((_, i) => i);
