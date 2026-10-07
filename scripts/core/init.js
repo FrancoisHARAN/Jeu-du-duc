@@ -39,7 +39,7 @@ JDD.registerUndercoverPairs = function(list){
   if (!Array.isArray(list)) return;
   const entries = list
     .filter(item => item && typeof item.civil === 'string' && typeof item.under === 'string')
-    .map(item => ({ civil: item.civil.trim(), under: item.under.trim(), hard: item.hard === true }))
+    .map(item => ({ civil: item.civil.trim(), under: item.under.trim() }))
     .filter(item => item.civil && item.under);
   JDD.UNDERCOVER_PAIRS.push(...entries);
 };

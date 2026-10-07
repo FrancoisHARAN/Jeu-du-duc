@@ -44,7 +44,7 @@
   let toastTimer = null;
 
   function freshStore() {
-    return { players: [], bench: [], settings: Object.assign({ count: 5, hard: false }, defaultRoles(5)), game: null, usedPairs: [] };
+    return { players: [], bench: [], settings: Object.assign({ count: 5 }, defaultRoles(5)), game: null, usedPairs: [] };
   }
 
   function load() {
@@ -155,7 +155,7 @@
 
   function pickPair() {
     const all = (global.JDD && Array.isArray(global.JDD.UNDERCOVER_PAIRS)) ? global.JDD.UNDERCOVER_PAIRS : [];
-    const pool = all.filter((pair) => store.settings.hard || !pair.hard);
+    const pool = all;
     if (!pool.length) return { civil: 'Chat', under: 'Chien' };
     const used = new Set(store.usedPairs);
     let candidates = pool.filter((pair) => !used.has(pairKey(pair)));
@@ -392,7 +392,6 @@
   }
 
   function renderSetup() {
-    const s = store.settings;
     return `
       <div class="uc-screen">
         ${topbar()}
@@ -403,15 +402,6 @@
           <div class="uc-config">
           <section class="uc-setup-section"><h2>01 · La bande</h2><p class="uc-setup-title" id="uc-count-title"></p><div id="uc-players"></div></section>
           <section class="uc-setup-section"><h2>02 · Les rôles</h2><div class="uc-roles" id="uc-roles"></div></section>
-          <section class="uc-setup-section"><h2>03 · Les mots</h2>
-          <label class="uc-words-toggle">
-            <span class="uc-words-text"><span class="uc-panel-label">Mots</span><strong id="uc-words-label"></strong></span>
-            <span class="uc-hard-box">
-              <span class="uc-hard-label">+18 hard</span>
-              <span class="uc-switch"><input type="checkbox" id="uc-hard" ${s.hard ? 'checked' : ''}><span></span></span>
-            </span>
-          </label>
-          </section>
           </div><div class="uc-floor" aria-hidden="true"></div>
         </section>
       </div>
@@ -441,7 +431,6 @@
       ${roleRow('white', 'Mr. White', 'light')}
       ${full ? `<div class="uc-roles-hint">Maximum ${max} infiltré${max > 1 ? 's' : ''} pour ${s.count} joueurs</div>` : ''}`;
 
-    root.querySelector('#uc-words-label').textContent = s.hard ? 'Standards + Hard' : 'Standards';
     const players = store.players;
     const playersBox = root.querySelector('#uc-players');
     const hasScores = players.some((p) => p.score > 0);
@@ -966,14 +955,6 @@
     }
   }
 
-  function onChange(event) {
-    if (event.target.id === 'uc-hard') {
-      store.settings.hard = event.target.checked;
-      save();
-      syncSetup();
-    }
-  }
-
   function onKeyDown(event) {
     if (event.key !== 'Enter') return;
     if (event.target.id === 'uc-name-input') {
@@ -995,7 +976,6 @@
     clampSettings();
     root.addEventListener('click', onClick);
     root.addEventListener('input', onInput);
-    root.addEventListener('change', onChange);
     root.addEventListener('keydown', onKeyDown);
     global.addEventListener('resize', () => { if (!root.classList.contains('hidden')) fitSecretWords(); });
   }
