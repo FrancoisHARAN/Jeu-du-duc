@@ -44,7 +44,7 @@ body:has(#setup:not(.hidden)) {
 #setup .home-overview { display: contents; }
 
 #setup .home-hero { position: relative; margin: 16px 0 20px; padding: 0 0 26px; overflow: hidden; border: 2px solid var(--home-ink); border-radius: 16px; background: #6b62cc; box-shadow: 4px 4px 0 var(--home-ink); text-align: center; }
-#setup h1 { width: min(252px, 78%); margin: 0 auto; font-size: inherit; line-height: 1; text-shadow: none; }
+#setup h1 { width: min(520px, 96%); margin: 0 auto; font-size: inherit; line-height: 1; text-shadow: none; }
 #setup .home-title-illustration { display: block; width: 100%; height: auto; }
 #setup .home-hero-floor { position: absolute; bottom: 0; left: 0; width: 100%; height: 20px; border-top: 2px solid var(--home-ink); background: conic-gradient(#f7c3d0 25%, #fff9e9 0 50%, #f7c3d0 0 75%, #fff9e9 0) 0 0 / 40px 40px; }
 
@@ -199,17 +199,13 @@ body:has(#playersDialog[open]) #setup .home-launch { visibility: hidden; }
 #playersDialog #dialogStartBtn { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; min-height: 56px; margin: 0; padding: 10px; border: 2px solid var(--home-ink); border-radius: 10px; background: var(--home-yellow); color: var(--home-ink); box-shadow: 3px 3px 0 var(--home-ink); font-family: inherit; font-size: 16px; font-weight: 900; }
 #playersDialog #dialogStartBtn:disabled { background: #e8dfc9; color: #655c59; box-shadow: none; cursor: default; }
 
-@media (max-height: 700px) and (pointer: coarse) {
-  #setup h1 { width: min(180px, 64%); }
-}
-
 /* Les grands écrans ont leur composition ; la pile mobile reste la base. */
 @media (min-width: 1000px) {
   #setup { width: min(1240px, calc(100% - 64px)); padding: 28px 0 40px; }
   #setup #accountButton { max-width: 280px; padding: 8px 12px; font-size: 13px; }
   #setup .home-overview { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 24px; margin: 24px 0 28px; align-items: stretch; }
   #setup .home-hero { display: flex; align-items: center; justify-content: center; min-height: 280px; margin: 0; padding: 18px 18px 36px; }
-  #setup h1 { width: min(340px, 90%); }
+  #setup h1 { width: min(520px, 100%); }
   #setup .home-hero-floor { height: 24px; }
   #setup .home-players { width: 100%; margin: 0; }
   #setup .home-player-content { padding: 18px; }
