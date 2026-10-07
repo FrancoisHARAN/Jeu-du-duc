@@ -14,7 +14,7 @@ Le plateau occupe presque toute la largeur du téléphone avec 8 pixels de marge
 Les pièces Staunton sont des SVG originaux, en crème et violet, avec les contours
 et les couleurs de Jeu du Duc. Une courte animation suit la pièce déplacée et
 respecte la réduction des mouvements. Le visuel du menu reprend l'image fournie,
-avec transparence autour du cadre et compression WebP à 640 pixels.
+avec le cavalier, la couronne et la tour, transparence et compression WebP sans perte à 1 254 pixels.
 
 `vendor/chess/chess.js` fournit chess.js 1.4.0, conservé localement sous licence
 BSD-2-Clause avec sa licence et sa provenance. Le moteur valide tous les coups,
