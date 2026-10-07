@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Son global : aucun démarrage audio en mode muet, persistance et réactivation."""
 import os
+import io
+import wave
 from pathlib import Path
 import shutil
 import threading
@@ -9,11 +11,22 @@ from playwright.sync_api import expect, sync_playwright
 
 REPO = Path(__file__).resolve().parents[1]
 OUT = Path('/tmp/jdd-sound-review'); OUT.mkdir(exist_ok=True)
+buffer = io.BytesIO()
+with wave.open(buffer, 'wb') as audio:
+    audio.setnchannels(1); audio.setsampwidth(2); audio.setframerate(8000)
+    audio.writeframes(bytes(16000))
+TEST_AUDIO = buffer.getvalue()
 
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self,*args,**kwargs): super().__init__(*args,directory=str(REPO),**kwargs)
     def translate_path(self,path): return super().translate_path(path.replace('/Jeu-du-duc/','/',1))
     def log_message(self,*args): pass
+    def do_GET(self):
+        if self.path.split('?')[0].endswith('/__test-audio.wav'):
+            self.send_response(200); self.send_header('Content-Type','audio/wav')
+            self.send_header('Content-Length',str(len(TEST_AUDIO))); self.end_headers()
+            self.wfile.write(TEST_AUDIO)
+        else: super().do_GET()
 
 INIT = '''
   if(!localStorage.getItem('jdd.players'))localStorage.setItem('jdd.players',JSON.stringify(['François','Solène']));
@@ -52,12 +65,6 @@ try:
             page.locator('#footballBtn').click();foot('start');foot('begin')
         def silent():
             assert page.evaluate('testStarts.length===0&&testContexts.length===0&&testMediaPlays.length===0')
-        def rapidity():
-            page.locator('[data-mode="debut"]').click()
-            page.evaluate('window.savedRandom=Math.random;Math.random=()=>0')
-            page.locator('#startBtn').click()
-            expect(page.locator('#typeBox')).to_have_text('RAPIDITÉ')
-            page.evaluate('Math.random=savedRandom')
         sound(True)
         assert page.locator('.home-brand').count()==0
         page.locator('#soundToggle').click();sound(False)
@@ -78,17 +85,14 @@ try:
             foot(action);advance(501)
         expect(page.locator('#foot-score')).to_have_text('1')
         foot('exit');silent()
-        rapidity();silent()
-        assert page.locator('#rapidite-audio').evaluate('el=>el.muted&&el.paused')
-        page.locator('#backLogo').click()
         page.reload(wait_until='load');sound(False);silent()
-        print('PASS: Devine Tête, foot et Rapidité fonctionnent sans créer ni démarrer de sortie audio ; choix conservé après rechargement',flush=True)
+        print('PASS: Devine Tête et foot fonctionnent sans créer ni démarrer de sortie audio ; choix conservé après rechargement',flush=True)
 
         page.locator('#soundToggle').click();sound(True)
         start_foot();foot('correct')
         assert page.evaluate('testContexts.length===1&&testStarts.length===1&&JDDSound.destination().gain.value===1')
         page.evaluate('JDDSound.setEnabled(false)')
-        page.wait_for_function('testContexts[0].state==="suspended"')
+        page.wait_for_function('() => testContexts[0].state==="suspended"')
         assert page.evaluate('JDDSound.destination().gain.value===0')
         advance(501);foot('wrong');advance(501);foot('pass');advance(501)
         assert page.evaluate('testStarts.length')==1
@@ -98,7 +102,7 @@ try:
         assert page.evaluate('testStarts.length===3&&testContexts.length===1')
         foot('exit')
         page.evaluate('''()=>{JDDSound.setEnabled(false);JDDSound.setEnabled(true);JDDSound.getContext();}''')
-        page.wait_for_function('testContexts[0].state==="running"')
+        page.wait_for_function('() => testContexts[0].state==="running"')
         assert page.evaluate('testStarts.length===3&&JDDSound.destination().gain.value===1')
         page.locator('#headsBtn').click();page.locator('#hu-start').click()
         page.locator('#heads [data-act="countdown"]').click();advance(3100)
@@ -106,18 +110,21 @@ try:
         page.locator('#heads [data-act="correct"]').click();advance(700)
         assert page.evaluate('testContexts.length===1&&testStarts.length>3')
         page.locator('#heads [data-act="exit"]').click()
-        rapidity()
-        page.wait_for_function('document.getElementById("rapidite-audio").paused===false')
-        page.locator('#backLogo').click();page.locator('#soundToggle').click();sound(False)
-        assert page.locator('#rapidite-audio').evaluate('el=>el.muted&&el.paused')
-        print('PASS: arrêt immédiat des sons en cours, contexte suspendu, réactivation sans ancien son en attente et arrêt du MP3',flush=True)
+        page.evaluate('''() => {
+          window.mediaAudio=new Audio('__test-audio.wav');mediaAudio.loop=true;
+          document.body.append(mediaAudio);JDDSound.play(mediaAudio);
+        }''')
+        page.wait_for_function('() => !mediaAudio.paused')
+        page.locator('#soundToggle').click();sound(False)
+        assert page.evaluate('mediaAudio.muted&&mediaAudio.paused')
+        print('PASS: arrêt immédiat des sons en cours, contexte suspendu, réactivation sans ancien son en attente et arrêt des médias',flush=True)
 
         page.evaluate('''()=>{
-          window.futureAudio=new Audio('song/rapidite.mp3');document.body.append(futureAudio);
+          window.futureAudio=new Audio('__test-audio.wav');document.body.append(futureAudio);
           window.futureVideo=document.createElement('video');futureVideo.muted=true;document.body.append(futureVideo);
         }''')
-        page.wait_for_function('futureAudio.muted&&futureVideo.muted')
-        page.evaluate('futureAudio.muted=false');page.wait_for_function('futureAudio.muted')
+        page.wait_for_function('() => futureAudio.muted&&futureVideo.muted')
+        page.evaluate('futureAudio.muted=false');page.wait_for_function('() => futureAudio.muted')
         n=page.evaluate('testMediaPlays.length')
         page.evaluate('JDDSound.play(futureAudio)')
         assert page.evaluate('testMediaPlays.length')==n

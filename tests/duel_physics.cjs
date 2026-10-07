@@ -193,9 +193,10 @@ console.log('PASS: rebonds dans les quatre coins arrondis, murs complets et tirs
   for (let i = 0; i < 31; i++) P.step(s, .05);
   assert.equal(s.phase, 'goal', 'La célébration dure deux secondes');
   assert(s.goalTime < P.GOAL_DURATION);
-  settle(s); assert.equal(s.turn, 0); assert.equal(s.bodies[P.BALL_ID].y, 340); assert.deepEqual(s.scores, [1, 0]);
+  settle(s); assert.equal(s.turn, 1); assert.equal(s.bodies[P.BALL_ID].y, 340); assert.deepEqual(s.scores, [1, 0]);
   assert.equal(s.bodies[10].x, 200); assert.equal(s.bodies[11].x, 200);
-  assert.deepEqual(s.bodies.slice(5, 10).map(p => ({ x: p.x, y: p.y })), P.formationPositions(s.formations[1], 1, true));
+  assert.deepEqual(s.bodies.slice(0, 5).map(p => ({ x: p.x, y: p.y })), P.formationPositions(s.formations[0], 0, true));
+  assert.deepEqual(s.bodies.slice(5, 10).map(p => ({ x: p.x, y: p.y })), P.formationPositions(s.formations[1], 1));
   for (let goal = 2; goal <= 3; goal++) {
     s.bodies[11].x = 234; s.turn = 0; s.active = null; P.shoot(s, 0, 20, 0);
     Object.assign(s.bodies[P.BALL_ID], { x: 200, y: F.top - 9, vx: 0, vy: -30 }); P.step(s, P.STEP); settle(s);
@@ -203,16 +204,36 @@ console.log('PASS: rebonds dans les quatre coins arrondis, murs complets et tirs
   }
   assert.equal(s.phase, 'finished'); assert.equal(s.winner, 0); assert(!P.shoot(s, 0, 0, -500));
 }
-console.log('PASS: ligne complètement franchie, remise au centre, formations conservées, engagement du marqueur et victoire à trois');
+console.log('PASS: ligne complètement franchie, remise au centre, engagement de l’équipe qui a encaissé et victoire à trois');
 {
   const s = clear(); P.shoot(s, 0, 20, 0);
   Object.assign(s.bodies[P.BALL_ID], { x: 200, y: F.bottom + 9, vy: 70 }); P.step(s, P.STEP);
   assert.equal(s.scorer, 1); assert.deepEqual(s.scores, [0, 1]);
   assert(Math.abs(s.bodies[P.BALL_ID].vy) > 0);
-  settle(s); assert.equal(s.turn, 1);
-  assert.deepEqual(s.bodies.slice(0, 5).map(p => ({ x: p.x, y: p.y })), P.formationPositions(s.formations[0], 0, true));
-  assert.deepEqual(s.bodies.slice(5, 10).map(p => ({ x: p.x, y: p.y })), P.formationPositions(s.formations[1], 1));
+  settle(s); assert.equal(s.turn, 0);
+  assert.deepEqual(s.bodies.slice(0, 5).map(p => ({ x: p.x, y: p.y })), P.formationPositions(s.formations[0], 0));
+  assert.deepEqual(s.bodies.slice(5, 10).map(p => ({ x: p.x, y: p.y })), P.formationPositions(s.formations[1], 1, true));
 }
+for (const scorer of [0, 1]) for (const first of P.FORMATIONS) for (const second of P.FORMATIONS) {
+  let s = P.create([first, second], scorer);
+  s.bodies[10].x = 166; s.bodies[11].x = 234;
+  assert(P.shoot(s, scorer * 5, 20, 0));
+  Object.assign(s.bodies[P.BALL_ID], { x: 200, y: scorer === 0 ? F.top - 9 : F.bottom + 9, vx: 0, vy: 0 });
+  P.step(s, P.STEP); assert.equal(s.phase, 'goal'); assert.equal(s.scorer, scorer);
+  for (let i = 0; i < 12; i++) P.step(s, .05);
+  s = P.restore(JSON.parse(JSON.stringify(s))); assert(s, 'Le but peut être repris depuis une sauvegarde');
+  settle(s);
+  assert.equal(s.turn, 1 - scorer); assert.equal(s.phase, 'aim'); assert.equal(s.active, null);
+  assert.deepEqual(s.scores, scorer === 0 ? [1, 0] : [0, 1]);
+  assert.deepEqual(s.formations, [first, second]);
+  assert.equal(s.bodies[P.BALL_ID].x, 200); assert.equal(s.bodies[P.BALL_ID].y, 340);
+  for (const team of [0, 1]) {
+    assert.deepEqual(s.bodies.slice(team * 5, team * 5 + 5).map(p => ({ x: p.x, y: p.y })),
+      P.formationPositions(s.formations[team], team, team === scorer));
+    for (const p of s.bodies.filter(p => p.team === team)) assert.equal(P.selectable(s, p.id), team !== scorer);
+  }
+}
+console.log('PASS: les deux camps engagent après avoir encaissé, attaque/défense inversées dans les neuf duels de formations, y compris après reprise');
 {
   const modern = clear(); modern.scores = [1, 2]; modern.moves = [6, 4]; modern.passes = [2, 1];
   // Ancienne réception sauvegardée, avec un pion déjà devant l'emplacement du gardien.

@@ -2,7 +2,7 @@
 (function (global) {
   'use strict';
   const modes = { undercover: 'Undercover', heads: 'Devine Tête', geography: 'Géographie', football: 'Grand Quiz Foot', culture: 'Culture G.',
-    debut: 'Apéro chiantos', hardcore: 'Sexy pas raffiné', alcool: 'Torgnole express', custom: 'Personnalisé', rapidite: 'Rapidité' };
+    debut: 'Apéro chiantos', hardcore: 'Sexy pas raffiné', alcool: 'Torgnole express', custom: 'Personnalisé' };
   const labels = { games: 'Parties jouées', wins: 'Victoires', points: 'Points', white_games: 'Parties en Mr. White', white_wins: 'Victoires en Mr. White',
     undercover_games: 'Parties en Undercover', undercover_wins: 'Victoires en Undercover', civil_games: 'Parties en civil', civil_wins: 'Victoires en civil',
     questions_answered: 'Questions répondues', correct_answers: 'Bonnes réponses', answers_revealed: 'Réponses dévoilées', cards_seen: 'Cartes jouées',

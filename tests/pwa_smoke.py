@@ -145,7 +145,8 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           return (await cache.keys()).map(r => r.url);
         }''', cache)
         quiz360_images = json.loads((site / 'data/culture.quiz360.images.json').read_text())
-        assert len(shell) == 84 + len(quiz360_images), len(shell)
+        assert len(shell) == 82 + len(quiz360_images), len(shell)
+        assert not any(url.endswith(('/data/rapidite.questions.js', '/song/rapidite.mp3')) for url in shell)
         for file in ['styles/accounts.css','vendor/supabase/supabase.js','scripts/supabase-config.js',
                      'scripts/core/participants.js','scripts/core/cloud.js','scripts/app/accounts.js']:
             assert any(url.endswith('/' + file) for url in shell), file
@@ -211,7 +212,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         print(f'PASS: 7 632 anciennes et {imported_quiz360} nouvelles questions hors ligne ; les 336 images locales sont toutes disponibles', flush=True)
         expect(page.locator('.player-item')).to_have_count(3)
         counts = page.evaluate('''() => ({...Object.fromEntries(Object.entries(JDD.DATA).map(([k,v])=>[k,v.length])),
-          undercover:JDD.UNDERCOVER_PAIRS.length, rapidity:JDD.RAPIDITY.length})''')
+          undercover:JDD.UNDERCOVER_PAIRS.length})''')
         assert all(count > 0 for count in counts.values()), counts
         page.evaluate('''q => {
           window.originalCulture = JDD.DATA.culture; JDD.DATA.culture = [];
@@ -223,14 +224,6 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           await document.fonts.ready;
         }''')
         assert page.evaluate("document.fonts.check('900 16px Montserrat')")
-        audio = page.evaluate('''async () => {
-          const response = await fetch('song/rapidite.mp3', {headers:{Range:'bytes=0-31'}});
-          return {status:response.status, range:response.headers.get('Content-Range'), bytes:[...new Uint8Array(await response.arrayBuffer())]};
-        }''')
-        expected_audio = (site / 'song/rapidite.mp3').read_bytes()
-        assert audio['status'] == 206
-        assert audio['range'] == f'bytes 0-31/{len(expected_audio)}'
-        assert audio['bytes'] == list(expected_audio[:32])
         for name in ['Alice', 'Bob', 'Chloe']:
             page.locator(f'#playerList button[aria-label="Retirer {name}"]').click()
         page.locator('[data-mode="culture"]').click()
@@ -392,17 +385,24 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         # Les reprises du duel ont rechargé la banque ; garder les questions sans
         # photo distante pour ce contrôle des modes, comme au début du test.
         page.evaluate('JDD.DATA.cultureMcq = JDD.DATA.cultureMcq.filter(q => !q.image && !q.choiceImages)')
+        # Ce tirage déclenchait auparavant une carte de rapidité à chaque question.
+        page.evaluate('() => { window.savedRandom = Math.random; Math.random = () => 0; }')
         for mode in ['debut', 'hardcore', 'alcool', 'culture', 'custom']:
             page.locator(f'[data-mode="{mode}"]').click()
             page.locator('#startBtn').click()
             expect(page.locator('#game')).to_be_visible()
-            assert page.locator('#currentQuestion').inner_text().strip()
+            for _ in range(3):
+                assert page.locator('#currentQuestion').inner_text().strip()
+                assert page.locator('#game').get_attribute('data-category') in ['debut', 'hardcore', 'alcool', 'culture']
+                assert page.locator('#typeBox').inner_text() != 'RAPIDITÉ'
+                page.locator('.game-next-hint').click()
             page.locator('#backLogo').click()
         page.locator('#undercoverBtn').click()
         expect(page.locator('#undercover')).to_be_visible()
         page.locator('[data-act="exit-app"]').click()
         assert not errors, errors
-        print('PASS: mode avion, 5 modes, Undercover, Devine Tête et ses 2 sons, images, polices et audio partiel', flush=True)
+        page.evaluate('() => { Math.random = savedRandom; }')
+        print('PASS: mode avion, 5 modes sans Rapidité, Undercover, Devine Tête et ses 2 sons, images et polices', flush=True)
         page.locator('#soundToggle').click()
         page.reload(wait_until='load')
         expect(page.locator('#soundToggle')).to_have_attribute('aria-pressed','false')

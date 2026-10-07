@@ -21,19 +21,6 @@ JDD.registerMcq = function(list){
   JDD.DATA.cultureMcq.push(...list.filter(o => o && typeof o === 'object' && Array.isArray(o.choices)));
 };
 
-JDD.RAPIDITY = JDD.RAPIDITY || [];
-JDD.registerRapidity = function(list){
-  if (!Array.isArray(list)) return;
-  const entries = list
-    .map(item => {
-      if (typeof item === 'string') return item.trim();
-      if (item && typeof item.question === 'string') return item.question.trim();
-      return null;
-    })
-    .filter(Boolean);
-  JDD.RAPIDITY.push(...entries);
-};
-
 JDD.UNDERCOVER_PAIRS = JDD.UNDERCOVER_PAIRS || [];
 JDD.registerUndercoverPairs = function(list){
   if (!Array.isArray(list)) return;

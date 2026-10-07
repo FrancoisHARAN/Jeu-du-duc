@@ -48,7 +48,6 @@ body:has(#game:not(.hidden))::before {
 #game[data-category="hardcore"] { --category-color: #f0a6c5; }
 #game[data-category="alcool"] { --category-color: #f49e73; }
 #game[data-category="culture"] { --category-color: #a7d5bc; }
-#game[data-category="rapidite"] { --category-color: #f49e73; }
 
 #game .game-topbar { position: sticky; top: max(8px, env(safe-area-inset-top)); z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--game-purple); }
 #game .game-back, #game .game-mode-label {

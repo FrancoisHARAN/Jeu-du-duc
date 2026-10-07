@@ -4,6 +4,7 @@
   const STORAGE_KEY = 'jdd.picolo';
   const TEAM_NAMES = ['Bleue', 'Rouge'];
   const P = JDD.PICOLO = JDD.PICOLO || { byMode: { debut: [], hardcore: [], alcool: [] }, follow: {} };
+  const followTexts = new Set();
 
   // cards : [id, mode, type, texte, joueurs minimum, war (0/1), clé de la suite ou null]
   // follow : { clé: { next: 1 si la suite arrive à la carte suivante, items: [[id, texte, joueurs minimum]] } }
@@ -14,6 +15,7 @@
     });
     Object.entries(data.follow || {}).forEach(([key, value]) => {
       P.follow[key] = { next: value.next === 1, items: value.items.map(([id, text, min]) => ({ id, text, min })) };
+      value.items.forEach(([, text]) => followTexts.add(text));
     });
   };
 
@@ -111,6 +113,10 @@
 
   // Suite ou fin de règle arrivée à échéance (à appeler à chaque nouvelle carte), sinon null.
   JDD.picoloDue = function(players){
+    // Une suite sauvegardée ne doit plus sortir si sa carte a été retirée de la banque.
+    const previous = pending.length;
+    pending = pending.filter(item => item && followTexts.has(item.text));
+    if (pending.length !== previous) save();
     if (!pending.length) return null;
     pending.forEach(item => { item.due -= 1; });
     const index = pending.findIndex(item => item.due <= 0);

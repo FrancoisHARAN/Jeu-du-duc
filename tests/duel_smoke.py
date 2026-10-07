@@ -188,7 +188,21 @@ try:
         page.locator('[data-duel="pause"]').click(); expect(celebration).to_have_count(0)
         page.locator('[data-duel="continue"]').click(); expect(celebration).to_have_count(0)
         expect(page.locator('#duel')).to_have_attribute('data-phase', 'aim', timeout=12000)
-        assert saved(page)['physics']['scores'] == [1, 0]
+        s = saved(page)['physics']
+        assert s['scores'] == [1, 0] and s['turn'] == 1 and s['active'] is None
+        expect(page.locator('#duel-turn')).to_have_attribute('data-team', '1')
+        expect(page.locator('#duel-turn .duel-turn-text')).to_have_text('Alex · À toi !')
+        expect(page.locator('.duel-player[data-team="1"]')).to_have_class('duel-player is-active')
+        expect(page.locator('.duel-player[data-team="0"]')).to_have_class('duel-player')
+        for team in [0, 1]:
+            expected = page.evaluate('team => JDDDuelPhysics.formationPositions('
+                'JSON.parse(localStorage.getItem("jdd.duel-football.v1")).physics.formations[team], team, team===0)', team)
+            assert [{'x': p['x'], 'y': p['y']} for p in s['bodies'][team * 5:team * 5 + 5]] == expected
+        gesture(page, s['bodies'][0], dy=80)
+        assert saved(page)['physics']['moves'] == s['moves'], 'Le marqueur ne peut pas engager'
+        gesture(page, s['bodies'][5], dy=-80)
+        assert saved(page)['physics']['moves'] == [s['moves'][0], s['moves'][1] + 1]
+        print('PASS: après un but et une pause, le joueur qui a encaissé engage en attaque, le marqueur défend et ne peut pas tirer', flush=True)
         seed(page, "Object.assign(s.bodies[0],{x:200,y:120});Object.assign(s.bodies[JDDDuelPhysics.BALL_ID],{x:200,y:82});")
         gesture(page, saved(page)['physics']['bodies'][0]); expect(celebration).to_be_visible()
         page.locator('[data-duel="exit"]').click(); expect(celebration).to_have_count(0)

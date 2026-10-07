@@ -15,11 +15,14 @@
       detectSessionInUrl: true, flowType: 'pkce',
     } }) : null;
   const KEY = 'jdd.cloud-outbox.v1';
+  const MODES = new Set(['undercover', 'heads', 'geography', 'football', 'culture', 'debut', 'hardcore', 'alcool', 'custom']);
   let user = null, queue = [], flushing = false, retry = null, persistenceError = false;
   let state = 'idle';
   try { queue = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (_) { queue = []; }
   if (!Array.isArray(queue)) queue = [];
-  queue = queue.filter(e => e && typeof e.id === 'string' && typeof e.host === 'string' && Array.isArray(e.participants));
+  const storedCount = queue.length;
+  queue = queue.filter(e => e && MODES.has(e.mode) && typeof e.id === 'string' && typeof e.host === 'string' && Array.isArray(e.participants));
+  if (queue.length !== storedCount) save();
   function emit() { global.dispatchEvent(new CustomEvent('jdd:cloud', { detail: { state, pending: pending(), persistenceError } })); }
   function pending() { return queue.filter(e => e.host === user?.id).length; }
   function save() {
@@ -32,7 +35,7 @@
       occurredAt: new Date().toISOString(), participants: global.JDDParticipants.capture(names), revision: 0 };
   }
   function record(event, rows, payload = {}) {
-    if (!event?.host || !event.id) return;
+    if (!MODES.has(event?.mode) || !event?.host || !event.id) return;
     const participants = rows.filter(row => row.participant?.kind === 'account')
       .map(row => ({ account_id: row.participant.id, metrics: row.metrics }));
     if (!participants.length) return;

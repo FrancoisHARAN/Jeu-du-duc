@@ -33,6 +33,7 @@ add(1,'culture',{games:1,questions_answered:19,correct_answers:19});
 add(2,'culture',{games:1,questions_answered:100,correct_answers:90});
 add('unregistered','football',{games:100000,wins:100000});
 add(0,'unknown',{games:100});
+add(0,'rapidite',{games:100,cards_seen:500});
 add(0,'heads',{games:0,words_found:0});
 model=stats.model(profiles,input);
 assert.deepEqual(card(model,'white-wins').rows.map(r=>[r.profile.id,r.rank,r.tied]),[['0',1,true],['2',1,true],['1',3,true]]);
@@ -41,6 +42,7 @@ assert.deepEqual(card(model,'culture-rate').rows.map(r=>r.profile.id),['2','0'])
 assert.equal(card(model,'culture-correct').rows[0].value,'90');
 assert.ok(!model.cards.some(c=>c.mode==='heads'));
 assert.equal(model.totalGames('0'),11);
+assert.ok(!model.personal('0').modes.some(mode=>mode.title==='Rapidité'));
 assert.equal(model.cards.every(c=>c.rows.length<=3),true);
 console.log('PASS: tops 3, ex æquo, statistiques par rôle, seuil des questions et absence de zéros');
 input=[];
