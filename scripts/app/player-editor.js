@@ -47,10 +47,10 @@
     const list = container.querySelector('.jdd-player-list');
     let selection = options.selected || '';
     function add() {
-      if (!input.value.trim()) { input.focus(); return; }
+      if (!input.value.trim()) { input.focus({ preventScroll: true }); return; }
       if (options.addPlayer(input, options.maximum || 30)) {
         status.hidden = true;
-        input.focus();
+        input.focus({ preventScroll: true });
       }
     }
     container.querySelector('.jdd-player-add').addEventListener('click', add);
@@ -59,14 +59,16 @@
     });
     input.addEventListener('input', () => { status.hidden = true; input.removeAttribute('aria-invalid'); });
     function update(selected = selection) {
-      selection = selected;
-      list.replaceChildren();
-      container.querySelector('.jdd-player-summary').textContent = countLabel(options.getNames().length);
-      options.getNames().forEach(name => {
-        list.append(chip(name, { ...options, selected }));
+      return global.JDD.preservePosition(() => {
+        selection = selected;
+        list.replaceChildren();
+        container.querySelector('.jdd-player-summary').textContent = countLabel(options.getNames().length);
+        options.getNames().forEach(name => {
+          list.append(chip(name, { ...options, selected }));
+        });
+        fitNames(list);
+        directory?.update();
       });
-      fitNames(list);
-      directory?.update();
     }
     update(options.selected);
     const refreshAvatars = () => {

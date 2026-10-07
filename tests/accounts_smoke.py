@@ -416,16 +416,33 @@ try:
         page.screenshot(path=str(OUT/'bande-mobile.png'),full_page=True)
         pc.locator('#playerInput').fill('Invité');pc.locator('#addBtn').click();add_account(pc,A)
         pc.screenshot(path=str(OUT/'bande-pc.png'),full_page=True)
-        for game,root in [('#headsBtn','#hu-player'),('#geographyBtn','#geo-players'),('#footballBtn','#foot-players')]:
+        for game,root in [('#headsBtn','#hu-player'),('#geographyBtn','#geo-players'),('#footballBtn','#foot-players'),
+                          ('#duelBtn','#duel-players'),('#chessBtn','#chess-players')]:
             page.locator(game).click()
             if game=='#geographyBtn':page.locator('[data-geo-mode="cities"]').click()
+            if game=='#chessBtn':page.locator('.chess-roster summary').click()
             expect(page.locator(root+' .jdd-player-summary')).to_have_text('3 joueurs')
             assert page.locator(root+' .jdd-player-name').all_text_contents()==['François','François','Axel']
             assert page.locator(root+' .jdd-player-list').evaluate('el=>Boolean(el.compareDocumentPosition(el.parentNode.querySelector(".jdd-player-input"))&Node.DOCUMENT_POSITION_FOLLOWING)')
+            field=page.locator(root+' input')
+            field.fill('Prénom en cours')
+            field.evaluate('el => { window.savedAccountField = el; }')
+            add=page.locator(root+' [data-account-id="'+profiles[2]['id']+'"]')
+            add.evaluate('el => el.addEventListener("pointerdown", () => { window.accountScroll = scrollY; }, {once:true})')
+            add.click()
+            expect(page.locator(root+' .jdd-player-summary')).to_have_text('4 joueurs')
+            assert abs(page.evaluate('scrollY-accountScroll'))<=2
+            expect(field).to_have_value('Prénom en cours')
+            assert field.evaluate('el => el === window.savedAccountField')
+            page.wait_for_timeout(450)  # Respecter la protection contre le double appui sur Retirer.
+            page.locator(root+' button[aria-label="Retirer '+profiles[2]['display_name']+'"]').click()
+            expect(page.locator(root+' .jdd-player-summary')).to_have_text('3 joueurs')
             page.screenshot(path=str(OUT/f'bande-{root[1:]}.png'),full_page=True)
             if game=='#headsBtn':page.locator('#heads [data-act="exit"]').click()
             if game=='#geographyBtn':page.locator('#geography [data-geo="exit"]').click()
             if game=='#footballBtn':page.locator('#football [data-foot="exit"]').click()
+            if game=='#duelBtn':page.locator('#duel [data-duel="exit"]').click()
+            if game=='#chessBtn':page.locator('#chess [data-chess="exit"]').click()
         page.evaluate('JDD.clearAccountPlayers()')
         page.locator('#startBtn').click()
         expect(page.locator('#dialogRosterCount')).to_have_text('1 joueur')
@@ -664,8 +681,15 @@ try:
 
         # Photo réencodée et stockée sous le dossier du propriétaire.
         page.locator('#accountButton').click()
+        page.locator('#accountName').fill('Prénom en cours')
+        page.locator('#accountName').evaluate('el => el.setSelectionRange(3, 6)')
+        profile_position = page.locator('#accountDialog').evaluate('el => el.scrollTop')
         page.locator('#accountPhoto').set_input_files(REPO/'image/app/favicon-purple-32.png')
         expect(page.locator('#accountStatus')).to_have_text('Photo enregistrée.')
+        expect(page.locator('#accountName')).to_have_value('Prénom en cours')
+        expect(page.locator('#accountName')).to_be_focused()
+        assert page.locator('#accountName').evaluate('el => el.selectionStart === 3 && el.selectionEnd === 6')
+        assert abs(page.locator('#accountDialog').evaluate('el => el.scrollTop') - profile_position) <= 2
         assert uploads and uploads[-1].startswith('/storage/v1/object/avatars/'+A+'/')
         page.locator('#closeAccountDialog').click()
         print('PASS: photo convertie en WebP, avatar et dossier propre au compte',flush=True)
@@ -694,7 +718,7 @@ try:
 
         context,page=home(signed=True,pwa=True)
         expect(page.locator('#accountPlayers .account-profile')).to_have_count(6)
-        page.wait_for_function('() => navigator.serviceWorker.controller !== null')
+        page.wait_for_function('() => navigator.serviceWorker.controller !== null',timeout=30000)
         assert 'private@example.test' not in page.evaluate('localStorage.getItem("jdd.account-cache.v1")')
         context.set_offline(True)
         control['offline']=True

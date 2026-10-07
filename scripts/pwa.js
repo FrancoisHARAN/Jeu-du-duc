@@ -3,6 +3,7 @@
 
   const workerURL = new URL('../service-worker.js', document.currentScript.src);
   const appURL = new URL('./', workerURL);
+  const positionKey = `jdd.pwa.position:${appURL.pathname}`;
   const startedControlled = Boolean(navigator.serviceWorker.controller);
   let registration;
   let reloadPending = false;
@@ -23,6 +24,7 @@
       // navigation : ne jamais annuler le rechargement déjà en cours.
       reloadStarted = true;
       reloadPending = false;
+      try { sessionStorage.setItem(positionKey, JSON.stringify({ x: window.scrollX, y: window.scrollY })); } catch (_) {}
       // L'ancienne page reste affichée jusqu'à l'arrivée de la nouvelle (jusqu'à 4 s) :
       // plus rien ne doit y être lancé, la partie serait coupée par le rechargement.
       document.body.inert = true;
@@ -57,6 +59,13 @@
   }
 
   window.addEventListener('load', async () => {
+    try {
+      const position = JSON.parse(sessionStorage.getItem(positionKey));
+      sessionStorage.removeItem(positionKey);
+      if (position && Number.isFinite(position.x) && Number.isFinite(position.y) && position.x >= 0 && position.y >= 0) {
+        requestAnimationFrame(() => window.scrollTo({ left: position.x, top: position.y, behavior: 'instant' }));
+      }
+    } catch (_) { /* La mise à jour reste disponible sans stockage de session. */ }
     try {
       registration = await navigator.serviceWorker.register(workerURL.href, {
         scope: appURL.pathname,

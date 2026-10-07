@@ -56,53 +56,55 @@
     return { update: () => renderDirectory(entry) };
   }
   function renderDirectory(entry) {
-    const { container, maximum } = entry;
-    const preparingGame = container.id === 'dialogAccountPlayers';
-    container.replaceChildren(); container.className = 'account-directory';
-    if (!user) {
-      if (preparingGame) container.append(el('h3', '', 'Ajouter un compte'));
-      container.append(el('p', 'account-help', preparingGame ? 'Connecte-toi sur cet appareil pour retrouver la bande.' : 'Connecte-toi sur cet appareil pour retrouver les comptes de la bande.'));
-      const connect = el('button', preparingGame ? 'home-dialog-connect' : 'account-text-button', preparingGame ? 'Se connecter' : 'Ajouter des comptes'); connect.type = 'button';
-      connect.addEventListener('click', () => open('login')); container.append(connect); return;
-    }
-    const heading = el('div', 'account-directory-heading');
-    const retry = el('button', 'account-text-button', directoryError ? 'Réessayer' : 'Actualiser'); retry.type = 'button';
-    retry.addEventListener('click', refresh); heading.append(el('h3', '', preparingGame ? 'Ajouter un compte' : 'Les comptes de la bande'), retry); container.append(heading);
-    if (directoryError) container.append(el('p', 'account-help', navigator.onLine ? 'Impossible de charger les comptes. Vérifie ta connexion et réessaie.' : 'Connecte cet appareil à Internet pour charger les comptes.'));
-    else if (directoryCached || !navigator.onLine) container.append(el('p', 'account-help', 'Derniers comptes synchronisés sur cet appareil.'));
-    if (!profiles.length) {
-      if (!directoryError) container.append(el('p', 'account-help', directoryLoaded ? 'Aucun compte confirmé disponible.' : 'Chargement des comptes…'));
-      return;
-    }
-    const grid = el('div', 'account-profile-grid');
-    const current = global.JDDParticipants.all();
-    orderedProfiles().slice(0, entry.count).forEach(profile => {
-      const added = current.some(p => p.kind === 'account' && p.id === profile.id);
-      const button = el('button', 'account-profile'); button.type = 'button'; button.dataset.accountId = profile.id;
-      button.setAttribute('aria-pressed', String(added)); button.setAttribute('aria-label', `${added ? 'Déjà ajouté' : 'Ajouter'} : ${profile.display_name}`);
-      const text = el('span', 'account-profile-text');
-      text.append(el('span', 'account-profile-name', profile.display_name)); button.append(avatar(profile), text);
-      if (profile.id === user.id) {
-        text.append(el('span', 'account-profile-self', 'Moi'));
-        button.setAttribute('aria-label', `${added ? 'Déjà ajouté' : 'Ajouter'} : ${profile.display_name}, mon compte connecté`);
+    return global.JDD.preservePosition(() => {
+      const { container, maximum } = entry;
+      const preparingGame = container.id === 'dialogAccountPlayers';
+      container.replaceChildren(); container.className = 'account-directory';
+      if (!user) {
+        if (preparingGame) container.append(el('h3', '', 'Ajouter un compte'));
+        container.append(el('p', 'account-help', preparingGame ? 'Connecte-toi sur cet appareil pour retrouver la bande.' : 'Connecte-toi sur cet appareil pour retrouver les comptes de la bande.'));
+        const connect = el('button', preparingGame ? 'home-dialog-connect' : 'account-text-button', preparingGame ? 'Se connecter' : 'Ajouter des comptes'); connect.type = 'button';
+        connect.addEventListener('click', () => open('login')); container.append(connect); return;
       }
-      if (added) button.append(el('span', 'account-profile-check', '✓'));
-      button.addEventListener('click', () => {
-        if (added) return;
-        const error = global.JDD.addAccountPlayer?.(profile, maximum);
-        if (error) { const message = el('p', 'account-help', error); message.setAttribute('role', 'alert'); container.append(message); return; }
-        frequency[profile.id] = Math.min(100000, (frequency[profile.id] || 0) + 1);
-        try { localStorage.setItem(usageKey, JSON.stringify(frequency)); } catch (_) { /* ordre disponible en mémoire */ }
-        updateDirectories();
+      const heading = el('div', 'account-directory-heading');
+      const retry = el('button', 'account-text-button', directoryError ? 'Réessayer' : 'Actualiser'); retry.type = 'button';
+      retry.addEventListener('click', refresh); heading.append(el('h3', '', preparingGame ? 'Ajouter un compte' : 'Les comptes de la bande'), retry); container.append(heading);
+      if (directoryError) container.append(el('p', 'account-help', navigator.onLine ? 'Impossible de charger les comptes. Vérifie ta connexion et réessaie.' : 'Connecte cet appareil à Internet pour charger les comptes.'));
+      else if (directoryCached || !navigator.onLine) container.append(el('p', 'account-help', 'Derniers comptes synchronisés sur cet appareil.'));
+      if (!profiles.length) {
+        if (!directoryError) container.append(el('p', 'account-help', directoryLoaded ? 'Aucun compte confirmé disponible.' : 'Chargement des comptes…'));
+        return;
+      }
+      const grid = el('div', 'account-profile-grid');
+      const current = global.JDDParticipants.all();
+      orderedProfiles().slice(0, entry.count).forEach(profile => {
+        const added = current.some(p => p.kind === 'account' && p.id === profile.id);
+        const button = el('button', 'account-profile'); button.type = 'button'; button.dataset.accountId = profile.id;
+        button.setAttribute('aria-pressed', String(added)); button.setAttribute('aria-label', `${added ? 'Déjà ajouté' : 'Ajouter'} : ${profile.display_name}`);
+        const text = el('span', 'account-profile-text');
+        text.append(el('span', 'account-profile-name', profile.display_name)); button.append(avatar(profile), text);
+        if (profile.id === user.id) {
+          text.append(el('span', 'account-profile-self', 'Moi'));
+          button.setAttribute('aria-label', `${added ? 'Déjà ajouté' : 'Ajouter'} : ${profile.display_name}, mon compte connecté`);
+        }
+        if (added) button.append(el('span', 'account-profile-check', '✓'));
+        button.addEventListener('click', () => {
+          if (added) return;
+          const error = global.JDD.addAccountPlayer?.(profile, maximum);
+          if (error) { const message = el('p', 'account-help', error); message.setAttribute('role', 'alert'); container.append(message); return; }
+          frequency[profile.id] = Math.min(100000, (frequency[profile.id] || 0) + 1);
+          try { localStorage.setItem(usageKey, JSON.stringify(frequency)); } catch (_) { /* ordre disponible en mémoire */ }
+          updateDirectories();
+        });
+        grid.append(button);
       });
-      grid.append(button);
+      container.append(grid);
+      fitNames(container);
+      if (profiles.length > entry.count) {
+        const more = el('button', 'account-text-button', 'Afficher plus'); more.type = 'button';
+        more.addEventListener('click', () => { entry.count += 6; renderDirectory(entry); }); container.append(more);
+      }
     });
-    container.append(grid);
-    fitNames(container);
-    if (profiles.length > entry.count) {
-      const more = el('button', 'account-text-button', 'Afficher plus'); more.type = 'button';
-      more.addEventListener('click', () => { entry.count += 6; renderDirectory(entry); }); container.append(more);
-    }
   }
   function fitNames(container) {
     requestAnimationFrame(() => {
@@ -122,8 +124,10 @@
     try { localStorage.setItem(cacheKey, JSON.stringify({ owner: user.id, profiles, statistics, hasSnapshot })); } catch (_) { /* cache facultatif */ }
   }
   function publishProfiles() {
-    renderAccountButton(); updateDirectories(); renderStatistics();
-    global.dispatchEvent(new Event('jdd:profiles'));
+    return global.JDD.preservePosition(() => {
+      renderAccountButton(); updateDirectories(); renderStatistics();
+      global.dispatchEvent(new Event('jdd:profiles'));
+    });
   }
   async function refresh() {
     if (!user || !client) return;
@@ -298,94 +302,97 @@
     renderForm(); if (!dialog.open) dialog.showModal();
   }
   function renderForm() {
-    const signup = formMode === 'signup', profileMode = formMode === 'profile', recovery = formMode === 'recovery', reset = formMode === 'reset';
-    const verification = ['confirm', 'verify-reset'].includes(formMode);
-    document.getElementById('accountDialogTitle').textContent = profileMode ? 'Mon compte' : signup ? 'Créer mon compte' : verification ? 'Confirmer mon email' : recovery ? 'Nouveau mot de passe' : reset ? 'Retrouver mon compte' : 'Se connecter';
-    accountForm.replaceChildren(); status('');
-    renderStatistics();
-    accountForm.name = `account-${formMode}`;
-    accountForm.method = 'post'; accountForm.autocomplete = 'on';
-    const formUrl = new URL(redirectUrl()); formUrl.searchParams.set('account', formMode);
-    accountForm.action = formUrl.href;
-    let submitContainer = accountForm;
-    const field = (id, title, type, autocomplete, value = '', container = accountForm) => {
-      const label = el('label', '', title); label.htmlFor = id; const input = el('input');
-      const name = {accountEmail:'username',accountPassword:'password',accountName:'given-name',accountCode:'one-time-code'}[id];
-      Object.assign(input, { id, name, type, autocomplete, value, required: true });
-      input.spellcheck = false;
-      if (id === 'accountEmail') { input.maxLength = 254; input.inputMode = 'email'; input.autocapitalize = 'none'; input.enterKeyHint = reset ? 'send' : 'next'; }
-      if (id === 'accountName') { input.maxLength = 40; input.autocapitalize = 'words'; input.enterKeyHint = 'done'; }
-      container.append(label);
-      if (type === 'password') {
-        input.maxLength = 128; input.autocapitalize = 'none'; input.enterKeyHint = signup ? 'next' : 'go';
-        if (signup || recovery) { input.minLength = 12; input.setAttribute('passwordrules', 'minlength: 12; maxlength: 128;'); }
-        const box = el('div', 'account-password-field'), toggle = el('button', 'account-password-toggle', 'Voir');
-        toggle.type = 'button'; toggle.setAttribute('aria-controls', id); toggle.setAttribute('aria-pressed', 'false');
-        toggle.setAttribute('aria-label', 'Afficher le mot de passe');
-        toggle.addEventListener('click', () => {
-          const show = input.type === 'password'; input.type = show ? 'text' : 'password';
-          toggle.textContent = show ? 'Masquer' : 'Voir'; toggle.setAttribute('aria-pressed', String(show));
-          toggle.setAttribute('aria-label', show ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+    return global.JDD.preservePosition(() => {
+      const profileDraft = formMode === 'profile' && dialog.open ? accountForm.querySelector('#accountName')?.value : undefined;
+      const signup = formMode === 'signup', profileMode = formMode === 'profile', recovery = formMode === 'recovery', reset = formMode === 'reset';
+      const verification = ['confirm', 'verify-reset'].includes(formMode);
+      document.getElementById('accountDialogTitle').textContent = profileMode ? 'Mon compte' : signup ? 'Créer mon compte' : verification ? 'Confirmer mon email' : recovery ? 'Nouveau mot de passe' : reset ? 'Retrouver mon compte' : 'Se connecter';
+      accountForm.replaceChildren(); status('');
+      renderStatistics();
+      accountForm.name = `account-${formMode}`;
+      accountForm.method = 'post'; accountForm.autocomplete = 'on';
+      const formUrl = new URL(redirectUrl()); formUrl.searchParams.set('account', formMode);
+      accountForm.action = formUrl.href;
+      let submitContainer = accountForm;
+      const field = (id, title, type, autocomplete, value = '', container = accountForm) => {
+        const label = el('label', '', title); label.htmlFor = id; const input = el('input');
+        const name = {accountEmail:'username',accountPassword:'password',accountName:'given-name',accountCode:'one-time-code'}[id];
+        Object.assign(input, { id, name, type, autocomplete, value, required: true });
+        input.spellcheck = false;
+        if (id === 'accountEmail') { input.maxLength = 254; input.inputMode = 'email'; input.autocapitalize = 'none'; input.enterKeyHint = reset ? 'send' : 'next'; }
+        if (id === 'accountName') { input.maxLength = 40; input.autocapitalize = 'words'; input.enterKeyHint = 'done'; }
+        container.append(label);
+        if (type === 'password') {
+          input.maxLength = 128; input.autocapitalize = 'none'; input.enterKeyHint = signup ? 'next' : 'go';
+          if (signup || recovery) { input.minLength = 12; input.setAttribute('passwordrules', 'minlength: 12; maxlength: 128;'); }
+          const box = el('div', 'account-password-field'), toggle = el('button', 'account-password-toggle', 'Voir');
+          toggle.type = 'button'; toggle.setAttribute('aria-controls', id); toggle.setAttribute('aria-pressed', 'false');
+          toggle.setAttribute('aria-label', 'Afficher le mot de passe');
+          toggle.addEventListener('click', () => {
+            const show = input.type === 'password'; input.type = show ? 'text' : 'password';
+            toggle.textContent = show ? 'Masquer' : 'Voir'; toggle.setAttribute('aria-pressed', String(show));
+            toggle.setAttribute('aria-label', show ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+          });
+          box.append(input, toggle); container.append(box);
+        } else container.append(input);
+        return input;
+      };
+      if (profileMode) {
+        const p = profiles.find(p => p.id === user?.id);
+        accountForm.append(avatar(p || { display_name: user?.user_metadata?.display_name || 'Joueur' }, 'account-avatar--large'));
+        accountForm.append(el('p', 'account-help account-current-email', `Connecté avec ${user.email || 'ton compte'}`));
+        field('accountName', 'Prénom', 'text', 'given-name', profileDraft ?? p?.display_name ?? user?.user_metadata?.display_name ?? 'Joueur');
+        const file = el('input'); Object.assign(file, { id: 'accountPhoto', type: 'file', accept: 'image/jpeg,image/png,image/webp' });
+        file.hidden = true; file.setAttribute('aria-label', 'Photo de profil');
+        const choose = el('button', 'account-photo-button', 'Ajouter une photo'); choose.type = 'button'; choose.addEventListener('click', () => file.click());
+        file.addEventListener('change', uploadPhoto); accountForm.append(choose, file);
+        const removePhoto = el('button', 'account-text-button', 'Retirer la photo'); removePhoto.type = 'button'; removePhoto.hidden = !p?.avatar_path;
+        removePhoto.addEventListener('click', removeAvatar); accountForm.append(removePhoto);
+      } else if (verification) {
+        accountForm.append(el('p', 'account-help', formMode === 'confirm'
+          ? 'Ouvre l’email de confirmation, appuie sur son lien puis reviens te connecter.'
+          : 'Ouvre le lien reçu par email pour choisir un nouveau mot de passe.'));
+        accountForm.append(el('p', 'account-help account-pending-email', formMode === 'confirm' ? confirmationEmail : recoveryEmail));
+        if (formMode === 'confirm') {
+          const confirmed = el('button', 'account-button', 'Se connecter'); confirmed.type = 'button';
+          confirmed.addEventListener('click', () => open('login')); accountForm.append(confirmed);
+        }
+        const details = el('details', 'account-code-details');
+        details.append(el('summary', '', 'Mon email contient un code'));
+        const fields = el('div', 'account-code-fields'); details.append(fields); accountForm.append(details);
+        const code = field('accountCode', 'Code à 6 chiffres', 'text', 'one-time-code', '', fields);
+        code.inputMode = 'numeric'; code.pattern = '[0-9]{6}'; code.minLength = code.maxLength = 6;
+        submitContainer = fields;
+      } else {
+        const email = field('accountEmail', 'Email', 'email', 'username', recovery ? user?.email || recoveryEmail : emailDraft ?? (confirmationEmail || recoveryEmail));
+        if (recovery) email.readOnly = true;
+        if (!reset) field('accountPassword', signup || recovery ? 'Mot de passe · 12 caractères minimum' : 'Mot de passe', 'password', signup || recovery ? 'new-password' : 'current-password');
+        if (signup) field('accountName', 'Prénom', 'text', 'given-name', nameDraft);
+      }
+      const submit = el('button', 'account-button', profileMode ? 'Enregistrer' : signup ? 'Créer mon compte' : verification ? 'Confirmer le code' : recovery ? 'Enregistrer le mot de passe' : reset ? 'Recevoir l’email' : 'Se connecter');
+      submit.type = 'submit'; submitContainer.append(submit);
+      const actions = document.getElementById('accountActions'); actions.replaceChildren();
+      const action = (text, fn) => { const button = el('button', 'account-text-button', text); button.type = 'button'; button.addEventListener('click', fn); actions.append(button); };
+      if (profileMode) action('Se déconnecter', signOut);
+      else if (verification) {
+        action('Changer d’adresse email', () => open(formMode === 'confirm' ? 'signup' : 'reset'));
+        if (formMode === 'verify-reset') {
+          action('Renvoyer l’email', () => open('reset'));
+          action('Retour à la connexion', () => open('login'));
+        }
+        if (formMode === 'confirm') action('Renvoyer l’email', async () => {
+          if (loading || !client) return; busy(true);
+          try {
+            const { error } = await client.auth.resend({ type: 'signup', email: confirmationEmail, options: { emailRedirectTo: redirectUrl() } });
+            if (error) throw error; status('Si le compte attend une confirmation, la demande d’envoi a été acceptée. Vérifie aussi les spams. Si ton compte est déjà confirmé, connecte-toi.');
+          } catch (error) { status(authError(error, 'L’email n’a pas pu être renvoyé. Réessaie dans un moment.'), true); }
+          finally { busy(false); }
         });
-        box.append(input, toggle); container.append(box);
-      } else container.append(input);
-      return input;
-    };
-    if (profileMode) {
-      const p = profiles.find(p => p.id === user?.id);
-      accountForm.append(avatar(p || { display_name: user?.user_metadata?.display_name || 'Joueur' }, 'account-avatar--large'));
-      accountForm.append(el('p', 'account-help account-current-email', `Connecté avec ${user.email || 'ton compte'}`));
-      field('accountName', 'Prénom', 'text', 'given-name', p?.display_name || user?.user_metadata?.display_name || 'Joueur');
-      const file = el('input'); Object.assign(file, { id: 'accountPhoto', type: 'file', accept: 'image/jpeg,image/png,image/webp' });
-      file.hidden = true; file.setAttribute('aria-label', 'Photo de profil');
-      const choose = el('button', 'account-photo-button', 'Ajouter une photo'); choose.type = 'button'; choose.addEventListener('click', () => file.click());
-      file.addEventListener('change', uploadPhoto); accountForm.append(choose, file);
-      const removePhoto = el('button', 'account-text-button', 'Retirer la photo'); removePhoto.type = 'button'; removePhoto.hidden = !p?.avatar_path;
-      removePhoto.addEventListener('click', removeAvatar); accountForm.append(removePhoto);
-    } else if (verification) {
-      accountForm.append(el('p', 'account-help', formMode === 'confirm'
-        ? 'Ouvre l’email de confirmation, appuie sur son lien puis reviens te connecter.'
-        : 'Ouvre le lien reçu par email pour choisir un nouveau mot de passe.'));
-      accountForm.append(el('p', 'account-help account-pending-email', formMode === 'confirm' ? confirmationEmail : recoveryEmail));
-      if (formMode === 'confirm') {
-        const confirmed = el('button', 'account-button', 'Se connecter'); confirmed.type = 'button';
-        confirmed.addEventListener('click', () => open('login')); accountForm.append(confirmed);
+      } else if (!recovery) {
+        action(signup || reset ? 'J’ai déjà un compte' : 'Créer un compte', () => open(signup || reset ? 'login' : 'signup'));
+        if (!signup && !reset) action('Mot de passe oublié', () => open('reset'));
       }
-      const details = el('details', 'account-code-details');
-      details.append(el('summary', '', 'Mon email contient un code'));
-      const fields = el('div', 'account-code-fields'); details.append(fields); accountForm.append(details);
-      const code = field('accountCode', 'Code à 6 chiffres', 'text', 'one-time-code', '', fields);
-      code.inputMode = 'numeric'; code.pattern = '[0-9]{6}'; code.minLength = code.maxLength = 6;
-      submitContainer = fields;
-    } else {
-      const email = field('accountEmail', 'Email', 'email', 'username', recovery ? user?.email || recoveryEmail : emailDraft ?? (confirmationEmail || recoveryEmail));
-      if (recovery) email.readOnly = true;
-      if (!reset) field('accountPassword', signup || recovery ? 'Mot de passe · 12 caractères minimum' : 'Mot de passe', 'password', signup || recovery ? 'new-password' : 'current-password');
-      if (signup) field('accountName', 'Prénom', 'text', 'given-name', nameDraft);
-    }
-    const submit = el('button', 'account-button', profileMode ? 'Enregistrer' : signup ? 'Créer mon compte' : verification ? 'Confirmer le code' : recovery ? 'Enregistrer le mot de passe' : reset ? 'Recevoir l’email' : 'Se connecter');
-    submit.type = 'submit'; submitContainer.append(submit);
-    const actions = document.getElementById('accountActions'); actions.replaceChildren();
-    const action = (text, fn) => { const button = el('button', 'account-text-button', text); button.type = 'button'; button.addEventListener('click', fn); actions.append(button); };
-    if (profileMode) action('Se déconnecter', signOut);
-    else if (verification) {
-      action('Changer d’adresse email', () => open(formMode === 'confirm' ? 'signup' : 'reset'));
-      if (formMode === 'verify-reset') {
-        action('Renvoyer l’email', () => open('reset'));
-        action('Retour à la connexion', () => open('login'));
-      }
-      if (formMode === 'confirm') action('Renvoyer l’email', async () => {
-        if (loading || !client) return; busy(true);
-        try {
-          const { error } = await client.auth.resend({ type: 'signup', email: confirmationEmail, options: { emailRedirectTo: redirectUrl() } });
-          if (error) throw error; status('Si le compte attend une confirmation, la demande d’envoi a été acceptée. Vérifie aussi les spams. Si ton compte est déjà confirmé, connecte-toi.');
-        } catch (error) { status(authError(error, 'L’email n’a pas pu être renvoyé. Réessaie dans un moment.'), true); }
-        finally { busy(false); }
-      });
-    } else if (!recovery) {
-      action(signup || reset ? 'J’ai déjà un compte' : 'Créer un compte', () => open(signup || reset ? 'login' : 'signup'));
-      if (!signup && !reset) action('Mot de passe oublié', () => open('reset'));
-    }
+    });
   }
   function busy(value) {
     loading = value;

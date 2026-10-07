@@ -544,6 +544,25 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         expect(page.locator('.player-item')).to_have_count(3)
         print('PASS: nouveau worker, anciens caches supprimés, partie préservée, un seul rechargement au menu et joueurs conservés', flush=True)
 
+        # Une mise à jour au milieu du menu attend la fin de la saisie, puis
+        # restaure la position après le véritable rechargement de la page.
+        page.wait_for_load_state('load')
+        page.locator('#playerInput').fill('Brouillon')
+        sw.write_text(sw.read_text().replace('-test-update', '-test-update-scroll'))
+        page.evaluate('async () => (await navigator.serviceWorker.ready).update()')
+        wait_async('''async () => (await caches.keys()).some(name => name.endsWith('-test-update-scroll'))''', None)
+        expect(page.locator('#playerInput')).to_have_value('Brouillon')
+        page.locator('#chessBtn').evaluate('el => el.scrollIntoView({block: "center", behavior: "instant"})')
+        position = page.evaluate('scrollY')
+        assert position > 200, position
+        navigations.clear()
+        with page.expect_navigation(wait_until='load'):
+            page.locator('#playerInput').evaluate('el => el.blur()')
+        page.wait_for_timeout(250)
+        assert navigations == [base], navigations
+        assert abs(page.evaluate('scrollY') - position) <= 2, (position, page.evaluate('scrollY'))
+        print('PASS: mise à jour automatique différée pendant la saisie, puis position de lecture restaurée', flush=True)
+
         # La même application fonctionne également à la racine d'un hébergement.
         root_context = pw.chromium.launch_persistent_context(
             user_data_dir=str(Path(tmp) / 'root-profile'), executable_path=CHROMIUM, headless=True,

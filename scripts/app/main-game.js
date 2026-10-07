@@ -221,7 +221,7 @@
     input.value = '';
     input.classList.remove('input-error');
     input.removeAttribute('aria-invalid');
-    input.focus();
+    input.focus({ preventScroll: true });
     renderPlayerList();
     return true;
   }
@@ -244,7 +244,7 @@
         if (Date.now() - lastRemoveAt < REMOVE_DELAY) return;
         lastRemoveAt = Date.now();
         removePlayer(index);
-        if (list === elements.dialogPlayerList) elements.dialogPlayerInput.focus();
+        if (list === elements.dialogPlayerList) elements.dialogPlayerInput.focus({ preventScroll: true });
       } });
       item.classList.add('player-item');
       const removeButton = item.querySelector('.remove-btn');
@@ -259,19 +259,21 @@
   }
 
   function renderPlayerList() {
-    renderPlayersInto(elements.playerList);
-    if (elements.playersDialog.open) {
-      renderPlayersInto(elements.dialogPlayerList);
-      updatePlayersDialog();
-    }
-    if (elements.playerCount) {
-      elements.playerCount.textContent = window.JDDPlayerEditor.countLabel(players.length);
-      document.getElementById('homeRosterCount').textContent = elements.playerCount.textContent;
-    }
-    savePlayers();
-    window.dispatchEvent(new Event('jdd:players'));
-    Object.values(modules).forEach((module) => {
-      if (typeof module.onPlayersChanged === 'function') module.onPlayersChanged();
+    return window.JDD.preservePosition(() => {
+      renderPlayersInto(elements.playerList);
+      if (elements.playersDialog.open) {
+        renderPlayersInto(elements.dialogPlayerList);
+        updatePlayersDialog();
+      }
+      if (elements.playerCount) {
+        elements.playerCount.textContent = window.JDDPlayerEditor.countLabel(players.length);
+        document.getElementById('homeRosterCount').textContent = elements.playerCount.textContent;
+      }
+      savePlayers();
+      window.dispatchEvent(new Event('jdd:players'));
+      Object.values(modules).forEach((module) => {
+        if (typeof module.onPlayersChanged === 'function') module.onPlayersChanged();
+      });
     });
   }
 
@@ -888,8 +890,10 @@
 
   function attachEvents() {
     window.addEventListener('jdd:profiles', () => {
-      renderPlayersInto(elements.playerList);
-      if (elements.playersDialog.open) renderPlayersInto(elements.dialogPlayerList);
+      window.JDD.preservePosition(() => {
+        renderPlayersInto(elements.playerList);
+        if (elements.playersDialog.open) renderPlayersInto(elements.dialogPlayerList);
+      });
     });
     window.addEventListener('resize', fitCultureText);
     if (document.fonts) document.fonts.ready.then(fitCultureText);

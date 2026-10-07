@@ -66,10 +66,21 @@
     selection = [0, 1].map(i => people.includes(selection[i]) ? selection[i] : people.find(n => n !== selection[1 - i]) || '');
     if (selection[0] === selection[1]) selection[1] = people.find(n => n !== selection[0]) || '';
   }
+  function updateSetupPlayers() {
+    if (!opened || root.dataset.screen !== 'setup') return;
+    updateSelection();
+    editor.update();
+    root.querySelectorAll('[data-duel-player]').forEach(select => {
+      const team = Number(select.dataset.duelPlayer);
+      select.innerHTML = `<option value="" ${selection[team] ? '' : 'selected'} disabled>Choisir un joueur</option>`
+        + names().map(name => `<option value="${esc(name)}" ${selection[team] === name ? 'selected' : ''}>${esc(name)}</option>`).join('');
+    });
+    root.querySelector('[data-duel="start"]').disabled = selection.some(name => !name) || selection[0] === selection[1];
+  }
   function renderSetup() {
     prepareGoal();
     stop(); canvas = ctx = null; paused = false; updateSelection(); root.dataset.screen = 'setup';
-    root.innerHTML = `${topbar()}<section class="duel-panel"><div class="duel-window"><span aria-hidden="true">● ● ●</span><span>1 CONTRE 1</span><span aria-hidden="true">✦</span></div><div class="duel-settings"><div class="duel-intro"><img src="image/home/duel-football.webp" width="640" height="640" alt=""><div><h1>Duel Foot</h1><p>5 pions + 1 gardien · Premier à 3 buts</p></div></div>${match ? `<button type="button" class="duel-button duel-button--green" data-duel="resume">${match.physics.phase === 'finished' ? 'Dernier résultat' : 'Reprendre le match'}</button>` : ''}<div class="duel-contenders">${[0, 1].map(team => `<fieldset class="duel-contender" data-team="${team}"><legend>Joueur ${team + 1}</legend><label class="duel-select-label" for="duel-player-${team}">Qui joue ?</label><select id="duel-player-${team}" data-duel-player="${team}">${names().length ? `<option value="" ${selection[team] ? '' : 'selected'} disabled>Choisir un joueur</option>` : '<option value="">Ajouter un joueur</option>'}${names().map(name => `<option value="${esc(name)}" ${name === selection[team] ? 'selected' : ''}>${esc(name)}</option>`).join('')}</select><div class="duel-formations" role="group" aria-label="Formation du joueur ${team + 1}">${P.FORMATIONS.map(formation => `<label><input type="radio" name="duel-formation-${team}" data-duel-formation="${team}" value="${formation}" ${formations[team] === formation ? 'checked' : ''}>${preview(formation, team)}<span>${formation}</span></label>`).join('')}</div></fieldset>`).join('')}</div><details class="duel-roster" ${names().length < 2 ? 'open' : ''}><summary>Ajouter ou retirer des joueurs</summary><div id="duel-players"></div></details><p id="duel-error" role="alert" hidden></p><button type="button" class="duel-button" data-duel="start" ${selection.filter(Boolean).length < 2 ? 'disabled' : ''}>Lancer le match ${global.JDDVisuals.arrow()}</button></div><div class="duel-floor" aria-hidden="true"></div></section>`;
+    root.innerHTML = `${topbar()}<section class="duel-panel"><div class="duel-window"><span aria-hidden="true">● ● ●</span><span>1 CONTRE 1</span><span aria-hidden="true">✦</span></div><div class="duel-settings"><div class="duel-intro"><img src="image/home/duel-football.webp" width="640" height="640" alt=""><div><h1>Duel Foot</h1><p>5 pions + 1 gardien · Premier à 3 buts</p></div></div><details class="duel-roster" open><summary>Ajouter ou retirer des joueurs</summary><div id="duel-players"></div></details>${match ? `<button type="button" class="duel-button duel-button--green" data-duel="resume">${match.physics.phase === 'finished' ? 'Dernier résultat' : 'Reprendre le match'}</button>` : ''}<div class="duel-contenders">${[0, 1].map(team => `<fieldset class="duel-contender" data-team="${team}"><legend>Joueur ${team + 1}</legend><label class="duel-select-label" for="duel-player-${team}">Qui joue ?</label><select id="duel-player-${team}" data-duel-player="${team}">${names().length ? `<option value="" ${selection[team] ? '' : 'selected'} disabled>Choisir un joueur</option>` : '<option value="">Ajouter un joueur</option>'}${names().map(name => `<option value="${esc(name)}" ${name === selection[team] ? 'selected' : ''}>${esc(name)}</option>`).join('')}</select><div class="duel-formations" role="group" aria-label="Formation du joueur ${team + 1}">${P.FORMATIONS.map(formation => `<label><input type="radio" name="duel-formation-${team}" data-duel-formation="${team}" value="${formation}" ${formations[team] === formation ? 'checked' : ''}>${preview(formation, team)}<span>${formation}</span></label>`).join('')}</div></fieldset>`).join('')}</div><p id="duel-error" role="alert" hidden></p><button type="button" class="duel-button" data-duel="start" ${selection.filter(Boolean).length < 2 ? 'disabled' : ''}>Lancer le match ${global.JDDVisuals.arrow()}</button></div><div class="duel-floor" aria-hidden="true"></div></section>`;
     editor = global.JDDPlayerEditor.mount(root.querySelector('#duel-players'), { getNames: names, addPlayer: options.addPlayer, removePlayer: options.removePlayer });
     global.scrollTo(0, 0);
   }
@@ -327,7 +338,7 @@
       }
       if (target.matches('[data-duel-formation]')) formations[Number(target.dataset.duelFormation)] = target.value;
     });
-    global.addEventListener('jdd:players', () => { if (opened && root.dataset.screen === 'setup') renderSetup(); });
+    global.addEventListener('jdd:players', updateSetupPlayers);
     global.addEventListener('jdd:profiles', () => { if (opened && canvas) avatars(); });
     global.addEventListener('resize', resize); global.addEventListener('pagehide', () => { stop(); save(); });
     global.addEventListener('pageshow', event => { if (event.persisted && opened && canvas) pause(); });

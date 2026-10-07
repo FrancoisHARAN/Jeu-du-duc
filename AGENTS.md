@@ -24,3 +24,14 @@ décoratives, les sous-titres qui répètent une information évidente et les
 compteurs sans utilité dans l'écran concerné. Garder les libellés des actions,
 les erreurs et les consignes indispensables. Cette règle porte sur l'interface ;
 le contenu des questions et des mots à deviner est conservé.
+
+# Stabilité des formulaires
+
+Lors d'une saisie, d'un ajout ou retrait de joueur, d'un changement de réglage
+ou d'une actualisation de comptes, conserver la position de défilement de la
+page et des panneaux, le champ actif, les saisies, les choix et les sections
+dépliées. Mettre à jour les éléments concernés sur place ; ne pas reconstruire
+tout le formulaire ni ramener la page en haut pour une modification locale.
+Un rechargement automatique conserve également la position de lecture.
+Cette règle s'applique à toutes les pages actuelles et futures. Le retour en
+haut reste adapté à l'ouverture volontaire d'un nouvel écran ou d'une partie.

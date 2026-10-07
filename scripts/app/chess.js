@@ -8,7 +8,7 @@
   const esc = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const home = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9"/></svg>';
   const pauseIcon = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>';
-  let root, options, match = null, opened = false, selection = [], minutes = 5, selected = null, pending = null, timer = 0, lastSave = 0;
+  let root, options, editor, match = null, opened = false, selection = [], minutes = 5, selected = null, pending = null, timer = 0, lastSave = 0;
   const names = () => options.getSuggestedNames();
   const player = color => match.players[color === 'w' ? 0 : 1];
   const piece = (type, color) => global.JDDChessPieces.piece(type, color);
@@ -21,11 +21,22 @@
     selection = [0, 1].map(i => people.includes(selection[i]) ? selection[i] : people.find(n => n !== selection[1 - i]) || '');
     if (selection[0] === selection[1]) selection[1] = people.find(n => n !== selection[0]) || '';
   }
+  function updateSetupPlayers() {
+    if (!opened || root.dataset.screen !== 'setup') return;
+    updateSelection();
+    editor.update();
+    root.querySelectorAll('[data-chess-player]').forEach(select => {
+      const i = Number(select.dataset.chessPlayer);
+      select.innerHTML = `<option value="" ${selection[i] ? '' : 'selected'} disabled>Choisir un joueur</option>`
+        + names().map(name => `<option value="${esc(name)}" ${selection[i] === name ? 'selected' : ''}>${esc(name)}</option>`).join('');
+    });
+    root.querySelector('[data-chess="start"]').disabled = selection.some(name => !name) || selection[0] === selection[1];
+  }
   function setup() {
     global.JDDVisuals.clearCelebration(root);
     clearInterval(timer); closeDialog(); selected = pending = null; updateSelection(); root.dataset.screen = 'setup';
     root.innerHTML = `${toolbar()}<section class="chess-panel"><div class="chess-window"><span aria-hidden="true">● ● ●</span><span>1 CONTRE 1</span><span aria-hidden="true">✦</span></div><div class="chess-settings"><div class="chess-intro"><img src="${ART}" width="640" height="640" alt=""><h1>Échecs</h1></div>${match ? `<button class="chess-button chess-button--green" data-chess="resume" type="button">${match.result ? 'Dernier résultat' : 'Reprendre la partie'}</button>` : ''}<div class="chess-contenders">${[0, 1].map(i => `<label class="chess-contender" for="chess-player-${i}"><span>Joueur ${i + 1}</span><select id="chess-player-${i}" data-chess-player="${i}"><option value="" ${selection[i] ? '' : 'selected'} disabled>Choisir un joueur</option>${names().map(n => `<option value="${esc(n)}" ${selection[i] === n ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>`).join('')}</div><fieldset class="chess-timing"><legend>Temps par joueur</legend><div>${C.MINUTES.map(n => `<label><input type="radio" name="chess-minutes" value="${n}" ${minutes === n ? 'checked' : ''}><span>${n} min</span></label>`).join('')}</div></fieldset><details class="chess-roster" ${names().length < 2 ? 'open' : ''}><summary>Ajouter des joueurs</summary><div id="chess-players"></div></details><button class="chess-button" data-chess="start" type="button" ${selection.some(n => !n) || selection[0] === selection[1] ? 'disabled' : ''}>Lancer la partie ${global.JDDVisuals.arrow()}</button></div><div class="chess-floor" aria-hidden="true"></div></section>`;
-    global.JDDPlayerEditor.mount(root.querySelector('#chess-players'), { getNames: names, addPlayer: options.addPlayer, removePlayer: options.removePlayer });
+    editor = global.JDDPlayerEditor.mount(root.querySelector('#chess-players'), { getNames: names, addPlayer: options.addPlayer, removePlayer: options.removePlayer });
     global.scrollTo(0, 0);
   }
   function start() {
@@ -192,7 +203,7 @@
       const file = square.dataset.square.charCodeAt(0) + offset[0], rank = Number(square.dataset.square[1]) + offset[1];
       if (file >= 97 && file <= 104 && rank >= 1 && rank <= 8) root.querySelector(`[data-square="${String.fromCharCode(file) + rank}"]`).focus({ preventScroll: true });
     });
-    global.addEventListener('jdd:players', () => { if (opened && root.dataset.screen === 'setup') setup(); });
+    global.addEventListener('jdd:players', updateSetupPlayers);
     global.addEventListener('resize', fitNames); document.fonts?.ready.then(fitNames);
     global.addEventListener('pagehide', () => { global.JDDVisuals.clearCelebration(root); save(); clearInterval(timer); });
     global.addEventListener('pageshow', event => { if (event.persisted && opened) { tick(); startTimer(); } });
