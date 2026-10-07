@@ -77,6 +77,18 @@
   let playersDialogContext = null;
   let mediaRequest = 0;
   let partySession = null;
+  const cultureStreaks = new Map();
+  let cultureTurn = null;
+
+  function markCultureResponse(correct) {
+    if (!cultureTurn || cultureTurn.answered) return false;
+    cultureTurn.answered = true;
+    if (state.currentMode === 'culture') {
+      cultureStreaks.set(cultureTurn.key, correct ? (cultureStreaks.get(cultureTurn.key) || 0) + 1 : 0);
+      if (!correct) window.JDDVisuals.updateStreak(document.getElementById('cultureStreak'), 0);
+    }
+    return true;
+  }
 
   const MODE_BACKGROUNDS = {
     'VÉRITÉ': 'var(--yellow)',
@@ -293,7 +305,7 @@
     const games = {
       undercover: { label: 'Undercover', image: 'image/home/undercover.webp', minimum: 3, maximum: 20 },
       heads: { label: 'Devine Tête', image: 'image/home/mascotte.webp', minimum: 2, maximum: MAX_PLAYERS },
-      geography: { label: 'Géographie', image: 'image/home/geography.svg', minimum: 1, maximum: MAX_PLAYERS },
+      geography: { label: 'Géographie', image: 'image/home/geography.webp', minimum: 1, maximum: MAX_PLAYERS },
     };
     return { ...games[kind],
       buttonLabel: editing ? 'Valider les joueurs' : 'Lancer la partie', onConfirm };
@@ -472,6 +484,7 @@
         'click',
         (event) => {
           event.stopPropagation();
+          if (!markCultureResponse(option.correct)) return;
           buttons.forEach((btn, index) => {
             btn.disabled = true;
             if (options[index].correct) btn.classList.add('mcq-correct');
@@ -521,6 +534,21 @@
       state.answerShownAt = event.timeStamp;
       window.JDDCloud.record(resultEvent, [{ participant: resultEvent?.participants[0], metrics: { answers_revealed: 1 } }],
         { question_id: String(question.id || question.question).slice(0, 240) });
+      if (state.currentMode === 'culture') {
+        const verdicts = document.getElementById('cultureVerdicts');
+        verdicts.hidden = false;
+        verdicts.innerHTML = '<button type="button" data-culture-verdict="wrong">✕ Incorrect</button><button type="button" data-culture-verdict="correct">✓ Correct</button>';
+        verdicts.querySelectorAll('button').forEach(button => button.addEventListener('click', event => {
+          event.stopPropagation();
+          const correct = button.dataset.cultureVerdict === 'correct';
+          if (!markCultureResponse(correct)) return;
+          verdicts.querySelectorAll('button').forEach(node => { node.disabled = true; });
+          button.classList.add(correct ? 'mcq-correct' : 'mcq-wrong');
+          window.JDDCloud.record(resultEvent, [{ participant: resultEvent?.participants[0], metrics: {
+            answers_revealed: 1, questions_answered: 1, correct_answers: Number(correct),
+          } }], { question_id: String(question.id || question.question).slice(0, 240), correct });
+        }, { once: true }));
+      }
     };
   }
 
@@ -568,6 +596,10 @@
     if (!open.length && !mcq.length) return;
 
     const player = window.JDD.nextPlayer(players);
+    const identity = window.JDDParticipants.get(player);
+    cultureTurn = { key: identity ? `${identity.kind}:${identity.id}` : player, answered: false };
+    window.JDDVisuals.updateStreak(document.getElementById('cultureStreak'),
+      state.currentMode === 'culture' ? cultureStreaks.get(cultureTurn.key) || 0 : 0);
     const useMcq = Math.random() * (open.length + mcq.length) < mcq.length;
     showCultureExtras();
     if (useMcq) {
@@ -619,6 +651,11 @@
   }
 
   function showQuestion() {
+    if (cultureTurn && !cultureTurn.answered) markCultureResponse(false);
+    cultureTurn = null;
+    window.JDDVisuals.updateStreak(document.getElementById('cultureStreak'), 0);
+    const verdicts = document.getElementById('cultureVerdicts');
+    verdicts.hidden = true; verdicts.replaceChildren();
     window.scrollTo(0, 0);
     elements.currentQuestion.textContent = '';
     elements.typeBox.textContent = '';
@@ -692,6 +729,7 @@
     elements.setupScreen.classList.add('hidden');
     elements.gameScreen.classList.remove('hidden');
     if (window.JDD.resetPicolo) window.JDD.resetPicolo();
+    cultureStreaks.clear(); cultureTurn = null;
     partySession = window.JDDCloud.begin(state.currentMode, players);
     window.JDDCloud.record(partySession, partySession.participants.map(participant => ({ participant, metrics: { games: 1 } })));
     showQuestion();

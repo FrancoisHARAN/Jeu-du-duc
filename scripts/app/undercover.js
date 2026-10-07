@@ -15,7 +15,7 @@
     back: '<svg viewBox="0 0 32 32" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M26 16H7"/><path d="M14 8l-8 8 8 8"/></svg>',
     exit: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 6h13v20H13"/><path d="M3 16h15"/><path d="M8 11l-5 5 5 5"/></svg>',
     home: '<svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M16 4 3 15h4v12h7v-8h4v8h7V15h4z"/></svg>',
-    next: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16h19"/><path d="M18 8l8 8-8 8"/></svg>',
+    next: global.JDDVisuals.arrow(),
     // silhouettes des cartes (garçon / fille) avec le point d'interrogation
     cardBoy: '<svg viewBox="0 0 100 120"><path fill="#fff" d="M22 118c0-18 10-27 22-29v-8c-11-4-19-14-19-28 0-8 2-14 6-19l-10-3 10-4-5-10 13 4c6-6 14-8 22-7 14 2 22 13 22 27l-1 9 6 10c1 2 0 4-2 4h-4v8c0 5-4 8-9 8h-9v8c12 2 22 11 22 29z"/><text x="57" y="66" text-anchor="middle" font-family="Montserrat,Arial,sans-serif" font-weight="900" font-size="36" fill="#f6b400">?</text></svg>',
     cardGirl: '<svg viewBox="0 0 100 120"><path fill="#fff" d="M20 118c0-18 11-27 24-29v-6c-14-3-24-13-24-31 0-22 16-38 36-38 18 0 30 14 30 30l-1 8 6 9c1 2 0 4-2 4h-4v8c0 5-4 8-9 8h-10v8c12 2 22 11 22 29z"/><text x="57" y="66" text-anchor="middle" font-family="Montserrat,Arial,sans-serif" font-weight="900" font-size="36" fill="#f6b400">?</text></svg>',
@@ -37,6 +37,7 @@
   let options = { onExit: function () {}, getSuggestedNames: function () { return []; }, editPlayers: function () {} };
   let store = null;
   let modal = null;
+  let whiteCelebrationPending = false;
   // « Éliminer » reste grisé un instant : le 2e tap d'un double tap sur une pastille ne valide pas l'élimination
   const CONFIRM_DELAY = 400;
   let confirmOpenedAt = 0;
@@ -302,6 +303,7 @@
     }
     save();
     modal = { type: 'end' };
+    whiteCelebrationPending = g.slots.some((slot, index) => slot.role === 'white' && deltas[index] > 0);
   }
 
   function afterElimination() {
@@ -329,6 +331,11 @@
     }
     root.dataset.screen = g ? g.phase : 'setup';
     root.innerHTML = `${screen}${renderModal()}`;
+    global.JDDVisuals.clearCelebration(root);
+    if (whiteCelebrationPending) {
+      whiteCelebrationPending = false;
+      global.JDDVisuals.celebrate(root, 'image/undercover/white-win.webp');
+    }
     if (g) {
       g.modal = modal;
       save();
@@ -408,7 +415,7 @@
           </div><div class="uc-floor" aria-hidden="true"></div>
         </section>
       </div>
-      <div class="uc-bottom"><button class="uc-btn" data-act="start" type="button" ${store.players.length < MIN_PLAYERS || options.getSuggestedNames().length > MAX_PLAYERS ? 'disabled' : ''}>Lancer la partie <span aria-hidden="true">↗</span></button></div>`;
+      <div class="uc-bottom"><button class="uc-btn" data-act="start" type="button" ${store.players.length < MIN_PLAYERS || options.getSuggestedNames().length > MAX_PLAYERS ? 'disabled' : ''}>Lancer la partie ${global.JDDVisuals.arrow()}</button></div>`;
   }
 
   // Met à jour les réglages de rôles et les joueurs communs.
@@ -830,6 +837,7 @@
 
     switch (act) {
       case 'exit-app':
+        global.JDDVisuals.clearCelebration(root);
         options.onExit();
         break;
       case 'edit-players':

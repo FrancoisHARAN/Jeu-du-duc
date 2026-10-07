@@ -4,6 +4,9 @@ Le jeu est placé sous Devine Tête et utilise les mêmes prénoms que l'accueil
 Un joueur peut jouer seul ; à plusieurs, les tours alternent. L'ajout et le
 retrait des prénoms sont aussi disponibles dans les préparatifs de chaque jeu.
 Une partie commencée conserve sa bande, même si l'accueil est modifié ensuite.
+Le logo fourni (`image/home/geography.webp`) est partagé par la carte d'accueil,
+le menu Géographie et la fenêtre d'ajout des joueurs. Le dessin fourni est
+détouré sur fond transparent et précaché pour l'utilisation hors connexion.
 
 ## Parties et scores
 

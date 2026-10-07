@@ -129,3 +129,6 @@ body.geo-open { justify-content: flex-start; padding: 0; background: #6b62cc !im
   .geo-pin--reveal::before { display: none; }
   .geo-map .geo-route--reveal { stroke-dasharray: 7 5; stroke-dashoffset: 0; }
 }
+
+.geo-root .geo-button { gap: 10px; }
+.geo-root .geo-mode .jdd-arrow { margin-left: auto; }

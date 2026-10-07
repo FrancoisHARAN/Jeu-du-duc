@@ -6,7 +6,7 @@
   const NEIGHBOR_POINTS = 250;
   const REVEAL_SECONDS = .45;
   const CELEBRATION_MS = 2000;
-  const MODES = { cities: 'Où est la ville ?', countries: 'Trouve le pays', departments: 'Trouve le département' };
+  const MODES = { cities: 'Ville', departments: 'Département', countries: 'Pays' };
   const HOME = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9"/></svg>';
   const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   let root, options, data, loading, map, regions, physicalLayers, guessMarker, clock, editor, celebrationTimer;
@@ -45,13 +45,13 @@
   }
   function renderMenu() {
     disposeMap(); setPhase('menu');
-    root.innerHTML = `${topbar()}<section class="geo-panel">${windowBar('GÉOGRAPHIE')}<div class="geo-intro"><img src="image/home/geography.svg" width="400" height="400" alt=""><h1>Géographie</h1></div><div class="geo-menu">${Object.entries(MODES).map(([mode, label], i) => `<button type="button" class="geo-mode" data-geo-mode="${mode}"><span class="geo-mode-number">0${i + 1}</span><strong>${escape(label)}</strong><span aria-hidden="true">↗</span></button>`).join('')}${match && !match.finished ? '<button type="button" class="geo-button geo-button--green" data-geo="resume">Reprendre la partie</button>' : ''}</div><div class="geo-floor" aria-hidden="true"></div></section>`;
+    root.innerHTML = `${topbar()}<section class="geo-panel">${windowBar('GÉOGRAPHIE')}<div class="geo-intro"><img src="image/home/geography.webp" width="1254" height="1254" alt=""><h1>Géographie</h1></div><div class="geo-menu">${Object.entries(MODES).map(([mode, label], i) => `<button type="button" class="geo-mode" data-geo-mode="${mode}"><span class="geo-mode-number">0${i + 1}</span><strong>${escape(label)}</strong>${global.JDDVisuals.arrow()}</button>`).join('')}${match && !match.finished ? '<button type="button" class="geo-button geo-button--green" data-geo="resume">Reprendre la partie</button>' : ''}</div><div class="geo-floor" aria-hidden="true"></div></section>`;
     global.scrollTo(0, 0);
   }
   function roundCount(people) { return people.length ? Math.ceil(10 / people.length) * people.length : 10; }
   function renderSetup(mode) {
     disposeMap(); chosenMode = mode; setPhase('setup');
-    root.innerHTML = `${topbar(MODES[mode])}<section class="geo-panel">${windowBar(MODES[mode])}<div class="geo-settings"><h1>${escape(MODES[mode])}</h1>${mode === 'cities' ? `<fieldset class="geo-zones"><legend>Les villes</legend><label><input type="radio" name="geo-zone" value="france" ${zone === 'france' ? 'checked' : ''}>France</label><label><input type="radio" name="geo-zone" value="world" ${zone === 'world' ? 'checked' : ''}>Monde</label></fieldset>` : ''}${mode === 'departments' ? `<p class="geo-help">Bonne réponse : 1 000 pts · Limitrophe : ${NEIGHBOR_POINTS} pts</p>` : ''}<fieldset class="geo-player-picker"><legend>Qui joue ?</legend><div id="geo-players"></div></fieldset><p id="geo-format" class="geo-help"></p><button type="button" class="geo-button" data-geo="start">Lancer la partie ↗</button><p id="geo-error" role="alert" hidden></p><button type="button" class="geo-link" data-geo="menu">Retour à Géographie</button></div><div class="geo-floor" aria-hidden="true"></div></section>`;
+    root.innerHTML = `${topbar(MODES[mode])}<section class="geo-panel">${windowBar(MODES[mode])}<div class="geo-settings"><h1>${escape(MODES[mode])}</h1>${mode === 'cities' ? `<fieldset class="geo-zones"><legend>Les villes</legend><label><input type="radio" name="geo-zone" value="france" ${zone === 'france' ? 'checked' : ''}>France</label><label><input type="radio" name="geo-zone" value="world" ${zone === 'world' ? 'checked' : ''}>Monde</label></fieldset>` : ''}${mode === 'departments' ? `<p class="geo-help">Bonne réponse : 1 000 pts · Limitrophe : ${NEIGHBOR_POINTS} pts</p>` : ''}<fieldset class="geo-player-picker"><legend>Qui joue ?</legend><div id="geo-players"></div></fieldset><p id="geo-format" class="geo-help"></p><button type="button" class="geo-button" data-geo="start">Lancer la partie ${global.JDDVisuals.arrow()}</button><p id="geo-error" role="alert" hidden></p><button type="button" class="geo-link" data-geo="menu">Retour à Géographie</button></div><div class="geo-floor" aria-hidden="true"></div></section>`;
     editor = global.JDDPlayerEditor.mount(root.querySelector('#geo-players'), {
       getNames: names, addPlayer: options.addPlayer, removePlayer: options.removePlayer,
     });
@@ -165,6 +165,7 @@
     return { ...feature, geometry: { ...feature.geometry, coordinates: shift(feature.geometry.coordinates) } };
   }
   function makePhysicalLayers() {
+    const owner = map;
     const L = global.L, pane = map.createPane('geoPhysical');
     pane.style.zIndex = '390'; pane.style.pointerEvents = 'none';
     const common = { pane: 'geoPhysical', interactive: false, noClip: isCity() };
@@ -205,7 +206,8 @@
         refresh([{ bounds: map.getBounds().pad(.25), zoom: map.getZoom() }, { bounds: destination, zoom }]);
       },
     };
-    map.on('moveend', () => physicalLayers.refresh());
+    // Un vol peut se terminer après la fermeture ou le remplacement de la carte.
+    owner.on('moveend', () => { if (map === owner && physicalLayers) physicalLayers.refresh(); });
     refresh();
   }
   function homeMap() {
@@ -361,7 +363,7 @@
     if (motion) root.querySelector('#geo-result').classList.add('geo-result--reveal');
     const button = root.querySelector('[data-geo="validate"]');
     button.dataset.geo = 'next'; button.disabled = false;
-    button.textContent = match.index === match.targets.length - 1 ? 'Voir le classement' : `Au tour de ${match.players[(match.index + 1) % match.players.length]} ↗`;
+    button.innerHTML = `${match.index === match.targets.length - 1 ? 'Voir le classement' : `Au tour de ${escape(match.players[(match.index + 1) % match.players.length])}`} ${global.JDDVisuals.arrow()}`;
   }
   function drawRoute(path) {
     if (!path) return;
@@ -423,7 +425,7 @@
   function renderResults() {
     disposeMap(); setPhase('results');
     const ranking = match.players.map((name, i) => ({ name, points: match.scores[i] })).sort((a, b) => b.points - a.points);
-    root.innerHTML = `${topbar()}<section class="geo-panel">${windowBar('CLASSEMENT')}<div class="geo-settings"><h1>${match.players.length === 1 ? 'Ton score' : 'Le classement'}</h1><ol class="geo-ranking">${ranking.map((row, i) => `<li><span class="geo-rank">${i ? i + 1 : '👑'}</span><strong>${escape(row.name)}</strong><b>${row.points.toLocaleString('fr-FR')} pts</b></li>`).join('')}</ol><button type="button" class="geo-button" data-geo="replay">Rejouer ↗</button><button type="button" class="geo-link" data-geo="menu">Retour à Géographie</button></div><div class="geo-floor" aria-hidden="true"></div></section>`;
+    root.innerHTML = `${topbar()}<section class="geo-panel">${windowBar('CLASSEMENT')}<div class="geo-settings"><h1>${match.players.length === 1 ? 'Ton score' : 'Le classement'}</h1><ol class="geo-ranking">${ranking.map((row, i) => `<li><span class="geo-rank">${i ? i + 1 : '👑'}</span><strong>${escape(row.name)}</strong><b>${row.points.toLocaleString('fr-FR')} pts</b></li>`).join('')}</ol><button type="button" class="geo-button" data-geo="replay">Rejouer ${global.JDDVisuals.arrow()}</button><button type="button" class="geo-link" data-geo="menu">Retour à Géographie</button></div><div class="geo-floor" aria-hidden="true"></div></section>`;
     global.scrollTo(0, 0);
   }
   function pause() {

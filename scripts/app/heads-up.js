@@ -18,6 +18,11 @@
   const key = word => word.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('fr').trim();
   const timeLabel = ms => `${Math.floor(Math.ceil(ms / 1000) / 60)}:${String(Math.ceil(ms / 1000) % 60).padStart(2, '0')}`;
   const score = rows => rows.filter(row => row.status === 'correct').length;
+  function streakCount() {
+    let count = 0;
+    for (let i = round.rows.length - 1; i >= 0 && round.rows[i].status === 'correct'; i--) count++;
+    return count;
+  }
   const names = () => options.getSuggestedNames().filter(name => typeof name === 'string' && name.trim());
 
   function load() {
@@ -106,7 +111,7 @@
   function teamMarkup() {
     if (names().length < 4) return '';
     const teams = store.teams;
-    return `<section class="hu-teams"><label class="hu-team-toggle"><span>Jouer en équipes</span><input type="checkbox" id="hu-teams-enabled" ${teams.enabled ? 'checked' : ''}></label>${teams.enabled ? `<div class="hu-team-tables">${teams.members.map((list, index) => `<section class="hu-team-table" data-team="${index}"><h3>Équipe ${index + 1}<small>${teams.totals[index].points} pts</small></h3><ul>${list.map(name => `<li><span>${escape(name)}</span><button type="button" data-move-player="${escape(name)}" aria-label="Passer ${escape(name)} dans l’équipe ${2 - index}" ${list.length <= 1 ? 'disabled' : ''}>${index ? '←' : '→'}</button></li>`).join('')}</ul></section>`).join('')}</div><button class="hu-dice" data-act="shuffle-teams" type="button"><span aria-hidden="true">⚄</span> Mélanger les équipes</button>` : ''}</section>`;
+    return `<section class="hu-teams"><label class="hu-team-toggle"><span>Jouer en équipes</span><input type="checkbox" id="hu-teams-enabled" ${teams.enabled ? 'checked' : ''}></label>${teams.enabled ? `<div class="hu-team-tables">${teams.members.map((list, index) => `<section class="hu-team-table" data-team="${index}"><h3>Équipe ${index + 1}<small>${teams.totals[index].points} pts</small></h3><ul>${list.map(name => `<li><span>${escape(name)}</span><button type="button" data-move-player="${escape(name)}" aria-label="Passer ${escape(name)} dans l’équipe ${2 - index}" ${list.length <= 1 ? 'disabled' : ''}>${global.JDDVisuals.arrow(index ? 'left' : 'right')}</button></li>`).join('')}</ul></section>`).join('')}</div><button class="hu-dice" data-act="shuffle-teams" type="button"><span aria-hidden="true">⚄</span> Mélanger les équipes</button>` : ''}</section>`;
   }
 
   function updateTeams() {
@@ -131,7 +136,7 @@
         <form id="hu-config" class="hu-config">
           <fieldset class="hu-player-picker"><legend>Qui devine ?</legend><div id="hu-player"></div></fieldset>
           <div id="hu-team-settings">${teamMarkup()}</div>
-          <button id="hu-start" class="hu-button" type="submit">Lancer la partie <span aria-hidden="true">↗</span></button>
+          <button id="hu-start" class="hu-button" type="submit">Lancer la partie ${global.JDDVisuals.arrow()}</button>
         </form>
         ${round && !round.finished ? '<div class="hu-resume"><button class="hu-button hu-button--green" data-act="resume" type="button">Reprendre la manche</button></div>' : ''}
         <div class="hu-floor" aria-hidden="true"></div>
@@ -355,7 +360,7 @@
 
   function renderPlay() {
     setPhase('playing');
-    root.innerHTML = `<section class="hu-live"><header class="hu-live-header">${menuButton(true)}<button class="hu-pill" data-act="pause" type="button" aria-label="Mettre la manche en pause"><span aria-hidden="true">Ⅱ</span><span class="hu-pause-label"> Pause</span></button><span class="hu-live-player">${escape(round.player || 'Devine Tête')}</span>${teamCaption()}<span class="hu-pill hu-pill--pink"><span id="hu-points">${score(round.rows)}</span> pt</span><span id="hu-timer" class="hu-pill hu-pill--yellow" aria-label="Temps restant">${timeLabel(round.remaining)}</span></header><div class="hu-word-card" id="hu-word-card">${windowBar(round.clues === 'mime' ? 'MIME · SANS PARLER' : 'FAIS DEVINER SANS DIRE LE MOT')}<div class="hu-word-area"><h1 id="hu-word" aria-live="polite">${escape(round.word)}</h1><p id="hu-feedback-hint"></p></div><div class="hu-time-track" aria-hidden="true"><span id="hu-time-progress"></span></div><div class="hu-floor" aria-hidden="true"></div></div><footer class="hu-live-footer"><button class="hu-button hu-button--pink" data-act="pass" type="button"><span aria-hidden="true">↑</span> Passer</button><p>${round.motion ? 'Lève pour passer · baisse pour valider<br>Reviens au front entre deux mots.' : 'Un ami valide ou passe avec les boutons.'}</p><button class="hu-button hu-button--green" data-act="correct" type="button"><span aria-hidden="true">↓</span> Trouvé !</button></footer></section>`;
+    root.innerHTML = `<section class="hu-live"><header class="hu-live-header">${menuButton(true)}<button class="hu-pill" data-act="pause" type="button" aria-label="Mettre la manche en pause"><span aria-hidden="true">Ⅱ</span><span class="hu-pause-label"> Pause</span></button><span class="hu-live-player">${escape(round.player || 'Devine Tête')}</span>${teamCaption()}<span id="hu-streak" class="jdd-streak" role="img" aria-label="${streakCount()} bonnes réponses de suite" ${streakCount() < 2 ? 'hidden' : ''}>${global.JDDVisuals.streak(streakCount())}</span><span class="hu-pill hu-pill--pink"><span id="hu-points">${score(round.rows)}</span> pt</span><span id="hu-timer" class="hu-pill hu-pill--yellow" aria-label="Temps restant">${timeLabel(round.remaining)}</span></header><div class="hu-word-card" id="hu-word-card">${windowBar(round.clues === 'mime' ? 'MIME · SANS PARLER' : 'FAIS DEVINER SANS DIRE LE MOT')}<div class="hu-word-area"><h1 id="hu-word" aria-live="polite">${escape(round.word)}</h1><p id="hu-feedback-hint"></p></div><div class="hu-time-track" aria-hidden="true"><span id="hu-time-progress"></span></div><div class="hu-floor" aria-hidden="true"></div></div><footer class="hu-live-footer"><button class="hu-button hu-button--pink" data-act="pass" type="button">${global.JDDVisuals.arrow('up')} Passer</button><p>${round.motion ? 'Lève pour passer · baisse pour valider<br>Reviens au front entre deux mots.' : 'Un ami valide ou passe avec les boutons.'}</p><button class="hu-button hu-button--green" data-act="correct" type="button">${global.JDDVisuals.arrow('down')} Trouvé !</button></footer></section>`;
     fitWord();
     updateTimer();
   }
@@ -396,6 +401,7 @@
     root.querySelector('#hu-word').textContent = good ? 'Trouvé !' : 'Passé !';
     root.querySelector('#hu-feedback-hint').textContent = round.motion ? 'Reviens au front pour le prochain mot.' : '';
     root.querySelector('#hu-points').textContent = score(round.rows);
+    global.JDDVisuals.updateStreak(root.querySelector('#hu-streak'), streakCount());
     root.querySelectorAll('[data-act="correct"], [data-act="pass"]').forEach(b => { b.disabled = true; });
     fitWord();
     playFeedback(status);
@@ -477,7 +483,7 @@
   function renderResults() {
     setPhase('results');
     const points = score(round.rows), passed = round.rows.filter(r => r.status === 'pass').length;
-    root.innerHTML = `${topbar('Bilan de la manche')}<section class="hu-panel hu-results">${windowBar('RÉSULTATS')}<h1>${escape(round.reason)}</h1><p>${round.team ? `${escape(round.team.label)} · ` : ''}${escape(round.player || 'Votre manche')} · ${round.duration} secondes</p><div class="hu-result-score"><strong id="hu-result-points">${points}</strong><span>mot${points > 1 ? 's' : ''} trouvé${points > 1 ? 's' : ''}</span><small>${passed} passé${passed > 1 ? 's' : ''} · ${round.clues === 'mime' ? 'Mimes' : 'Indices'}</small></div><ul class="hu-results-list">${round.rows.map((r, i) => `<li data-status="${r.status}"><span aria-hidden="true">${r.status === 'correct' ? '✓' : r.status === 'pass' ? '↑' : '—'}</span><span>${escape(r.word)}<small>${r.status === 'correct' ? 'Trouvé' : r.status === 'pass' ? 'Passé' : 'Temps écoulé'}</small></span>${r.status === 'unplayed' ? '' : `<button type="button" data-correct-row="${i}" aria-label="Corriger le résultat de ${escape(r.word)}">Corriger</button>`}</li>`).join('')}</ul><button class="hu-button" data-act="next-round" type="button">${store.nextPlayer ? `Au tour de ${escape(store.nextPlayer)}` : 'Nouvelle manche'} <span aria-hidden="true">↗</span></button><button class="hu-text-button" data-act="settings" type="button">Choisir le joueur</button><div class="hu-floor" aria-hidden="true"></div></section>${historyMarkup()}`;
+    root.innerHTML = `${topbar('Bilan de la manche')}<section class="hu-panel hu-results">${windowBar('RÉSULTATS')}<h1>${escape(round.reason)}</h1><p>${round.team ? `${escape(round.team.label)} · ` : ''}${escape(round.player || 'Votre manche')} · ${round.duration} secondes</p><div class="hu-result-score"><strong id="hu-result-points">${points}</strong><span>mot${points > 1 ? 's' : ''} trouvé${points > 1 ? 's' : ''}</span><small>${passed} passé${passed > 1 ? 's' : ''} · ${round.clues === 'mime' ? 'Mimes' : 'Indices'}</small></div><ul class="hu-results-list">${round.rows.map((r, i) => `<li data-status="${r.status}"><span aria-hidden="true">${r.status === 'correct' ? '✓' : r.status === 'pass' ? '↑' : '—'}</span><span>${escape(r.word)}<small>${r.status === 'correct' ? 'Trouvé' : r.status === 'pass' ? 'Passé' : 'Temps écoulé'}</small></span>${r.status === 'unplayed' ? '' : `<button type="button" data-correct-row="${i}" aria-label="Corriger le résultat de ${escape(r.word)}">Corriger</button>`}</li>`).join('')}</ul><button class="hu-button" data-act="next-round" type="button">${store.nextPlayer ? `Au tour de ${escape(store.nextPlayer)}` : 'Nouvelle manche'} ${global.JDDVisuals.arrow()}</button><button class="hu-text-button" data-act="settings" type="button">Choisir le joueur</button><div class="hu-floor" aria-hidden="true"></div></section>${historyMarkup()}`;
     window.scrollTo(0, 0);
   }
 

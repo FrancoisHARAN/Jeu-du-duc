@@ -5,7 +5,7 @@
  */
 const APP_ROOT = new URL('./', self.location.href);
 const CACHE_PREFIX = `jeu-du-duc-${encodeURIComponent(APP_ROOT.pathname)}-`;
-const CACHE_NAME = `${CACHE_PREFIX}2026-10-07-v43`;
+const CACHE_NAME = `${CACHE_PREFIX}2026-10-07-v45`;
 const QUIZ_IMAGES_ORIGIN = 'https://quizimagescm.s3.eu-west-3.amazonaws.com';
 const SHELL_FILES = [
   './',
@@ -30,6 +30,9 @@ const SHELL_FILES = [
   'vendor/leaflet/leaflet.js',
   'scripts/core/init.js',
   'scripts/core/sound.js',
+  'scripts/core/visual-feedback.js',
+  'styles/visual-feedback.css',
+  'image/undercover/white-win.webp',
   'scripts/core/feedback-sounds.js',
   'scripts/core/history.js',
   'scripts/core/showQuestion.js',
@@ -70,9 +73,9 @@ const SHELL_FILES = [
   'image/home/hardcore.webp',
   'image/home/lancer.webp',
   'image/home/personnalise.webp',
-  'image/home/geography.svg',
+  'image/home/geography.webp',
   'image/geography/mega-win.webp',
-  'image/home/football.jpg',
+  'image/home/football.webp',
   'image/app/apple-touch-icon-purple.png',
   'image/app/favicon-purple-32.png',
   'image/app/icon-purple-192.png',

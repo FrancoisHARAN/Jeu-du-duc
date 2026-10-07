@@ -71,6 +71,10 @@ body:has(#game:not(.hidden))::before {
 #game .game-back { flex-shrink: 0; }
 #game .game-back svg { width: 20px; height: 20px; }
 #game .game-mode-label { background: var(--category-color); text-align: center; }
+#game .culture-verdicts { display: flex; gap: 10px; margin-top: 12px; }
+#game .culture-verdicts[hidden] { display: none; }
+#game .culture-verdicts button { flex: 1; min-height: 44px; margin: 0; padding: 8px; border: 2px solid var(--game-ink); border-radius: 10px; color: var(--game-ink); background: var(--game-pink); font: 800 13px 'Montserrat', Arial, sans-serif; box-shadow: 2px 2px 0 var(--game-ink); }
+#game .culture-verdicts button:last-child { background: #a7d5bc; }
 
 #game .game-question-card {
   overflow: hidden;
@@ -81,7 +85,7 @@ body:has(#game:not(.hidden))::before {
   box-shadow: 5px 5px 0 var(--game-ink);
 }
 #game .game-card-header { display: grid; grid-template-columns: 112px minmax(0, 1fr); border-bottom: 2px solid var(--game-ink); }
-#game .game-category-art { display: flex; align-items: center; border-right: 2px solid var(--game-ink); background: #7677ee; }
+#game .game-category-art { display: flex; align-items: center; border-right: 2px solid var(--game-ink); background: #6b62cc; }
 #game #categoryIllustration { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: contain; }
 #game .game-card-heading { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 12px 16px 16px; background: var(--category-color); text-align: left; }
 #game .game-window-bar { display: flex; align-items: center; gap: 5px; margin-bottom: 10px; }

@@ -16,13 +16,14 @@
   <link rel="icon" type="image/png" sizes="32x32" href="image/app/favicon-purple-32.png?v=20261006i">
   <link rel="stylesheet" href="styles/main.css?v=20261005o">
   <link rel="stylesheet" href="styles/undercover.css?v=20261005q">
-  <link rel="stylesheet" href="styles/home.css?v=20261006k">
+  <link rel="stylesheet" href="styles/home.css?v=20261007c">
   <link rel="stylesheet" href="styles/pwa.css?v=20261005i">
-  <link rel="stylesheet" href="styles/questions.css?v=20261006h">
-  <link rel="stylesheet" href="styles/heads-up.css?v=20261006e">
+  <link rel="stylesheet" href="styles/questions.css?v=20261007c">
+  <link rel="stylesheet" href="styles/visual-feedback.css?v=20261007a">
+  <link rel="stylesheet" href="styles/heads-up.css?v=20261007c">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=1.9.4">
   <link rel="stylesheet" href="styles/players.css?v=20261006g">
-  <link rel="stylesheet" href="styles/geography.css?v=20261006h">
+  <link rel="stylesheet" href="styles/geography.css?v=20261007c">
   <link rel="stylesheet" href="styles/football.css?v=20261006c">
   <link rel="stylesheet" href="styles/accounts.css?v=20261006g">
 </head>
@@ -74,15 +75,15 @@
         <span class="home-mode-choice">JOUER À DEVINE TÊTE<span class="home-mode-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></span>
       </button>
       <button id="geographyBtn" class="mode-card home-mode home-mode--geography" type="button">
-        <span class="home-window-bar" aria-hidden="true"><i></i><i></i><i></i><span>VILLES · PAYS · DÉPARTEMENTS</span></span>
-        <span class="home-mode-art"><img src="image/home/geography.svg" alt="" width="400" height="400" decoding="async"></span>
+        <span class="home-window-bar" aria-hidden="true"><i></i><i></i><i></i><span>VILLE · DÉPARTEMENT · PAYS</span></span>
+        <span class="home-mode-art"><img src="image/home/geography.webp" alt="" width="1254" height="1254" decoding="async"></span>
         <span class="home-mode-label">Géographie</span>
         <span class="home-mode-description">Place les villes. Trouve les frontières.</span>
         <span class="home-mode-choice">JOUER À GÉOGRAPHIE<span class="home-mode-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></span>
       </button>
       <button id="footballBtn" class="mode-card home-mode home-mode--football" type="button">
         <span class="home-window-bar" aria-hidden="true"><i></i><i></i><i></i><span>60 SECONDES PAR CAMP</span></span>
-        <span class="home-mode-art"><img src="image/home/football.jpg" alt="" width="1254" height="1254" decoding="async"></span>
+        <span class="home-mode-art"><img src="image/home/football.webp" alt="" width="1254" height="1254" decoding="async"></span>
         <span class="home-mode-label">Grand Quiz Foot</span>
         <span class="home-mode-choice">JOUER AU QUIZ FOOT<span class="home-mode-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></span>
       </button>
@@ -137,7 +138,7 @@
       <div class="home-launch">
         <div class="home-launch-inner">
           <div class="home-launch-summary"><span id="homeSelectedMode">Apéro chiantos</span><span id="homePlayerCount" aria-live="polite">0 joueur</span></div>
-          <button id="startBtn" class="action-btn" type="button"><img src="image/home/lancer.webp" alt="" width="1254" height="1254" decoding="async"><span>Lancer la partie</span><span class="home-start-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></button>
+          <button id="startBtn" class="action-btn" type="button"><span>Lancer la partie</span><span class="home-start-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></button>
         </div>
       </div>
     </div>
@@ -191,6 +192,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9"/></svg>
         <span>Menu</span>
       </button>
+      <span id="cultureStreak" class="jdd-streak" role="img" hidden></span>
       <span id="gameModeLabel" class="game-mode-label">Apéro chiantos</span>
     </header>
 
@@ -223,6 +225,7 @@
             <div class="mcq-grid" id="mcqGrid"></div>
           </div>
           <p id="answerText"></p>
+          <div id="cultureVerdicts" class="culture-verdicts" hidden></div>
         </div>
       </div>
       <div class="game-card-floor" aria-hidden="true"></div>
@@ -245,6 +248,7 @@
 
   <!-- CORE -->
   <script src="scripts/core/init.js?v=20261005a" defer></script>
+  <script src="scripts/core/visual-feedback.js?v=20261007a" defer></script>
   <script src="scripts/core/sound.js?v=20261006a" defer></script>
   <script src="scripts/core/feedback-sounds.js?v=20261006a" defer></script>
   <script src="scripts/core/history.js?v=20261005a" defer></script>
@@ -260,10 +264,10 @@
   <!-- FEATURE MODULES -->
   <script src="vendor/leaflet/leaflet.js?v=1.9.4" defer></script>
   <script src="scripts/app/player-editor.js?v=20261006g" defer></script>
-  <script src="scripts/app/undercover.js?v=20261006g" defer></script>
-  <script src="scripts/app/heads-up.js?v=20261006j" defer></script>
-  <script src="scripts/app/geography.js?v=20261007a" defer></script>
-  <script src="scripts/app/football.js?v=20261006f" defer></script>
+  <script src="scripts/app/undercover.js?v=20261007c" defer></script>
+  <script src="scripts/app/heads-up.js?v=20261007c" defer></script>
+  <script src="scripts/app/geography.js?v=20261007c" defer></script>
+  <script src="scripts/app/football.js?v=20261007c" defer></script>
 
   <!-- DATA -->
   <script src="data/debut.text.js?v=20261006a" defer></script>
@@ -276,7 +280,7 @@
   <script src="data/undercover.pairs.js?v=20261005k" defer></script>
   <script src="data/heads.words.js?v=20261006g" defer></script>
   <script src="data/heads.imported.js?v=20261006g" defer></script>
-  <script src="scripts/app/main-game.js?v=20261006m" defer></script>
+  <script src="scripts/app/main-game.js?v=20261007c" defer></script>
   <script src="data/culture.imported.js?v=20261006b" defer></script>
   <script src="data/culture.quiz360.js?v=20261006h" defer></script>
   <script src="scripts/pwa.js?v=20261006e" defer></script>

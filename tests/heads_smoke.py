@@ -248,7 +248,8 @@ try:
         })()""")
         setup(page)
         assert page.locator('#heads .hu-rules, #heads [data-theme], #heads #hu-duration, #heads #hu-custom, #heads .hu-radio-row, #heads .hu-sound').count() == 0
-        expect(page.locator('#hu-start')).to_have_text('Lancer la partie ↗')
+        expect(page.locator('#hu-start')).to_have_text('Lancer la partie')
+        expect(page.locator('#hu-start .jdd-arrow svg')).to_have_count(1)
         begin_manual(page)
         active = page.evaluate("JSON.parse(localStorage.getItem('jdd.heads.v1')).active")
         assert active['duration'] == 60 and active['clues'] == 'describe'
