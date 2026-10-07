@@ -5,7 +5,8 @@ joueurs sont choisis dans la bande existante, avec leurs identités compte/invit
 et leurs avatars. Chaque joueur choisit 1-2-2, 2-1-2 ou 2-2-1 ; cinq pions de
 champ et un gardien par camp, premier à trois buts. Les premiers joueurs de la
 bande sont présélectionnés. Tous les pions portent l'initiale du prénom de leur
-équipe. Le gardien, plus grand, démarre sur sa ligne de but ;
+équipe, orientée vers son propriétaire : camp inférieur à 0°, camp supérieur
+à 180° pour jouer face à face. Le gardien, plus grand, démarre sur sa ligne de but ;
 son rayon est de 20 contre 15 pour les autres pions. Il est jouable, mobile et
 peut recevoir des passes comme tous ses coéquipiers.
 L'engagement initial est tiré au sort une seule fois. L'équipe qui engage garde
@@ -52,6 +53,12 @@ pendant laquelle les disques continuent à rebondir
 et à ralentir, puis une remise aux formations ; l'équipe qui a encaissé reprend.
 Le score est verrouillé pendant la célébration, même si le ballon ressort du but.
 À trois buts, le résultat reste affiché jusqu'à Rejouer ou Menu.
+
+Une bulle « Bonne passe ! » apparaît au début du recalage, pendant 1,6 seconde.
+Elle suit le receveur, tournée vers son propriétaire, en laissant le ballon visible,
+sans intercepter les gestes ni déplacer le terrain. Elle disparaît au début du
+geste suivant, à la pause, au menu ou au
+but ; elle ne rejoue pas à la reprise et respecte la réduction des animations.
 
 ## Intégration
 

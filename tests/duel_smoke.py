@@ -34,14 +34,20 @@ try:
             context.add_init_script('if(!localStorage.getItem("jdd.players"))localStorage.setItem("jdd.players",' + json.dumps(json.dumps(people)) + ');'
                 + 'if(!localStorage.getItem("jdd.participants.v1"))localStorage.setItem("jdd.participants.v1",' + json.dumps(json.dumps(identities)) + ');')
             context.add_init_script("const fixture=sessionStorage.getItem('duel-fixture');if(fixture){localStorage.setItem('jdd.duel-football.v1',fixture);sessionStorage.removeItem('duel-fixture');}")
-            context.add_init_script('''window.duelLabels=[];
+            context.add_init_script('''window.duelLabels=[];window.duelLetterTransforms=[];
                 const fill=CanvasRenderingContext2D.prototype.fillText;
                 CanvasRenderingContext2D.prototype.fillText=function(text,...args){
-                    if(this.canvas.id==='duel-canvas'){duelLabels.push(String(text));if(duelLabels.length>24)duelLabels.shift();}
+                    if(this.canvas.id==='duel-canvas'){
+                        duelLabels.push(String(text));if(duelLabels.length>24)duelLabels.shift();
+                        const t=this.getTransform();duelLetterTransforms.push({a:t.a,d:t.d});
+                        if(duelLetterTransforms.length>24)duelLetterTransforms.shift();}
                     return fill.call(this,text,...args);};''')
             page = context.new_page(); page.on('pageerror', lambda error: errors.append(str(error)))
             page.goto(base, wait_until='load')
             page.evaluate('Math.random=()=>.25')
+            page.evaluate('''() => { const shoot=JDDDuelPhysics.shoot;
+                JDDDuelPhysics.shoot=(s,id,...args)=>{const accepted=shoot(s,id,...args);
+                    if(accepted)window.duelLastLaunch={vx:s.bodies[id].vx,vy:s.bodies[id].vy};return accepted;}; }''')
             assert page.locator('#footballBtn + #duelBtn').count() == 1
             page.locator('#duelBtn').click()
             return context, page
@@ -118,7 +124,8 @@ try:
         assert saved(page)['physics']['moves'] == [0, 0]
         gesture(page, m['physics']['bodies'][0], dy=160)
         s = saved(page)['physics']; assert s['phase'] == 'moving' and s['moves'] == [1, 0]
-        assert abs(s['bodies'][0]['vx']) < .1 and 650 < abs(s['bodies'][0]['vy']) <= 720
+        launch=page.evaluate('duelLastLaunch')
+        assert abs(launch['vx']) < .1 and 650 < abs(launch['vy']) <= 720
         page.locator('[data-duel="pause"]').click(); stopped = saved(page)
         page.wait_for_timeout(400); assert saved(page) == stopped
         assert_fixed_board(page)
@@ -154,6 +161,7 @@ try:
         frames = page.evaluate('duelBallFrames')
         assert len(frames) > 5 and all(f['x'] == 42 and f['y'] == 340 for f in frames)
         assert saved(page)['physics']['active'] == 1 and saved(page)['physics']['turn'] == 0
+        expect(page.locator('.duel-pass-note')).to_have_count(0) # Une reprise ne rejoue pas la bulle.
         print('PASS: réception près du mur, seul le pion pivote et le ballon reste strictement à sa position', flush=True)
 
         seed(page, "Object.assign(s.bodies[JDDDuelPhysics.BALL_ID],{x:200,y:JDDDuelPhysics.FIELD.top-6});")
@@ -167,12 +175,23 @@ try:
         watch_board(page)
         gesture(page, saved(page)['physics']['bodies'][0])
         expect(page.locator('#duel')).to_have_attribute('data-phase', 'moving')
+        expect(page.locator('.duel-pass-bubble')).to_be_visible(timeout=12000)
+        note = page.locator('.duel-pass-note')
+        expect(note).to_have_attribute('data-receiver','1')
+        expect(note).to_have_text('Bonne passe !')
+        assert note.evaluate('n=>getComputedStyle(n).pointerEvents')=='none'
+        assert note.locator('span').evaluate('n=>getComputedStyle(n).animationDuration')=='1.6s'
+        bubble=note.locator('span').bounding_box();board=page.locator('#duel-canvas').bounding_box()
+        assert bubble['width']<170 and bubble['x']>=board['x'] and bubble['y']>=board['y']
+        assert bubble['x']+bubble['width']<=board['x']+board['width']
+        page.wait_for_timeout(180);page.screenshot(path=str(OUT/'bonne-passe.png'))
         expect(page.locator('#duel')).to_have_attribute('data-phase', 'aim', timeout=12000)
         s = saved(page)['physics']; assert s['turn'] == 0 and s['active'] == 1 and s['passes'][0] == 1
         assert s['bodies'][1]['y'] < 400, 'Le receveur avance grâce à la passe'
         assert 29 < s['bodies'][1]['y'] - s['bodies'][12]['y'] < 33
         assert_fixed_board(page)
         page.screenshot(path=str(OUT / 'passe-recue.png'))
+        expect(note).to_have_count(0,timeout=2000)
         gesture(page, s['bodies'][0]); assert saved(page)['physics']['moves'][0] == 1
         page.locator('[data-duel="exit"]').click()
         expect(page.locator('#setup')).to_be_visible(); page.locator('#duelBtn').click(); page.locator('[data-duel="resume"]').click()
@@ -231,6 +250,23 @@ try:
         print('PASS: animation de but, victoire à trois, résultat conservé et nouvelle partie à zéro', flush=True)
         print('PASS: cadre fixe pendant les tirs, passes, pauses et buts, ballon toujours animé après un but', flush=True)
 
+        context,page=home(people=['François','Guillaume'])
+        page.locator('[data-duel="start"]').click()
+        seed(page, "s.turn=1;Object.assign(s.bodies[5],{x:200,y:80});Object.assign(s.bodies[JDDDuelPhysics.BALL_ID],{x:200,y:120});Object.assign(s.bodies[6],{x:200,y:235});")
+        page.emulate_media(reduced_motion='reduce')
+        gesture(page,saved(page)['physics']['bodies'][5],dy=-120)
+        expect(page.locator('.duel-pass-bubble')).to_be_visible(timeout=12000)
+        note=page.locator('.duel-pass-note')
+        assert note.evaluate('n=>new DOMMatrixReadOnly(getComputedStyle(n).transform).a')<-.99
+        assert note.locator('span').evaluate('n=>getComputedStyle(n).animationName')=='duel-pass-fade'
+        page.screenshot(path=str(OUT/'bonne-passe-adversaire.png'))
+        page.locator('[data-duel="pause"]').click();expect(note).to_have_count(0)
+        page.locator('[data-duel="continue"]').click()
+        expect(page.locator('#duel')).to_have_attribute('data-phase','aim',timeout=12000)
+        expect(note).to_have_count(0)
+        context.close()
+        print('PASS: bulle BD 1,6 s au recalage, sans blocage ni mouvement du terrain, lisible des deux côtés et nettoyée à la pause sans replay',flush=True)
+
         context, page = home()
         page.emulate_media(reduced_motion='reduce')
         page.locator('[data-duel="start"]').click()
@@ -272,6 +308,8 @@ try:
             page.locator('[data-duel="start"]').click()
             page.wait_for_timeout(150)
             assert page.evaluate('duelLabels.slice(-12)') == ['F'] * 5 + ['S'] * 5 + ['F', 'S']
+            transforms=page.evaluate('duelLetterTransforms.slice(-12)')
+            assert [t['a']>0 and t['d']>0 for t in transforms]==[True]*5+[False]*5+[True,False]
             assert not page.evaluate('document.documentElement.scrollWidth>innerWidth+1'), (width, height)
             bounds = page.locator('#duel-canvas').bounding_box()
             assert bounds['y'] >= 0 and bounds['y'] + bounds['height'] <= height + 1, (width, height, bounds)

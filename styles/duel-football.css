@@ -62,6 +62,17 @@ body:has(#duel:not(.hidden)) { background: #6b62cc !important; justify-content: 
 .duel-turn .jdd-arrow { width: 18px; height: 18px; flex-basis: 18px; }
 .duel-turn-text { min-width: 0; }
 .duel-board-wrap { position: relative; display: flex; align-items: center; justify-content: center; flex: 1 1 auto; min-height: 0; }
+.duel-pass-note { position: absolute; top: 0; left: 0; z-index: 3; width: 0; height: 0; transform-origin: 0 0; pointer-events: none; user-select: none; }
+.duel-pass-bubble { position: absolute; display: block; width: max-content; padding: 9px 12px; border: 2px solid #252124; border-radius: 12px; background: #fff9e9; box-shadow: 3px 3px 0 #252124; color: #252124; font: 900 12px/1.1 'Montserrat', Arial, sans-serif; white-space: nowrap; animation: duel-pass-pop 1.6s ease-out both; }
+.duel-pass-bubble::before, .duel-pass-bubble::after { content: ''; position: absolute; left: 50%; top: 100%; transform: translateX(-50%); border: 9px solid transparent; border-top: 11px solid #252124; }
+.duel-pass-bubble::after { margin-top: -2px; border: 6px solid transparent; border-top: 8px solid #fff9e9; }
+@keyframes duel-pass-pop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.65); }
+  10% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+  20%, 78% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -60%) scale(.96); }
+}
+@keyframes duel-pass-fade { 0%, 78% { opacity: 1; } 100% { opacity: 0; } }
 .duel-board-wrap > .jdd-celebration { position: absolute; z-index: 5; }
 .duel-board-wrap .jdd-celebration-art { width: min(94%, 560px); max-height: 90%; animation-name: duel-goal-bounce; }
 .duel-board-wrap .jdd-celebration-spark { animation-name: duel-goal-sparks; animation-duration: .9s; }
@@ -97,3 +108,4 @@ body:has(#duel:not(.hidden)) { background: #6b62cc !important; justify-content: 
   .duel-board-wrap { grid-column: 2; grid-row: 1 / -1; min-width: 160px; }
 }
 @media (prefers-reduced-motion: reduce) { .duel-root * { scroll-behavior: auto; } }
+@media (prefers-reduced-motion: reduce) { .duel-pass-bubble { transform: translate(-50%, -50%); animation-name: duel-pass-fade; } }

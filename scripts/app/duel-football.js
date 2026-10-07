@@ -11,13 +11,38 @@
   let root, options, opened = false, editor, canvas, ctx, frame = 0, previous = 0, accumulator = 0;
   let match = null, selection = [], formations = ['1-2-2', '2-1-2'], drag = null, paused = false, scale = 1;
   let lastSerial = -1, lastSave = 0, feedback = null, goalImage = null;
+  let passNote = null, passNoteTimer = 0;
   const names = () => options.getSuggestedNames();
   function save() { if (match) try { localStorage.setItem(STORE, JSON.stringify(match)); } catch (_) { /* Partie disponible en mémoire. */ } }
   function clearGoal() {
     const board = root?.querySelector('.duel-board-wrap');
     if (board) global.JDDVisuals.clearCelebration(board);
   }
-  function stop() { cancelAnimationFrame(frame); frame = 0; previous = 0; accumulator = 0; cancelDrag(); clearGoal(); }
+  function stop() { cancelAnimationFrame(frame); frame = 0; previous = 0; accumulator = 0; cancelDrag(); clearGoal(); clearPassNote(); }
+  function clearPassNote() {
+    clearTimeout(passNoteTimer); passNoteTimer = 0;
+    passNote?.node.remove(); passNote = null;
+  }
+  function positionPassNote() {
+    if (!passNote || !canvas) return;
+    const p = match.physics.bodies[passNote.receiver], b = match.physics.bodies[P.BALL_ID], bubble = passNote.node.firstElementChild;
+    const half = bubble.offsetWidth / 2, height = bubble.offsetHeight / 2;
+    const left = canvas.offsetLeft + 2, top = canvas.offsetTop + 2;
+    const direction = p.team === 0 ? -1 : 1, clearance = Math.max(p.r, direction * (b.y - p.y) + b.r);
+    const x = Math.max(left + half + 8, Math.min(left + F.width * scale - half - 8, left + p.x * scale));
+    const y = Math.max(top + height + 4, Math.min(top + F.height * scale - height - 4,
+      top + p.y * scale + direction * (clearance * scale + height + 12)));
+    passNote.node.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${p.team === 1 ? 180 : 0}deg)`;
+  }
+  function showPassNote(receiver) {
+    clearPassNote();
+    const node = document.createElement('div'); node.className = 'duel-pass-note';
+    node.dataset.receiver = receiver; node.setAttribute('role', 'status');
+    node.innerHTML = '<span class="duel-pass-bubble">Bonne passe !</span>';
+    root.querySelector('.duel-board-wrap').append(node);
+    passNote = { node, receiver }; positionPassNote();
+    passNoteTimer = setTimeout(clearPassNote, 1600);
+  }
   function sound(key) {
     if (!global.JDDSound.isEnabled()) return;
     try {
@@ -160,7 +185,9 @@
         circle(p.x, p.y, p.r, COLORS[p.team], INK, 2.5);
         circle(p.x, p.y, p.r - 4, COLORS[p.team], 'rgba(255,249,233,.8)', 1.2);
         ctx.fillStyle = INK; ctx.font = `900 ${P.isKeeper(p) ? 17 : 13}px Montserrat,Arial,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(Array.from(match.players[p.team].name.trim())[0]?.toLocaleUpperCase('fr') || '?', p.x, p.y + .5);
+        ctx.save(); ctx.translate(p.x, p.y); if (p.team === 1) ctx.rotate(Math.PI);
+        ctx.fillText(Array.from(match.players[p.team].name.trim())[0]?.toLocaleUpperCase('fr') || '?', 0, .5);
+        ctx.restore();
       } else {
         B.draw(ctx, p, match.ballRotation, P.BALL_BORDER);
       }
@@ -185,6 +212,7 @@
         ctx.fillText(`${Math.round(aim.power * 100)} %`, clampLabel(p.x), Math.min(656, p.y + 36));
       }
     }
+    positionPassNote();
   }
   const clampLabel = x => Math.max(45, Math.min(355, x));
   function shotVector() {
@@ -197,6 +225,7 @@
     const p = match.physics.bodies.filter(p => P.selectable(match.physics, p.id))
       .map(p => ({ p, distance: Math.hypot(p.x - x, p.y - y) })).sort((a, b) => a.distance - b.distance)[0];
     if (!p || p.distance > Math.max(p.p.r + 4, 22 / scale)) return;
+    clearPassNote();
     event.preventDefault(); canvas.setPointerCapture(event.pointerId);
     drag = { id: p.p.id, pointer: event.pointerId, startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY }; draw();
   }
@@ -209,6 +238,7 @@
     drag.x = event.clientX; drag.y = event.clientY;
     const vector = shotVector(), id = drag.id; cancelDrag();
     if (vector.distance >= 8 && P.shoot(match.physics, id, vector.nx * vector.power * P.MAX_SHOT, vector.ny * vector.power * P.MAX_SHOT)) {
+      clearPassNote();
       sound('pass'); save(); updateHUD(); loop();
     } else draw();
   }
@@ -230,14 +260,16 @@
     if (previous) accumulator += Math.min(.05, (now - previous) / 1000);
     previous = now;
     while (accumulator >= P.STEP) {
-      const b = s.bodies[P.BALL_ID], x = b.x, y = b.y, angle = b.angle, phase = s.phase;
+      const b = s.bodies[P.BALL_ID], x = b.x, y = b.y, angle = b.angle, phase = s.phase, captureStage = s.capture?.stage;
       P.step(s, P.STEP); accumulator -= P.STEP;
+      if (s.capture?.stage === 'align' && captureStage !== 'align') showPassNote(s.capture.id);
       const next = s.bodies[P.BALL_ID];
       if (phase === 'goal' && s.phase === 'aim') match.ballRotation = B.rotation();
       else B.roll(match.ballRotation, next.x - x, next.y - y, next.angle - angle, next.r);
     }
     if (s.serial !== lastSerial) {
       if (s.phase === 'goal') {
+        clearPassNote();
         sound('correct');
         global.JDDVisuals.celebrate(root.querySelector('.duel-board-wrap'), GOAL_ART);
       } else clearGoal();
