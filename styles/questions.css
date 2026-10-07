@@ -163,6 +163,46 @@ body:has(#game:not(.hidden))::before {
 #game #answerText { margin: 18px 0 0; padding: 14px; border: 1px solid var(--game-ink); border-radius: 10px; background: #e0edda; font-family: Arial, sans-serif; font-size: 16px; font-weight: 600; line-height: 1.5; text-align: left; overflow-wrap: normal; }
 #game #answerText:empty { display: none; }
 
+/* Drapeaux : silhouettes, lettres et associations dans la même carte Culture G. */
+#game[data-flag-kind] .quiz-question-media .quiz-image { max-height: 190px; }
+#game[data-flag-kind="map"] .quiz-question-media .quiz-image { max-height: 260px; }
+#game[data-flag-kind] .mcq-btn--image .quiz-image { height: clamp(76px, 23vw, 128px); border-radius: 0; }
+#game .quiz-question-media--monochrome .quiz-image { filter: grayscale(1); }
+#game .flag-color-swatch { flex: 0 0 22px; width: 22px; height: 22px; border: 1px solid var(--game-ink); border-radius: 50%; }
+#game .flag-matching { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+#game .flag-match-column { display: grid; grid-template-rows: repeat(4, 88px); gap: 10px; min-width: 0; }
+#game .flag-match-image, #game .flag-match-name, #game .flag-letter, #game .flag-submit {
+  min-width: 0; margin: 0; padding: 8px; border: 2px solid var(--game-ink); border-radius: 10px;
+  background: var(--game-yellow); color: var(--game-ink); box-shadow: 2px 2px 0 var(--game-ink);
+  font: 800 13px/1.3 'Montserrat', Arial, sans-serif; text-transform: none; overflow-wrap: normal; hyphens: none;
+}
+#game .flag-match-image { position: relative; display: grid; place-items: center; background: #fff; }
+#game .flag-match-image .quiz-image { max-height: 64px; border-radius: 0; }
+#game .flag-match-image .quiz-image-figure { width: 100%; }
+#game .flag-match-selected { outline: 3px solid var(--game-purple); outline-offset: 1px; background: #eee8f7; }
+#game .flag-match-image.mcq-correct::after { content: '✓'; position: absolute; right: 4px; top: 2px; padding: 0 4px; border-radius: 50%; background: #a7d5bc; font-weight: 900; }
+#game .flag-match-status { grid-column: 1 / -1; margin: 0; font-size: 13px; font-weight: 800; text-align: center; }
+#game .flag-match-error { animation: flag-match-error .65s ease-out; }
+@keyframes flag-match-error { 0%, 70% { background: #f0a6a6; } 100% { background: var(--game-yellow); } }
+#game .flag-spelling { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+#game .flag-spelling-slots { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+#game .flag-spelling-word { display: flex; align-items: center; gap: 2px; max-width: 100%; }
+#game .flag-letter-slot {
+  width: min(22px, calc((100vw - 90px) / var(--letters) - 2px)); min-width: 0; height: 32px;
+  margin: 0; padding: 0; border: 0; border-bottom: 2px solid var(--game-purple); border-radius: 0;
+  background: #eee8f7; color: var(--game-ink); font: 800 clamp(8px, calc((100vw - 90px) / var(--letters) - 6px), 14px) 'Montserrat', Arial, sans-serif;
+}
+#game .flag-punctuation { font-size: 12px; font-weight: 800; }
+#game .flag-letter-bank { display: grid; grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); gap: 8px; }
+#game .flag-letter { min-height: 44px; font-size: 16px; }
+#game .flag-letter:disabled { opacity: .35; box-shadow: none; }
+#game .flag-submit { min-height: 48px; font-size: 15px; }
+#game .flag-submit:disabled { opacity: .5; }
+#game .flag-answer-correct .flag-letter-slot { border-color: #408762; background: #a7d5bc; }
+#game .flag-answer-wrong .flag-letter-slot { border-color: #bd5757; background: #f0a6a6; }
+#game .flag-matching button:disabled { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { #game .flag-match-error { animation: none; background: #f0a6a6; } }
+
 #game .toggle-container { width: 100%; min-height: 44px; margin: -6px 0 12px; justify-content: flex-start; gap: 10px; }
 #game .switch { flex-shrink: 0; width: 54px; height: 44px; }
 #game .slider { top: 7px; bottom: 7px; border: 2px solid var(--game-ink); background: #ded8ed; }

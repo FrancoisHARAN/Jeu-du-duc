@@ -145,7 +145,11 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           return (await cache.keys()).map(r => r.url);
         }''', cache)
         quiz360_images = json.loads((site / 'data/culture.quiz360.images.json').read_text())
-        assert len(shell) == 89 + len(quiz360_images), len(shell)
+        flag_images = json.loads((site / 'data/culture.flags.images.json').read_text())
+        assert len(shell) == 93 + len(quiz360_images) + len(flag_images), len(shell)
+        for file in ['data/culture.flags.js', 'data/culture.flags.images.json',
+                     'scripts/core/culture-flags.js', 'scripts/app/culture-flags.js', *flag_images]:
+            assert base + file in shell
         assert not any(url.endswith(('/data/rapidite.questions.js', '/song/rapidite.mp3')) for url in shell)
         for file in ['styles/accounts.css','vendor/supabase/supabase.js','scripts/supabase-config.js',
                      'scripts/core/participants.js','scripts/core/cloud.js','scripts/app/accounts.js']:
@@ -206,11 +210,14 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         assert imported_quiz360 + len(pending) == 6950, imported_quiz360
         # Même les photos jamais vues doivent être disponibles en mode avion.
         assert all(width > 0 for width in page.evaluate(load_images, quiz360_images))
+        assert all(width > 0 for width in page.evaluate(load_images, flag_images))
+        assert page.evaluate('JDD.DATA.cultureMcq.filter(q => q.flagKind).length') == 1602
+        offline_flag = page.evaluate('JDD.DATA.cultureMcq.find(q => q.id === "drapeaux-map-fr")')
         expect(page.locator('#questionMediaStatus')).to_be_hidden()
         quiz360_question = page.evaluate('JDD.DATA.cultureMcq.find(q => q.id === "quiz360-1")')
         # Les autres photos n'ont pas encore été vues : les questions sans photo
         # permettent de vérifier les modes hors ligne sans requête externe aléatoire.
-        page.evaluate('JDD.DATA.cultureMcq = JDD.DATA.cultureMcq.filter(q => !q.image && !q.choiceImages)')
+        page.evaluate('JDD.DATA.cultureMcq = JDD.DATA.cultureMcq.filter(q => !q.image && !q.choiceImages && !q.flagKind)')
         print(f'PASS: 7 632 anciennes et {imported_quiz360} nouvelles questions hors ligne ; les 336 images locales sont toutes disponibles', flush=True)
         expect(page.locator('.player-item')).to_have_count(3)
         counts = page.evaluate('''() => ({...Object.fromEntries(Object.entries(JDD.DATA).map(([k,v])=>[k,v.length])),
@@ -239,6 +246,14 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         expect(page.locator('.mcq-btn').first).to_be_enabled()
         page.get_by_role('button', name=quiz360_question['choices'][0], exact=True).click()
         expect(page.locator('.mcq-correct')).to_have_count(1)
+        page.evaluate('q => { offlineQuiz360 = q; }', offline_flag)
+        page.locator('.game-next-hint').dispatch_event('click', {'clientX': 392})
+        expect(page.locator('.mcq-btn').first).to_be_enabled()
+        assert page.locator('#questionMedia img').evaluate('img => img.naturalWidth === 1024')
+        choices = page.locator('#mcqGrid img').evaluate_all('images => images.map(img => img.getAttribute("src"))')
+        page.locator('.mcq-btn').nth(choices.index('image/culture/drapeaux/flags/fr.png')).click()
+        expect(page.locator('.mcq-correct')).to_have_count(1)
+        print('PASS: 1 602 questions Drapeaux, 458 images jamais vues en cache et carte → drapeau jouable hors ligne', flush=True)
         page.evaluate('() => { JDD.drawCard = originalDrawCard; JDD.DATA.culture = originalCulture; }')
         page.locator('#backLogo').click()
         for name in ['Bob', 'Chloe']:
@@ -401,7 +416,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         print('PASS: Échecs, pièces vectorielles, horloges, coups légaux et reprise en mode avion',flush=True)
         # Les reprises ont rechargé la banque ; garder les questions sans
         # photo distante pour ce contrôle des modes, comme au début du test.
-        page.evaluate('JDD.DATA.cultureMcq = JDD.DATA.cultureMcq.filter(q => !q.image && !q.choiceImages)')
+        page.evaluate('JDD.DATA.cultureMcq = JDD.DATA.cultureMcq.filter(q => !q.image && !q.choiceImages && !q.flagKind)')
         # Ce tirage déclenchait auparavant une carte de rapidité à chaque question.
         page.evaluate('() => { window.savedRandom = Math.random; Math.random = () => 0; }')
         for mode in ['debut', 'hardcore', 'alcool', 'culture', 'custom']:

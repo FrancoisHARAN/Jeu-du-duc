@@ -12,7 +12,8 @@
 
   // Empreinte courte et stable (FNV-1a 32 bits) : quelques caractères par carte vue.
   function cardId(card){
-    const text = typeof card === 'string' ? card : `${card.question || card.text || ''}|${card.answer || ''}`;
+    const text = typeof card === 'string' ? card : card.flagKind ? card.id
+      : `${card.question || card.text || ''}|${card.answer || ''}`;
     let hash = 0x811c9dc5;
     for (let i = 0; i < text.length; i++) {
       hash ^= text.charCodeAt(i);

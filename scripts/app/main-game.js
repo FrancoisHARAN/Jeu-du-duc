@@ -357,12 +357,16 @@
 
   function hideQuestionArea() {
     mediaRequest += 1;
+    delete elements.gameScreen.dataset.flagKind;
+    elements.questionMedia.classList.remove('quiz-question-media--monochrome');
     elements.questionMedia.replaceChildren();
     elements.questionMedia.classList.add('hidden');
     elements.questionMediaStatus.replaceChildren();
     elements.questionMediaStatus.classList.add('hidden');
     elements.mcqBox.style.display = 'none';
     elements.mcqGrid.innerHTML = '';
+    elements.mcqGrid.className = 'mcq-grid';
+    elements.mcqGrid.onclick = null;
     elements.answerBox.style.display = 'none';
     elements.showAnswerButton.style.display = 'none';
     elements.answerText.textContent = '';
@@ -377,7 +381,7 @@
     }
   }
 
-  function renderQuizImages(question, options, buttons) {
+  function renderQuizImages(question, options, buttons, onReady) {
     const request = mediaRequest;
     const images = [];
     const addImage = (parent, url, alt, credit) => {
@@ -412,7 +416,7 @@
       buttons.forEach(button => { button.disabled = !ready; });
       elements.questionMediaStatus.replaceChildren();
       elements.questionMediaStatus.classList.toggle('hidden', ready);
-      if (ready) return;
+      if (ready) { onReady?.(); return; }
       const text = document.createElement('p');
       text.textContent = failed ? 'Une image n’a pas pu être chargée. Réessaie ou passe à la question suivante.' : 'Chargement des images…';
       elements.questionMediaStatus.appendChild(text);
@@ -445,6 +449,7 @@
   }
 
   function renderMcq(question, playerName) {
+    question = window.JDD.prepareFlagQuestion(question);
     const resultEvent = quizEvent(playerName);
     const isTrueFalse = question.vf === true;
     const prompt = question.image ? question.imageTitle || 'Quelle est la bonne réponse pour cette image ?' : question.question;
@@ -454,15 +459,39 @@
       ? `${playerName ? `${playerName}, v` : 'V'}rai ou faux : ${question.question}`
       : addressPlayer(playerName, prompt);
 
+    if (question.flagKind) elements.gameScreen.dataset.flagKind = question.flagKind;
+    elements.questionMedia.classList.toggle('quiz-question-media--monochrome', Boolean(question.monochrome));
+
     elements.answerBox.style.display = 'block';
     elements.mcqBox.style.display = 'block';
     elements.mcqGrid.innerHTML = '';
     elements.mcqGrid.classList.toggle('mcq-grid--vf', isTrueFalse);
     elements.mcqGrid.classList.toggle('mcq-grid--images', Boolean(question.choiceImages));
 
+    const recordResponse = (correct, detail = {}) => {
+      if (!markCultureResponse(correct)) return false;
+      window.JDDCloud.record(resultEvent, [{ participant: resultEvent?.participants[0], metrics: {
+        questions_answered: 1, correct_answers: Number(correct),
+      } }], { question_id: String(question.id || window.JDD.cardId?.(question) || question.question).slice(0, 240),
+        ...detail, correct });
+      return true;
+    };
+    if (question.interaction) {
+      const interaction = window.JDD.renderFlagInteraction(question, elements.mcqGrid, (correct, detail, answer) => {
+        if (!recordResponse(correct, detail)) return;
+        // Arrêter le tap de validation, puis rendre le tap à droite à la navigation habituelle.
+        elements.mcqGrid.onclick = event => { event.stopPropagation(); elements.mcqGrid.onclick = null; };
+        elements.answerText.textContent = question.interaction === 'spell'
+          ? `${correct ? '✓' : 'Réponse :'} ${answer}` : answer;
+      });
+      renderQuizImages(question, interaction.options, interaction.buttons, interaction.ready);
+      return;
+    }
+
     const credits = (question.imageCredit || '').split('±');
     const options = question.choices.map((label, index) => ({ label, sourceIndex: index, correct: index === question.answerIndex,
-      image: question.choiceImages && question.choiceImages[index], credit: credits[index] }));
+      image: question.choiceImages && question.choiceImages[index], credit: credits[index],
+      color: question.choiceColors && question.choiceColors[index] }));
     if (!isTrueFalse) {
       window.JDD.shuffle(options);
     }
@@ -475,6 +504,13 @@
         button.classList.add('mcq-btn--image');
         button.setAttribute('aria-label', `Proposition ${String.fromCharCode(65 + elements.mcqGrid.children.length)}`);
       } else {
+        if (option.color) {
+          const swatch = document.createElement('span');
+          swatch.className = 'flag-color-swatch';
+          swatch.style.backgroundColor = option.color;
+          swatch.setAttribute('aria-hidden', 'true');
+          button.appendChild(swatch);
+        }
         const label = document.createElement('span');
         label.className = 'mcq-label';
         label.textContent = option.label;
@@ -484,16 +520,13 @@
         'click',
         (event) => {
           event.stopPropagation();
-          if (!markCultureResponse(option.correct)) return;
+          if (!recordResponse(option.correct, { selected_answer: option.sourceIndex })) return;
           buttons.forEach((btn, index) => {
             btn.disabled = true;
             if (options[index].correct) btn.classList.add('mcq-correct');
           });
           if (!option.correct) button.classList.add('mcq-wrong');
-          window.JDDCloud.record(resultEvent, [{ participant: resultEvent?.participants[0], metrics: {
-            questions_answered: 1, correct_answers: Number(option.correct),
-          } }], { question_id: String(question.id || window.JDD.cardId?.(question) || question.question).slice(0, 240),
-            selected_answer: option.sourceIndex, correct: option.correct });
+          elements.questionMedia.classList.remove('quiz-question-media--monochrome');
           if (question.note) elements.answerText.textContent = `💡 ${question.note}`;
         },
         { once: true }
@@ -508,7 +541,7 @@
     requestAnimationFrame(() => {
       if (elements.gameScreen.classList.contains('hidden') || elements.gameScreen.dataset.category !== 'culture') return;
       // Garder les mots entiers, même pour une URL ou un nom très long du classeur.
-      const labels = [elements.currentQuestion, ...elements.mcqGrid.querySelectorAll('.mcq-label')];
+      const labels = [elements.currentQuestion, ...elements.mcqGrid.querySelectorAll('.mcq-label, .flag-match-name')];
       labels.forEach(label => {
         label.style.fontSize = '';
         let size = parseFloat(getComputedStyle(label).fontSize);

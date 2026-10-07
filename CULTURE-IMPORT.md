@@ -119,3 +119,51 @@ Les tests Culture G. contrôlent les 607 questions visuelles des deux imports,
 les 562 nouveaux vrai/faux, le mélange des réponses et le rendu mobile.
 Le test PWA vérifie aussi les 336 vraies photos hors ligne sous
 `/Jeu-du-duc/`, puis les mises à jour et la suppression des anciens caches.
+
+## Drapeaux du 7 octobre 2026
+
+`Drapeaux_jeu_du_duc_questions_FR.xlsx` ajoute 1 602 cartes à Culture G.,
+sans nouvel écran de choix et sans chronomètre :
+
+- 229 pays à reconnaître depuis leur drapeau ;
+- 229 drapeaux à choisir depuis un nom ;
+- 228 capitales (aucune capitale fournie pour Macao) ;
+- 229 drapeaux à reconnaître depuis une carte ;
+- 229 noms à épeler avec des lettres ;
+- 229 associations de quatre drapeaux et noms ;
+- 229 questions sur une couleur absente.
+
+Les 915 lignes de l'onglet Questions sont conservées avec leur réponse et leurs
+métadonnées. Les trois autres formats utilisent les 229 fiches du catalogue.
+Le code ne traite pas les textes explicatifs du classeur comme des instructions ;
+les variantes chronométrées ne sont pas ajoutées. Les 458 PNG intégrés sont
+extraits sans modification, dans `image/culture/drapeaux/flags/` et `maps/`.
+
+Les mauvaises propositions et les associations changent à chaque tirage.
+Chaque réponse reste liée à son drapeau lors du mélange. Les capitales proposées
+sont distinctes. Les questions sans nom de pays à l'écran n'en révèlent pas le
+nom dans le texte alternatif. Les identifiants comprennent le format et le code
+du pays pour que les questions au même énoncé ne partagent pas leur historique.
+
+Pour épeler un nom, les accents sont neutralisés sur les lettres, les espaces
+et la ponctuation sont conservés ; la correction montre le nom français original.
+Un tap sur une lettre déjà placée la rend disponible. Pour les associations,
+on touche un drapeau puis un nom. Une erreur peut être corrigée, mais la carte
+n'est comptée juste que si les quatre associations sont réussies sans erreur.
+Chaque carte produit un seul résultat pour les stats et la série du joueur.
+
+Les couleurs source sont regroupées en noms usuels et les pixels des drapeaux
+sont contrôlés, y compris ceux des blasons, pour exclure les fausses couleurs
+absentes. Le drapeau est affiché en gris pendant la question puis retrouve ses
+couleurs lors de la correction. Selon le nombre de couleurs présentes, trois
+ou quatre choix sont proposés, avec une seule couleur absente.
+
+Les deux fichiers de données, les modules et les 458 visuels sont inclus dans
+le cache essentiel de la PWA, même avant de voir une question. Reproduire l'import :
+
+```sh
+python tools/import_flags_workbook.py /chemin/Drapeaux_jeu_du_duc_questions_FR.xlsx
+python tests/flags_smoke.py
+python tests/culture_smoke.py
+python tests/pwa_smoke.py
+```
