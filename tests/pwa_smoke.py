@@ -152,7 +152,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         for file in ['data/culture.quiz360.js', 'data/culture.quiz360.images.json', *quiz360_images]:
             assert base + file in shell
         assert base + 'scripts/core/statistics.js' in shell
-        for file in ['scripts/core/duel-physics.js', 'scripts/app/duel-football.js', 'styles/duel-football.css', 'image/home/duel.svg', 'image/duel/goal.webp']:
+        for file in ['scripts/core/duel-physics.js', 'scripts/app/duel-football.js', 'styles/duel-football.css', 'image/home/duel-football.webp', 'image/duel/goal.webp']:
             assert base + file in shell
         assert base + 'styles/questions.css' in shell
         assert base + 'data/culture.imported.js' in shell
@@ -161,7 +161,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
                      'styles/geography.css', 'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css',
                      'data/geography/countries.geojson', 'data/geography/departments.geojson',
                      'data/geography/cities.json', 'data/geography/physical.json', 'image/home/geography.webp', 'image/geography/mega-win.webp', 'styles/football.css',
-                     'scripts/app/football.js', 'data/football.questions.json', 'image/home/football.webp']:
+                     'scripts/app/football.js', 'data/football.questions.json', 'image/home/football-quiz.webp']:
             assert base + file in shell
         assert all(url.startswith(base) for url in shell)
         for name in ['Alice', 'Bob', 'Chloe']:
