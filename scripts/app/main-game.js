@@ -19,6 +19,7 @@
     headsScreen: document.getElementById('heads'),
     geographyScreen: document.getElementById('geography'),
     footballScreen: document.getElementById('football'),
+    duelScreen: document.getElementById('duel'),
     playerInput: document.getElementById('playerInput'),
     playerError: document.getElementById('playerError'),
     playerList: document.getElementById('playerList'),
@@ -52,6 +53,7 @@
     headsButton: document.getElementById('headsBtn'),
     geographyButton: document.getElementById('geographyBtn'),
     footballButton: document.getElementById('footballBtn'),
+    duelButton: document.getElementById('duelBtn'),
     rapiditeAudio: document.getElementById('rapidite-audio'),
   };
 
@@ -853,6 +855,19 @@
     window.scrollTo(0, 0);
   }
 
+  function openDuel() {
+    elements.setupScreen.classList.add('hidden');
+    elements.gameScreen.classList.add('hidden');
+    elements.duelScreen.classList.remove('hidden');
+    modules.duel.onOpen();
+  }
+
+  function closeDuel() {
+    elements.duelScreen.classList.add('hidden');
+    elements.setupScreen.classList.remove('hidden');
+    window.scrollTo(0, 0);
+  }
+
   function attachEvents() {
     window.addEventListener('jdd:profiles', () => {
       renderPlayersInto(elements.playerList);
@@ -935,6 +950,7 @@
     elements.headsButton.addEventListener('click', openHeads);
     elements.geographyButton.addEventListener('click', openGeography);
     elements.footballButton.addEventListener('click', openFootball);
+    elements.duelButton.addEventListener('click', openDuel);
   }
 
   function init() {
@@ -968,6 +984,10 @@
       modules.football.init({ onExit: closeFootball, getSuggestedNames: () => players.slice(),
         addPlayer, removePlayer: removeSharedPlayer });
     } catch (error) { console.error('Grand Quiz Foot indisponible', error); }
+    try {
+      modules.duel.init({ onExit: closeDuel, getSuggestedNames: () => players.slice(),
+        addPlayer, removePlayer: removeSharedPlayer });
+    } catch (error) { console.error('Duel Foot indisponible', error); }
     attachEvents();
     const defaultCard = document.querySelector('.mode-card[data-mode="debut"]');
     if (!restoreSettings() && defaultCard) {

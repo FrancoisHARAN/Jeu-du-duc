@@ -145,13 +145,15 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           return (await cache.keys()).map(r => r.url);
         }''', cache)
         quiz360_images = json.loads((site / 'data/culture.quiz360.images.json').read_text())
-        assert len(shell) == 79 + len(quiz360_images), len(shell)
+        assert len(shell) == 83 + len(quiz360_images), len(shell)
         for file in ['styles/accounts.css','vendor/supabase/supabase.js','scripts/supabase-config.js',
                      'scripts/core/participants.js','scripts/core/cloud.js','scripts/app/accounts.js']:
             assert any(url.endswith('/' + file) for url in shell), file
         for file in ['data/culture.quiz360.js', 'data/culture.quiz360.images.json', *quiz360_images]:
             assert base + file in shell
         assert base + 'scripts/core/statistics.js' in shell
+        for file in ['scripts/core/duel-physics.js', 'scripts/app/duel-football.js', 'styles/duel-football.css', 'image/home/duel.svg']:
+            assert base + file in shell
         assert base + 'styles/questions.css' in shell
         assert base + 'data/culture.imported.js' in shell
         for file in ['scripts/core/sound.js', 'scripts/core/feedback-sounds.js', 'scripts/core/visual-feedback.js', 'styles/visual-feedback.css', 'image/undercover/white-win.webp', 'styles/heads-up.css', 'scripts/app/heads-up.js', 'data/heads.words.js', 'data/heads.imported.js',
@@ -348,6 +350,25 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
             page.locator('[data-foot="exit"]').click()
         page.evaluate('Date.now=footNow')
         print('PASS: quiz foot chacun pour soi et équipes, un seul tour, chrono, scores et VAR hors connexion', flush=True)
+        page.locator('#duelBtn').click()
+        expect(page.locator('#duel')).to_have_attribute('data-screen', 'setup')
+        assert page.locator('.duel-formations label').count() == 6
+        page.locator('[data-duel="start"]').click()
+        duel = page.evaluate('JSON.parse(localStorage.getItem("jdd.duel-football.v1"))')
+        assert len(duel['physics']['bodies']) == 11
+        canvas = page.locator('#duel-canvas').bounding_box()
+        pion = duel['physics']['bodies'][0]
+        x = canvas['x'] + 2 + pion['x'] * (canvas['width'] - 4) / 400
+        y = canvas['y'] + 2 + pion['y'] * (canvas['height'] - 4) / 680
+        page.mouse.move(x, y); page.mouse.down(); page.mouse.move(x, y - 90); page.mouse.up()
+        expect(page.locator('#duel')).to_have_attribute('data-phase', 'moving')
+        page.locator('[data-duel="pause"]').click()
+        duel = page.evaluate('JSON.parse(localStorage.getItem("jdd.duel-football.v1"))')
+        page.reload(wait_until='load'); page.locator('#duelBtn').click(); page.locator('[data-duel="resume"]').click()
+        expect(page.locator('#duel')).to_have_attribute('data-phase', 'aim', timeout=12000)
+        assert page.evaluate('JSON.parse(localStorage.getItem("jdd.duel-football.v1")).players') == duel['players']
+        page.locator('[data-duel="exit"]').click()
+        print('PASS: Duel Foot, formations, tir physique et reprise du match en mode avion', flush=True)
         expect(page.locator('#setup')).to_be_visible()
         for mode in ['debut', 'hardcore', 'alcool', 'culture', 'custom']:
             page.locator(f'[data-mode="{mode}"]').click()

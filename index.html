@@ -25,6 +25,7 @@
   <link rel="stylesheet" href="styles/players.css?v=20261006g">
   <link rel="stylesheet" href="styles/geography.css?v=20261007c">
   <link rel="stylesheet" href="styles/football.css?v=20261006c">
+  <link rel="stylesheet" href="styles/duel-football.css?v=20261007d">
   <link rel="stylesheet" href="styles/accounts.css?v=20261006g">
 </head>
 <body>
@@ -86,6 +87,12 @@
         <span class="home-mode-art"><img src="image/home/football.webp" alt="" width="1254" height="1254" decoding="async"></span>
         <span class="home-mode-label">Grand Quiz Foot</span>
         <span class="home-mode-choice">JOUER AU QUIZ FOOT<span class="home-mode-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></span>
+      </button>
+      <button id="duelBtn" class="mode-card home-mode home-mode--duel" type="button">
+        <span class="home-window-bar" aria-hidden="true"><i></i><i></i><i></i><span>1 CONTRE 1 · PREMIER À 3 BUTS</span></span>
+        <span class="home-mode-art"><img src="image/home/duel.svg" alt="" width="160" height="160" decoding="async"></span>
+        <span class="home-mode-label">Duel Foot</span>
+        <span class="home-mode-choice">JOUER À DUEL FOOT<span class="home-mode-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M5 5h14v14"/></svg></span></span>
       </button>
     </section>
 
@@ -243,12 +250,14 @@
   <div id="heads" class="hu-root hidden"></div>
   <div id="geography" class="geo-root hidden"></div>
   <div id="football" class="foot-root hidden"></div>
+  <div id="duel" class="duel-root hidden"></div>
 
   <audio id="rapidite-audio" src="song/rapidite.mp3"></audio>
 
   <!-- CORE -->
   <script src="scripts/core/init.js?v=20261005a" defer></script>
   <script src="scripts/core/visual-feedback.js?v=20261007a" defer></script>
+  <script src="scripts/core/duel-physics.js?v=20261007d" defer></script>
   <script src="scripts/core/sound.js?v=20261006a" defer></script>
   <script src="scripts/core/feedback-sounds.js?v=20261006a" defer></script>
   <script src="scripts/core/history.js?v=20261005a" defer></script>
@@ -268,6 +277,7 @@
   <script src="scripts/app/heads-up.js?v=20261007c" defer></script>
   <script src="scripts/app/geography.js?v=20261007c" defer></script>
   <script src="scripts/app/football.js?v=20261007c" defer></script>
+  <script src="scripts/app/duel-football.js?v=20261007d" defer></script>
 
   <!-- DATA -->
   <script src="data/debut.text.js?v=20261006a" defer></script>
@@ -280,7 +290,7 @@
   <script src="data/undercover.pairs.js?v=20261005k" defer></script>
   <script src="data/heads.words.js?v=20261006g" defer></script>
   <script src="data/heads.imported.js?v=20261006g" defer></script>
-  <script src="scripts/app/main-game.js?v=20261007c" defer></script>
+  <script src="scripts/app/main-game.js?v=20261007d" defer></script>
   <script src="data/culture.imported.js?v=20261006b" defer></script>
   <script src="data/culture.quiz360.js?v=20261006h" defer></script>
   <script src="scripts/pwa.js?v=20261006e" defer></script>

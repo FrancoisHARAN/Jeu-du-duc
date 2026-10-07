@@ -1,0 +1,81 @@
+#setup .home-mode--duel { --tile-color: #f7c3d0; }
+.duel-root { width: min(100%, 620px); margin: 0 auto; padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom)); color: #252124; font-family: 'Montserrat', Arial, sans-serif; }
+.duel-root, .duel-root * { box-sizing: border-box; }
+body:has(#duel:not(.hidden)) { background: #6b62cc !important; justify-content: flex-start; }
+.duel-root h1, .duel-root h2 { color: #252124; text-shadow: none; text-transform: none; }
+.duel-root button, .duel-root select, .duel-root input { font-family: inherit; }
+.duel-root button { cursor: pointer; }
+.duel-root button:hover { transform: none; filter: none; }
+.duel-root button:disabled { opacity: .5; cursor: default; }
+.duel-root button:focus-visible, .duel-root input:focus-visible, .duel-root select:focus-visible, .duel-root summary:focus-visible { outline: 3px solid #6b62cc; outline-offset: 3px; }
+.duel-topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.duel-pill { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 8px 12px; border: 2px solid #252124; border-radius: 28px; background: #fff9e9; color: #252124; font-size: 11px; font-weight: 900; text-transform: uppercase; }
+.duel-pill svg { width: 20px; height: 20px; }
+.duel-title { margin-left: auto; background: #a7d5bc; }
+.duel-pause { width: 44px; padding: 8px; }
+.duel-topbar button:focus-visible { outline-color: #ffd938; }
+.duel-panel { overflow: hidden; border: 2px solid #252124; border-radius: 16px; background: #fff9e9; box-shadow: 4px 4px 0 #252124; }
+.duel-window { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 42px; padding: 10px 14px; border-bottom: 2px solid #252124; background: #a7d5bc; font-size: 10px; font-weight: 900; }
+.duel-settings { display: grid; gap: 16px; padding: 18px; }
+.duel-intro { display: flex; align-items: center; gap: 14px; }
+.duel-intro img { width: 72px; height: 72px; border: 2px solid #252124; border-radius: 12px; }
+.duel-intro h1 { margin: 0 0 6px; font-size: 26px; font-weight: 900; }
+.duel-intro p { margin: 0; font-size: 12px; font-weight: 700; }
+.duel-contenders { display: grid; gap: 14px; }
+.duel-contender { min-width: 0; margin: 0; padding: 12px; border: 2px solid #252124; border-radius: 12px; background: #f7c3d0; }
+.duel-contender[data-team="1"] { background: #ffd938; }
+.duel-contender legend { padding: 0 5px; font-size: 15px; font-weight: 900; }
+.duel-select-label { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 800; }
+.duel-contender select { width: 100%; min-height: 44px; margin: 0 0 10px; padding: 8px; border: 2px solid #252124; border-radius: 8px; color: #252124; background: #fff9e9; font-size: 14px; font-weight: 800; }
+.duel-formations { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.duel-formations label { position: relative; display: grid; justify-items: center; gap: 3px; min-width: 0; padding: 4px; border: 2px solid #252124; border-radius: 8px; background: #fff9e9; font-size: 12px; font-weight: 900; cursor: pointer; }
+.duel-formations input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.duel-formations label:has(input:checked) { background: #c9b3ef; box-shadow: 2px 2px 0 #252124; }
+.duel-formations label:has(input:focus-visible) { outline: 3px solid #6b62cc; outline-offset: 2px; }
+.duel-formations svg { display: block; width: 100%; }
+.duel-roster summary { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 12px; font-weight: 800; cursor: pointer; }
+.duel-roster summary::before { content: '+'; font-size: 20px; }
+.duel-roster[open] summary::before { content: '−'; }
+.duel-button { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; min-height: 52px; padding: 10px; border: 2px solid #252124; border-radius: 12px; background: #ffd938; color: #252124; box-shadow: 3px 3px 0 #252124; font-size: 15px; font-weight: 900; }
+.duel-button--green { background: #a7d5bc; }
+.duel-root button:active { transform: translate(1px, 1px); }
+.duel-floor { height: 18px; border-top: 2px solid #252124; background: conic-gradient(#f7c3d0 25%, #fff9e9 0 50%, #f7c3d0 0 75%, #fff9e9 0) 0 0 / 36px 36px; }
+.duel-match { display: flex; flex-direction: column; height: calc(100dvh - max(14px, env(safe-area-inset-top)) - max(14px, env(safe-area-inset-bottom))); min-height: 360px; }
+.duel-match > .duel-topbar, .duel-scoreboard, .duel-turn, .duel-tip { flex: 0 0 auto; }
+.duel-scoreboard { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; }
+.duel-player { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 44px; padding: 5px 7px; border: 2px solid #252124; border-radius: 10px; background: #f7c3d0; }
+.duel-player[data-team="1"] { background: #ffd938; }
+.duel-player.is-active { box-shadow: 0 0 0 2px #fff9e9; }
+.duel-player strong { min-width: 0; flex: 1; hyphens: none; overflow-wrap: normal; font-size: 12px; font-weight: 900; }
+.duel-avatar { flex: 0 0 26px; width: 26px; height: 26px; }
+.duel-avatar .account-avatar { width: 100%; height: 100%; font-size: 13px; border-radius: 7px; }
+.duel-score { display: flex; gap: 6px; align-items: center; color: #fff9e9; font-size: 24px; font-weight: 900; white-space: nowrap; }
+.duel-scoreboard--longnames { grid-template-columns: minmax(0, 1fr) auto; }
+.duel-scoreboard--longnames .duel-player { grid-column: 1; }
+.duel-scoreboard--longnames .duel-player[data-team="0"] { grid-row: 1; }
+.duel-scoreboard--longnames .duel-player[data-team="1"] { grid-row: 2; }
+.duel-scoreboard--longnames .duel-score { grid-column: 2; grid-row: 1 / 3; }
+.duel-turn { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 9px 0; padding: 4px 8px; border: 2px solid #252124; border-radius: 9px; background: #f7c3d0; color: #252124; font-size: 12px; font-weight: 800; text-align: center; hyphens: none; overflow-wrap: normal; }
+.duel-turn[data-team="1"] { background: #ffd938; }
+.duel-turn .jdd-arrow { width: 18px; height: 18px; flex-basis: 18px; }
+.duel-turn-text { min-width: 0; }
+.duel-board-wrap { position: relative; display: flex; align-items: center; justify-content: center; flex: 1 1 auto; min-height: 0; }
+#duel-canvas { display: block; max-width: 100%; max-height: 100%; border: 2px solid #252124; border-radius: 14px; box-shadow: 3px 3px 0 #252124; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: grab; }
+#duel-canvas:active { cursor: grabbing; }
+.duel-tip { margin: 9px 0 0; color: #fff9e9; font: 600 11px/1.35 'Montserrat', Arial, sans-serif; text-align: center; }
+.duel-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 15px; }
+.duel-overlay[hidden] { display: none; }
+.duel-result { width: min(100%, 340px); padding: 20px; border: 2px solid #252124; border-radius: 16px; background: #fff9e9; box-shadow: 4px 4px 0 #252124; text-align: center; }
+.duel-result h2 { margin: 0 0 15px; font-size: 24px; font-weight: 900; hyphens: none; overflow-wrap: normal; }
+.duel-result > strong { display: block; margin-bottom: 20px; font-size: 38px; font-weight: 900; }
+.duel-result-star { display: block; margin-bottom: 10px; color: #6b62cc; font-size: 44px; }
+@media (min-width: 520px) { .duel-contenders { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (orientation: landscape) and (max-height: 540px) {
+  .duel-match { min-height: 280px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, min(36vw, 260px)); grid-template-rows: auto auto 1fr auto; gap: 8px 18px; }
+  .duel-topbar { grid-column: 1; margin: 0; }
+  .duel-scoreboard { grid-column: 1; gap: 8px; }
+  .duel-turn { grid-column: 1; margin: 8px 0; align-self: start; }
+  .duel-tip { grid-column: 1; margin: 0; }
+  .duel-board-wrap { grid-column: 2; grid-row: 1 / -1; min-width: 160px; }
+}
+@media (prefers-reduced-motion: reduce) { .duel-root * { scroll-behavior: auto; } }
