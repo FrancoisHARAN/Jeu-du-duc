@@ -483,7 +483,7 @@
         elements.mcqGrid.onclick = event => { event.stopPropagation(); elements.mcqGrid.onclick = null; };
         elements.answerText.textContent = question.interaction === 'spell'
           ? `${correct ? '✓' : 'Réponse :'} ${answer}` : answer;
-      });
+      }, showQuestion);
       renderQuizImages(question, interaction.options, interaction.buttons, interaction.ready);
       return;
     }

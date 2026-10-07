@@ -213,6 +213,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         assert all(width > 0 for width in page.evaluate(load_images, flag_images))
         assert page.evaluate('JDD.DATA.cultureMcq.filter(q => q.flagKind).length') == 1602
         offline_flag = page.evaluate('JDD.DATA.cultureMcq.find(q => q.id === "drapeaux-map-fr")')
+        offline_spell = page.evaluate('JDD.DATA.cultureMcq.find(q => q.id === "drapeaux-spell-fr")')
         expect(page.locator('#questionMediaStatus')).to_be_hidden()
         quiz360_question = page.evaluate('JDD.DATA.cultureMcq.find(q => q.id === "quiz360-1")')
         # Les autres photos n'ont pas encore été vues : les questions sans photo
@@ -253,7 +254,17 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         choices = page.locator('#mcqGrid img').evaluate_all('images => images.map(img => img.getAttribute("src"))')
         page.locator('.mcq-btn').nth(choices.index('image/culture/drapeaux/flags/fr.png')).click()
         expect(page.locator('.mcq-correct')).to_have_count(1)
+        page.evaluate('q => { offlineQuiz360 = q; }', offline_spell)
+        page.locator('.game-next-hint').dispatch_event('click', {'clientX': 392})
+        expect(page.locator('.flag-letter').first).to_be_enabled()
+        expect(page.locator('.flag-submit')).to_be_disabled()
+        page.evaluate('q => { offlineQuiz360 = q; }', quiz360_question)
+        page.get_by_role('button', name='Passer', exact=True).tap()
+        expect(page.locator('.mcq-btn').first).to_be_enabled()
+        expect(page.get_by_role('button', name='Passer', exact=True)).to_have_count(0)
+        expect(page.locator('.flag-letter')).to_have_count(0)
         print('PASS: 1 602 questions Drapeaux, 458 images jamais vues en cache et carte → drapeau jouable hors ligne', flush=True)
+        print('PASS: nom à épeler passé sans saisir de lettre en mode avion, retour direct au QCM', flush=True)
         page.evaluate('() => { JDD.drawCard = originalDrawCard; JDD.DATA.culture = originalCulture; }')
         page.locator('#backLogo').click()
         for name in ['Bob', 'Chloe']:

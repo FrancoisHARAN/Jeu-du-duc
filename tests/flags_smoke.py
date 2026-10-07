@@ -93,10 +93,13 @@ try:
             kind = identifier.split('-')[1]
             if kind == 'spell':
                 expect(page.locator('.flag-letter').first).to_be_enabled()
+                expect(page.get_by_role('button', name='Passer', exact=True)).to_be_enabled()
             elif kind == 'match':
                 expect(page.locator('.flag-match-image').first).to_be_enabled()
+                expect(page.get_by_role('button', name='Passer', exact=True)).to_have_count(0)
             else:
                 expect(page.locator('.mcq-btn').first).to_be_enabled()
+                expect(page.get_by_role('button', name='Passer', exact=True)).to_have_count(0)
             return page.evaluate('lastFlagQuestion')
 
         def answer_mcq(page, q, wrong=False):
@@ -179,6 +182,7 @@ try:
             expect(page.locator('.flag-spelling')).to_have_class(re.compile('flag-answer-' + ('wrong' if wrong else 'correct')))
             assert page.evaluate('recorded.filter(e => e.detail?.question_id === lastFlagQuestion.id).length') == count + 1
             assert page.evaluate('recorded.at(-1).detail.correct') == (not wrong)
+            expect(page.get_by_role('button', name='Passer', exact=True)).to_have_count(0)
 
         spell(page, 'drapeaux-spell-fr')
         page.evaluate('testQuestion = flagBank.find(q => q.id === "drapeaux-country-fr")')
@@ -187,6 +191,32 @@ try:
         spell(page, 'drapeaux-spell-ci', wrong=True)
         spell(page, 'drapeaux-spell-sx')
         print('PASS: lettres répétées, retrait, accents, noms longs et un seul résultat par carte', flush=True)
+
+        # Passer fonctionne sans réponse et avec des lettres déjà placées.
+        page.evaluate('''() => {
+            const draw=JDD.drawCard;window.skipDraws=0;
+            JDD.drawCard=(...args)=>{skipDraws++;return draw(...args);};
+        }''')
+        for partial in [False, True]:
+            render(page, 'drapeaux-spell-fr')
+            if partial:page.locator('.flag-letter').first.click()
+            expect(page.locator('.flag-submit')).to_be_disabled()
+            draws=page.evaluate('skipDraws');results=page.evaluate('recorded.length')
+            page.evaluate('''() => {
+                window.staleSkip=document.querySelector('.flag-skip');
+                testQuestion=flagBank.find(q=>q.id==='drapeaux-country-np');
+            }''')
+            skip=page.get_by_role('button',name='Passer',exact=True)
+            if partial:skip.press('Enter')
+            else:skip.tap()
+            expect(page.locator('.mcq-btn').first).to_be_enabled()
+            expect(page.get_by_role('button',name='Passer',exact=True)).to_have_count(0)
+            assert page.evaluate('lastFlagQuestion.id')=='drapeaux-country-np'
+            assert page.evaluate('skipDraws')==draws+1
+            assert page.evaluate('recorded.length')==results
+            page.evaluate('staleSkip.click()')
+            assert page.evaluate('skipDraws')==draws+1
+        print('PASS: Passer sans lettres ou après saisie partielle, toucher/clavier, une seule carte suivante et aucun résultat attribué',flush=True)
 
         for wrong in [False, True]:
             q = render(page, 'drapeaux-match-fr')
@@ -224,6 +254,17 @@ try:
         expect(page.locator('#cultureStreak')).to_be_hidden()
         print('PASS: séries par joueur, lettres et associations incluses ; navigation habituelle après validation', flush=True)
 
+        page.evaluate("JDD.nextPlayer=()=> 'Alice'")
+        spell(page,'drapeaux-spell-fr');spell(page,'drapeaux-spell-fr')
+        render(page,'drapeaux-spell-sx')
+        expect(page.locator('#cultureStreak')).to_have_attribute('aria-label','2 bonnes réponses de suite')
+        results=page.evaluate('recorded.length')
+        page.evaluate("testQuestion=flagBank.find(q=>q.id==='drapeaux-country-fr')")
+        page.get_by_role('button',name='Passer',exact=True).tap()
+        expect(page.locator('#cultureStreak')).to_be_hidden()
+        assert page.evaluate('recorded.length')==results
+        print('PASS: une question passée interrompt la série du joueur',flush=True)
+
         samples = ['drapeaux-country-fr', 'drapeaux-flag-np', 'drapeaux-capital-fr', 'drapeaux-map-tr',
                    'drapeaux-color-es', 'drapeaux-spell-sx', 'drapeaux-match-sx']
         context.close()
@@ -236,6 +277,11 @@ try:
                   .every(el => el.scrollWidth <= el.clientWidth + 1)''')
                 if width == 393:
                     page.screenshot(path=str(out / (identifier + '.png')), full_page=True)
+                if identifier.startswith('drapeaux-spell-'):
+                    skip=page.get_by_role('button',name='Passer',exact=True)
+                    expect(skip).to_be_visible()
+                    bounds=skip.bounding_box()
+                    assert bounds['width']>=44 and bounds['height']>=44
             # Retour à un QCM ordinaire : aucune interaction/image/consigne résiduelle.
             page.evaluate('testQuestion = {question:"Quelle couleur ?", choices:["Bleu","Vert","Rouge","Jaune"],answerIndex:0}')
             page.locator('.game-next-hint').dispatch_event('click', {'clientX': width - 1})

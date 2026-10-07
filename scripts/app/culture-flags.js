@@ -12,12 +12,14 @@
     return element;
   };
 
-  function spelling(question, root, finish) {
+  function spelling(question, root, finish, onSkip) {
     root.className = 'mcq-grid flag-spelling';
     const slots = node('div', 'flag-spelling-slots');
     slots.setAttribute('aria-label', 'Nom du pays à compléter');
     const alphabet = node('div', 'flag-letter-bank');
     const submit = button('flag-submit', 'Valider');
+    const skip = button('flag-skip', 'Passer');
+    const actions = node('div', 'flag-spelling-actions');
     const normalized = JDD.normalizeFlagName(question.answer);
     const expected = [...normalized].filter(char => /[A-Z]/.test(char));
     const letters = JDD.shuffle([...expected, ...JDD.shuffle([...'ABCDEFGHIJKLMNOPQRSTUVWXYZ']).slice(0, 3)]);
@@ -27,6 +29,7 @@
     let done = false;
     const update = () => {
       submit.disabled = done || filled.some(value => value === null);
+      skip.hidden = done;
       slotButtons.forEach((slot, index) => {
         slot.textContent = filled[index] === null ? '' : letters[filled[index]];
         slot.disabled = done || filled[index] === null;
@@ -66,7 +69,15 @@
       update();
       finish(correct, { spelling: filled.map(index => letters[index]).join('') }, question.answer);
     });
-    root.append(slots, alphabet, submit);
+    skip.addEventListener('click', event => {
+      event.stopPropagation();
+      if (done) return;
+      done = true;
+      update();
+      onSkip();
+    });
+    actions.append(submit, skip);
+    root.append(slots, alphabet, actions);
     update();
     // Le chargeur commun bloque également les lettres jusqu'au décodage du drapeau.
     return { options: [], buttons: letterButtons, ready: update };
@@ -132,9 +143,9 @@
     return { options: pairs.map(pair => ({ image: pair.image })), buttons: [...flagButtons, ...nameButtons] };
   }
 
-  JDD.renderFlagInteraction = (question, root, finish) => {
+  JDD.renderFlagInteraction = (question, root, finish, onSkip) => {
     // Les taps de réponse ne doivent jamais déclencher « question suivante ».
     root.onclick = event => event.stopPropagation();
-    return question.interaction === 'spell' ? spelling(question, root, finish) : matching(question, root, finish);
+    return question.interaction === 'spell' ? spelling(question, root, finish, onSkip) : matching(question, root, finish);
   };
 })();

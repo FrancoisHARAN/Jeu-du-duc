@@ -171,7 +171,7 @@ body:has(#game:not(.hidden))::before {
 #game .flag-color-swatch { flex: 0 0 22px; width: 22px; height: 22px; border: 1px solid var(--game-ink); border-radius: 50%; }
 #game .flag-matching { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 #game .flag-match-column { display: grid; grid-template-rows: repeat(4, 88px); gap: 10px; min-width: 0; }
-#game .flag-match-image, #game .flag-match-name, #game .flag-letter, #game .flag-submit {
+#game .flag-match-image, #game .flag-match-name, #game .flag-letter, #game .flag-submit, #game .flag-skip {
   min-width: 0; margin: 0; padding: 8px; border: 2px solid var(--game-ink); border-radius: 10px;
   background: var(--game-yellow); color: var(--game-ink); box-shadow: 2px 2px 0 var(--game-ink);
   font: 800 13px/1.3 'Montserrat', Arial, sans-serif; text-transform: none; overflow-wrap: normal; hyphens: none;
@@ -196,7 +196,10 @@ body:has(#game:not(.hidden))::before {
 #game .flag-letter-bank { display: grid; grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); gap: 8px; }
 #game .flag-letter { min-height: 44px; font-size: 16px; }
 #game .flag-letter:disabled { opacity: .35; box-shadow: none; }
-#game .flag-submit { min-height: 48px; font-size: 15px; }
+#game .flag-spelling-actions { display: flex; gap: 12px; }
+#game .flag-submit, #game .flag-skip { flex: 1; min-height: 48px; font-size: 15px; }
+#game .flag-skip { background: var(--game-cream); }
+#game .flag-skip[hidden] { display: none; }
 #game .flag-submit:disabled { opacity: .5; }
 #game .flag-answer-correct .flag-letter-slot { border-color: #408762; background: #a7d5bc; }
 #game .flag-answer-wrong .flag-letter-slot { border-color: #bd5757; background: #f0a6a6; }

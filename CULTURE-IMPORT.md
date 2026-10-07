@@ -152,6 +152,11 @@ on touche un drapeau puis un nom. Une erreur peut être corrigée, mais la carte
 n'est comptée juste que si les quatre associations sont réussies sans erreur.
 Chaque carte produit un seul résultat pour les stats et la série du joueur.
 
+Les noms à épeler proposent « Passer » à côté de « Valider », même si aucune
+lettre n'a été placée. Cela affiche directement la carte suivante, sans compter
+une réponse ni accorder une bonne réponse, et interrompt la série du joueur.
+Le bouton disparaît après validation et n'apparaît pas sur les autres formats.
+
 Les couleurs source sont regroupées en noms usuels et les pixels des drapeaux
 sont contrôlés, y compris ceux des blasons, pour exclure les fausses couleurs
 absentes. Le drapeau est affiché en gris pendant la question puis retrouve ses
