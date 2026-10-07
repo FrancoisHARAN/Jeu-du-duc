@@ -20,6 +20,7 @@
     geographyScreen: document.getElementById('geography'),
     footballScreen: document.getElementById('football'),
     duelScreen: document.getElementById('duel'),
+    chessScreen: document.getElementById('chess'),
     playerInput: document.getElementById('playerInput'),
     playerError: document.getElementById('playerError'),
     playerList: document.getElementById('playerList'),
@@ -54,6 +55,7 @@
     geographyButton: document.getElementById('geographyBtn'),
     footballButton: document.getElementById('footballBtn'),
     duelButton: document.getElementById('duelBtn'),
+    chessButton: document.getElementById('chessBtn'),
   };
 
   const sliderElements = {
@@ -838,6 +840,19 @@
     window.scrollTo(0, 0);
   }
 
+  function openChess() {
+    elements.setupScreen.classList.add('hidden');
+    elements.gameScreen.classList.add('hidden');
+    elements.chessScreen.classList.remove('hidden');
+    modules.chess.onOpen();
+  }
+
+  function closeChess() {
+    elements.chessScreen.classList.add('hidden');
+    elements.setupScreen.classList.remove('hidden');
+    window.scrollTo(0, 0);
+  }
+
   function attachEvents() {
     window.addEventListener('jdd:profiles', () => {
       renderPlayersInto(elements.playerList);
@@ -921,6 +936,7 @@
     elements.geographyButton.addEventListener('click', openGeography);
     elements.footballButton.addEventListener('click', openFootball);
     elements.duelButton.addEventListener('click', openDuel);
+    elements.chessButton.addEventListener('click', openChess);
   }
 
   function init() {
@@ -958,6 +974,10 @@
       modules.duel.init({ onExit: closeDuel, getSuggestedNames: () => players.slice(),
         addPlayer, removePlayer: removeSharedPlayer });
     } catch (error) { console.error('Duel Foot indisponible', error); }
+    try {
+      modules.chess.init({ onExit: closeChess, getSuggestedNames: () => players.slice(),
+        addPlayer, removePlayer: removeSharedPlayer });
+    } catch (error) { console.error('Échecs indisponibles', error); }
     attachEvents();
     const defaultCard = document.querySelector('.mode-card[data-mode="debut"]');
     if (!restoreSettings() && defaultCard) {

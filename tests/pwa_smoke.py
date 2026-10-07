@@ -145,7 +145,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           return (await cache.keys()).map(r => r.url);
         }''', cache)
         quiz360_images = json.loads((site / 'data/culture.quiz360.images.json').read_text())
-        assert len(shell) == 83 + len(quiz360_images), len(shell)
+        assert len(shell) == 89 + len(quiz360_images), len(shell)
         assert not any(url.endswith(('/data/rapidite.questions.js', '/song/rapidite.mp3')) for url in shell)
         for file in ['styles/accounts.css','vendor/supabase/supabase.js','scripts/supabase-config.js',
                      'scripts/core/participants.js','scripts/core/cloud.js','scripts/app/accounts.js']:
@@ -153,6 +153,8 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         for file in ['data/culture.quiz360.js', 'data/culture.quiz360.images.json', *quiz360_images]:
             assert base + file in shell
         assert base + 'scripts/core/statistics.js' in shell
+        for file in ['vendor/chess/chess.js', 'scripts/core/chess-match.js', 'scripts/core/chess-pieces.js', 'scripts/app/chess.js', 'styles/chess.css', 'image/home/chess.webp']:
+            assert base + file in shell
         for file in ['scripts/core/duel-physics.js', 'scripts/core/duel-ball.js', 'scripts/app/duel-football.js', 'styles/duel-football.css', 'image/home/duel-football.webp', 'image/duel/goal.webp']:
             assert base + file in shell
         assert base + 'styles/questions.css' in shell
@@ -382,7 +384,22 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         page.locator('[data-duel="exit"]').click()
         print('PASS: Duel Foot, gardiens, tir physique, reprise et célébration de but en mode avion', flush=True)
         expect(page.locator('#setup')).to_be_visible()
-        # Les reprises du duel ont rechargé la banque ; garder les questions sans
+        page.locator('#chessBtn').click()
+        assert page.locator('.chess-intro img').evaluate('n=>n.complete&&n.naturalWidth>0')
+        page.locator('input[name="chess-minutes"][value="2"]').check()
+        page.locator('[data-chess="start"]').click()
+        expect(page.locator('#chess')).to_have_attribute('data-phase','playing')
+        page.locator('[data-square="e2"]').click();page.locator('[data-square="e4"]').click()
+        chess = page.evaluate('JSON.parse(localStorage.getItem("jdd.chess.v1"))')
+        assert chess['moves']==[{'from':'e2','to':'e4'}] and chess['minutes']==2
+        page.locator('.chess-toolbar [data-chess="exit"]').click()
+        page.reload(wait_until='load');page.locator('#chessBtn').click();page.locator('[data-chess="resume"]').click()
+        assert page.evaluate('JSON.parse(localStorage.getItem("jdd.chess.v1")).fen')==chess['fen']
+        page.locator('[data-square="e7"]').click();page.locator('[data-square="e5"]').click()
+        assert len(page.evaluate('JSON.parse(localStorage.getItem("jdd.chess.v1")).moves'))==2
+        page.locator('.chess-toolbar [data-chess="exit"]').click()
+        print('PASS: Échecs, pièces vectorielles, horloges, coups légaux et reprise en mode avion',flush=True)
+        # Les reprises ont rechargé la banque ; garder les questions sans
         # photo distante pour ce contrôle des modes, comme au début du test.
         page.evaluate('JDD.DATA.cultureMcq = JDD.DATA.cultureMcq.filter(q => !q.image && !q.choiceImages)')
         # Ce tirage déclenchait auparavant une carte de rapidité à chaque question.
