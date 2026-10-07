@@ -145,7 +145,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           return (await cache.keys()).map(r => r.url);
         }''', cache)
         quiz360_images = json.loads((site / 'data/culture.quiz360.images.json').read_text())
-        assert len(shell) == 82 + len(quiz360_images), len(shell)
+        assert len(shell) == 83 + len(quiz360_images), len(shell)
         assert not any(url.endswith(('/data/rapidite.questions.js', '/song/rapidite.mp3')) for url in shell)
         for file in ['styles/accounts.css','vendor/supabase/supabase.js','scripts/supabase-config.js',
                      'scripts/core/participants.js','scripts/core/cloud.js','scripts/app/accounts.js']:
@@ -153,7 +153,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         for file in ['data/culture.quiz360.js', 'data/culture.quiz360.images.json', *quiz360_images]:
             assert base + file in shell
         assert base + 'scripts/core/statistics.js' in shell
-        for file in ['scripts/core/duel-physics.js', 'scripts/app/duel-football.js', 'styles/duel-football.css', 'image/home/duel-football.webp', 'image/duel/goal.webp']:
+        for file in ['scripts/core/duel-physics.js', 'scripts/core/duel-ball.js', 'scripts/app/duel-football.js', 'styles/duel-football.css', 'image/home/duel-football.webp', 'image/duel/goal.webp']:
             assert base + file in shell
         assert base + 'styles/questions.css' in shell
         assert base + 'data/culture.imported.js' in shell

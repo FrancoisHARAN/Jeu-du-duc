@@ -2,10 +2,10 @@
 (function (global) {
   'use strict';
   const FIELD = Object.freeze({ width: 400, height: 680, left: 16, right: 384,
-    top: 38, bottom: 642, corner: 56, goalLeft: 139, goalRight: 261, goalDepth: 30, wall: 3 });
+    top: 38, bottom: 642, corner: 56, goalLeft: 139, goalRight: 261, goalDepth: 30, goalLineWidth: 2, wall: 3 });
   const FORMATIONS = ['1-2-2', '2-1-2', '2-2-1'];
   const PUCK_RADIUS = 15, KEEPER_RADIUS = 20, BALL_RADIUS = 8, BALL_ID = 12;
-  const PASS_GAP = 8, GOAL_DURATION = 2, MAX_SHOT = 720, STEP = 1 / 120;
+  const PASS_GAP = 8, BALL_BORDER = 1.4, GOAL_DURATION = 2, MAX_SHOT = 720, STEP = 1 / 120;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const length = b => Math.hypot(b.vx, b.vy);
   const ball = s => s.bodies[BALL_ID];
@@ -102,12 +102,12 @@
       }
     }
   }
-  function collide(a, b, impulse = true) {
+  function collide(a, b, impulse = true, fixedBall = false) {
     let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
     const min = a.r + b.r;
     if (d >= min) return 0;
     if (d < 1e-7) { dx = 1; dy = 0; d = 1; }
-    const nx = dx / d, ny = dy / d, ia = 1 / a.mass, ib = 1 / b.mass, inv = ia + ib;
+    const nx = dx / d, ny = dy / d, ia = 1 / a.mass, ib = fixedBall && b.team === null ? 0 : 1 / b.mass, inv = ia + ib;
     const overlap = min - d;
     a.x -= nx * overlap * ia / inv; a.y -= ny * overlap * ia / inv;
     b.x += nx * overlap * ib / inv; b.y += ny * overlap * ib / inv;
@@ -153,20 +153,15 @@
         b.vx -= nx * impulse / b.mass; b.vy -= ny * impulse / b.mass;
         p.vx += nx * impulse / p.mass; p.vy += ny * impulse / p.mass;
       }
-      c.coastQuiet = s.bodies.every(body => length(body) < 12) ? c.coastQuiet + dt : 0;
+      c.coastQuiet = s.bodies.every(body => length(body) < 4) ? c.coastQuiet + dt : 0;
       if (c.coastQuiet < .12) return false;
-      // Recaler depuis la position atteinte par le receveur, sans le ramener
-      // au premier contact. Le ballon rejoint sa position devant lui par ressort.
-      const goalY = s.turn === 0 ? FIELD.top : FIELD.bottom;
-      const direction = Math.atan2(goalY - p.y, 200 - p.x);
-      const anchor = body(BALL_ID, null, p.x + Math.cos(direction) * gap,
-        clamp(p.y + Math.sin(direction) * gap, FIELD.top + BALL_RADIUS + FIELD.wall, FIELD.bottom - BALL_RADIUS - FIELD.wall));
-      contain(anchor);
-      c.x = anchor.x; c.y = anchor.y; c.stage = 'align'; c.elapsed = 0;
+      // Le ballon reste à l'endroit où la passe s'est arrêtée. Seul le receveur
+      // tourne autour de lui : aucune amélioration artificielle de la position.
+      c.x = b.x; c.y = b.y; c.stage = 'align'; c.elapsed = 0;
       c.orbit = Math.atan2(p.y - b.y, p.x - b.x);
       s.serial++;
     }
-    force(b, c.x, c.y, 150, 24, 2600, dt);
+    c.x = b.x; c.y = b.y; b.vx = b.vy = b.spin = 0;
     const goalY = s.turn === 0 ? FIELD.top : FIELD.bottom;
     let ideal = Math.atan2(b.y - goalY, b.x - 200);
     // Près d'un mur, choisir l'angle réalisable le plus proche de l'axe du but.
@@ -189,7 +184,9 @@
   function integrate(s, dt) {
     const playing = s.phase === 'moving';
     const aligned = playing && s.capture ? magnet(s, dt) : true;
+    const fixedBall = playing && s.capture?.stage === 'align';
     for (const p of s.bodies) {
+      if (fixedBall && p.team === null) continue;
       const speed = length(p), decay = Math.exp(-(p.team === null ? 1.15 : 1.4) * dt);
       const drag = Math.max(0, speed * decay - (p.team === null ? 9 : 13) * dt) / Math.max(.001, speed);
       p.vx *= drag; p.vy *= drag;
@@ -199,7 +196,7 @@
     }
     for (let iteration = 0; iteration < 10; iteration++) {
       for (let i = 0; i < s.bodies.length; i++) for (let j = i + 1; j < s.bodies.length; j++) {
-        const a = s.bodies[i], b = s.bodies[j], impact = collide(a, b, iteration === 0);
+        const a = s.bodies[i], b = s.bodies[j], impact = collide(a, b, iteration === 0, fixedBall);
         if (playing && iteration === 0 && impact > .001 && b.team === null && a.team === s.turn
           && a.id !== s.action.shooter && s.action.receiver === null) pass(s, a);
       }
@@ -207,9 +204,11 @@
     }
     if (!playing) return;
     const b = ball(s);
-    if ((!s.capture || s.capture.stage === 'coast') && b.x - b.r > FIELD.goalLeft && b.x + b.r < FIELD.goalRight) {
-      if (b.y + b.r < FIELD.top) { goal(s, 0); return; }
-      if (b.y - b.r > FIELD.bottom) { goal(s, 1); return; }
+    // Tout le ballon visible doit dépasser le bord extérieur de la ligne peinte.
+    const edge = b.r + BALL_BORDER / 2, lineHalf = FIELD.goalLineWidth / 2;
+    if (b.x - edge > FIELD.goalLeft && b.x + edge < FIELD.goalRight) {
+      if (b.y + edge < FIELD.top - lineHalf - 1e-7) { goal(s, 0); return; }
+      if (b.y - edge > FIELD.bottom + lineHalf + 1e-7) { goal(s, 1); return; }
     }
     s.action.elapsed += dt;
     const still = s.bodies.every(p => length(p) < 4);
@@ -293,7 +292,7 @@
     bodies.push(savedBall);
     return { ...raw, version: 3, bodies, capture };
   }
-  const api = { FIELD, FORMATIONS, PUCK_RADIUS, KEEPER_RADIUS, BALL_RADIUS, BALL_ID, PASS_GAP, GOAL_DURATION, MAX_SHOT, STEP, walls, corners,
+  const api = { FIELD, FORMATIONS, PUCK_RADIUS, KEEPER_RADIUS, BALL_RADIUS, BALL_ID, BALL_BORDER, PASS_GAP, GOAL_DURATION, MAX_SHOT, STEP, walls, corners,
     create, reset, step, shoot, selectable, restore, formationPositions, canStand, isKeeper };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else global.JDDDuelPhysics = api;

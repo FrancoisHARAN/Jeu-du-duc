@@ -34,6 +34,11 @@ try:
             context.add_init_script('if(!localStorage.getItem("jdd.players"))localStorage.setItem("jdd.players",' + json.dumps(json.dumps(people)) + ');'
                 + 'if(!localStorage.getItem("jdd.participants.v1"))localStorage.setItem("jdd.participants.v1",' + json.dumps(json.dumps(identities)) + ');')
             context.add_init_script("const fixture=sessionStorage.getItem('duel-fixture');if(fixture){localStorage.setItem('jdd.duel-football.v1',fixture);sessionStorage.removeItem('duel-fixture');}")
+            context.add_init_script('''window.duelLabels=[];
+                const fill=CanvasRenderingContext2D.prototype.fillText;
+                CanvasRenderingContext2D.prototype.fillText=function(text,...args){
+                    if(this.canvas.id==='duel-canvas'){duelLabels.push(String(text));if(duelLabels.length>24)duelLabels.shift();}
+                    return fill.call(this,text,...args);};''')
             page = context.new_page(); page.on('pageerror', lambda error: errors.append(str(error)))
             page.goto(base, wait_until='load')
             page.evaluate('Math.random=()=>.25')
@@ -60,6 +65,7 @@ try:
             page.evaluate('''code => {
                 const match = JSON.parse(localStorage.getItem('jdd.duel-football.v1'));
                 match.physics = JDDDuelPhysics.create(match.physics.formations, 0);
+                match.ballRotation = JDDDuelBall.rotation();
                 const s = match.physics;
                 s.bodies.forEach((p,i)=>{if(i<10){p.x=i<5?52:348;p.y=130+i%5*105;}});
                 s.bodies[10].x=166;s.bodies[11].x=234;
@@ -79,6 +85,13 @@ try:
             if not cancel: page.screenshot(path=str(OUT / 'tir-fleche.png'))
             cdp.send('Input.dispatchTouchEvent', {'type': 'touchCancel' if cancel else 'touchEnd', 'touchPoints': []})
             cdp.detach()
+
+        def watch_ball(page):
+            page.evaluate('''() => {
+                window.duelBallFrames=[];const draw=JDDDuelBall.draw;
+                JDDDuelBall.draw=(ctx,b,q,...args)=>{
+                    duelBallFrames.push({x:b.x,y:b.y,angle:b.angle,q:q.slice()});return draw(ctx,b,q,...args);};
+            }''')
 
         context, page = home()
         assert page.locator('[data-duel-player="0"] option').all_text_contents() == ['Choisir un joueur', 'Alex', 'Alex (invité)', 'Chloé']
@@ -122,6 +135,34 @@ try:
         expect(page.locator('#duel')).to_have_attribute('data-phase', 'aim', timeout=12000)
         print('PASS: gardien sélectionné et lancé avec un vrai geste tactile', flush=True)
 
+        seed(page, "JDDDuelPhysics.shoot(s,0,20,0);Object.assign(s.bodies[JDDDuelPhysics.BALL_ID],{vx:100,vy:70});")
+        watch_ball(page); page.wait_for_timeout(450)
+        frames = page.evaluate('duelBallFrames')
+        assert len(frames) > 5 and all(f['angle'] == 0 for f in frames)
+        assert frames[0]['q'] != frames[-1]['q'], 'Le ballon roule en volume même sans rotation de disque'
+        expect(page.locator('#duel')).to_have_attribute('data-phase', 'aim', timeout=12000)
+        rotation = saved(page)['ballRotation']
+        page.reload(wait_until='load'); page.locator('#duelBtn').click(); page.locator('[data-duel="resume"]').click()
+        assert saved(page)['ballRotation'] == rotation, 'La reprise conserve les faces visibles du ballon'
+        print('PASS: roulement du ballon dans la direction du déplacement et orientation conservée à la reprise', flush=True)
+
+        seed(page, "Object.assign(s.bodies[JDDDuelPhysics.BALL_ID],{x:42,y:340});Object.assign(s.bodies[1],{x:65,y:340});"
+            "s.phase='moving';s.active=1;s.action={shooter:0,receiver:1,elapsed:0};"
+            "s.capture={id:1,stage:'align',coastQuiet:0,x:42,y:340,orbit:0,elapsed:0};")
+        watch_ball(page)
+        expect(page.locator('#duel')).to_have_attribute('data-phase', 'aim', timeout=12000)
+        frames = page.evaluate('duelBallFrames')
+        assert len(frames) > 5 and all(f['x'] == 42 and f['y'] == 340 for f in frames)
+        assert saved(page)['physics']['active'] == 1 and saved(page)['physics']['turn'] == 0
+        print('PASS: réception près du mur, seul le pion pivote et le ballon reste strictement à sa position', flush=True)
+
+        seed(page, "Object.assign(s.bodies[JDDDuelPhysics.BALL_ID],{x:200,y:JDDDuelPhysics.FIELD.top-6});")
+        gesture(page, saved(page)['physics']['bodies'][0], dx=-20, dy=0)
+        expect(page.locator('#duel')).to_have_attribute('data-phase', 'aim', timeout=12000)
+        assert saved(page)['physics']['scores'] == [0, 0]
+        expect(page.locator('#duel .jdd-celebration')).to_have_count(0)
+        print('PASS: ballon partiellement au-delà de la ligne sans but ni célébration', flush=True)
+
         seed(page, "Object.assign(s.bodies[0],{x:200,y:600});Object.assign(s.bodies[JDDDuelPhysics.BALL_ID],{x:200,y:560});Object.assign(s.bodies[1],{x:200,y:445});")
         watch_board(page)
         gesture(page, saved(page)['physics']['bodies'][0])
@@ -142,6 +183,16 @@ try:
 
         seed(page, "s.scores=[2,0];Object.assign(s.bodies[0],{x:200,y:120});Object.assign(s.bodies[JDDDuelPhysics.BALL_ID],{x:200,y:82});")
         watch_board(page)
+        page.evaluate('''() => {
+            window.goalAppearance=null;
+            const observer=new MutationObserver(()=>{
+                const art=document.querySelector('#duel .jdd-celebration-art');if(!art)return;
+                observer.disconnect();const created=performance.now();
+                const goalTime=JSON.parse(localStorage.getItem('jdd.duel-football.v1')).physics.goalTime;
+                requestAnimationFrame(()=>window.goalAppearance={goalTime,paintDelay:performance.now()-created,
+                    opacity:Number(getComputedStyle(art).opacity),ready:art.complete&&art.naturalWidth>0});
+            });observer.observe(document.querySelector('#duel'),{childList:true,subtree:true});
+        }''')
         gesture(page, saved(page)['physics']['bodies'][0])
         expect(page.locator('#duel')).to_have_attribute('data-phase', 'goal')
         scored_ball = saved(page)['physics']['bodies'][12]
@@ -154,6 +205,10 @@ try:
         art = celebration.locator('img')
         expect(art).to_have_attribute('src', 'image/duel/goal.webp')
         assert art.evaluate('n=>n.complete && n.naturalWidth>0')
+        page.wait_for_function('window.goalAppearance !== null')
+        appearance = page.evaluate('goalAppearance')
+        assert appearance['goalTime'] < .055 and appearance['paintDelay'] < 100
+        assert appearance['opacity'] > .99 and appearance['ready'], appearance
         page.wait_for_timeout(650)
         assert float(art.evaluate('n=>getComputedStyle(n).opacity')) > .99
         moving_ball = saved(page)['physics']['bodies'][12]
@@ -216,6 +271,7 @@ try:
             context, page = home(width, height, ['François', 'Solène'])
             page.locator('[data-duel="start"]').click()
             page.wait_for_timeout(150)
+            assert page.evaluate('duelLabels.slice(-12)') == ['F'] * 5 + ['S'] * 5 + ['F', 'S']
             assert not page.evaluate('document.documentElement.scrollWidth>innerWidth+1'), (width, height)
             bounds = page.locator('#duel-canvas').bounding_box()
             assert bounds['y'] >= 0 and bounds['y'] + bounds['height'] <= height + 1, (width, height, bounds)

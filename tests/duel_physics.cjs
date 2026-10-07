@@ -82,7 +82,7 @@ console.log('PASS: capture, rotation naturelle de 180°, petit espace, receveur 
     let s = clear();
     Object.assign(s.bodies[0], { x: 200, y: 600 }); Object.assign(s.bodies[P.BALL_ID], { x: 200, y: 560 });
     Object.assign(s.bodies[1], { x: 200, y: 470 }); P.shoot(s, 0, 0, -power);
-    let contact = null, coastEnd = null, saved = false;
+    let contact = null, coastEnd = null, ballStop = null, saved = false;
     for (let i = 0; i < 1500 && s.phase === 'moving'; i++) {
       const oldStage = s.capture?.stage; P.step(s, P.STEP); integrity(s);
       if (s.capture?.stage === 'coast') {
@@ -96,13 +96,18 @@ console.log('PASS: capture, rotation naturelle de 180°, petit espace, receveur 
           assert.deepEqual(s, copy); saved = true;
         }
       }
-      if (oldStage === 'coast' && s.capture?.stage === 'align') coastEnd = s.bodies[1].y;
+      if (oldStage === 'coast' && s.capture?.stage === 'align') {
+        coastEnd = s.bodies[1].y; ballStop = { x: s.bodies[P.BALL_ID].x, y: s.bodies[P.BALL_ID].y };
+      }
+      if (ballStop) {
+        assert.equal(s.bodies[P.BALL_ID].x, ballStop.x); assert.equal(s.bodies[P.BALL_ID].y, ballStop.y);
+      }
     }
     assert.equal(s.phase, 'aim'); assert.equal(s.active, 1); assert.equal(s.turn, 0);
     assert(contact !== null && coastEnd !== null && saved);
-    assert(s.bodies[1].y < contact - 20, 'Le receveur avance après le contact');
-    assert(Math.abs(s.bodies[1].y - coastEnd) < 6, 'Le recalage conserve la position atteinte');
-    return s.bodies[1].y;
+    assert(coastEnd < contact - 20, 'Le receveur avance avec son inertie après le contact');
+    assert(s.bodies[1].y > ballStop.y, 'Le receveur tourne derrière le ballon arrêté');
+    return ballStop.y;
   }
   const soft = reception(300), strong = reception(700);
   assert(strong < soft - 40, 'Une passe plus forte fait progresser davantage');
@@ -118,7 +123,7 @@ console.log('PASS: capture, rotation naturelle de 180°, petit espace, receveur 
   }
   assert(pushed, 'Les collisions du tireur avec le receveur restent actives pendant la réception'); settle(s);
 }
-console.log('PASS: inertie conservée, poussée du receveur, avance liée à la puissance, recalage final et reprise pendant la réception');
+console.log('PASS: inertie conservée, poussée du receveur, avance liée à la puissance, ballon fixe pendant le recalage et reprise pendant la réception');
 {
   const s = clear(); Object.assign(s.bodies[P.BALL_ID], { x: 200, y: 308.8, vy: -6 });
   Object.assign(s.bodies[1], { x: 200, y: 285 });
@@ -163,6 +168,7 @@ for (const [x, y, rx, ry] of [[200, 340, 200, 313], [42, 340, 65, 340], [90, 80,
   s.capture = { id: 1, stage: 'align', coastQuiet: 0, x, y, orbit: Math.atan2(ry - y, rx - x), elapsed: 0 };
   const blocker = { x: s.bodies[5].x, y: s.bodies[5].y };
   settle(s); assert.equal(s.turn, 0); assert.equal(s.active, 1);
+  assert.equal(s.bodies[P.BALL_ID].x, x); assert.equal(s.bodies[P.BALL_ID].y, y);
   assert(Math.hypot(blocker.x - s.bodies[5].x, blocker.y - s.bodies[5].y) > 5, 'Un pion gênant doit être poussé physiquement');
   const b = s.bodies[P.BALL_ID], p = s.bodies[1]; assert(Math.hypot(p.x - b.x, p.y - b.y) > p.r + b.r);
 }
@@ -181,6 +187,17 @@ for (const [x, y, vx, vy] of [[80, 105, -1500, -1400], [320, 105, 1500, -1400], 
   settle(s);
 }
 console.log('PASS: rebonds dans les quatre coins arrondis, murs complets et tirs très rapides sans traversée');
+for (const scorer of [0, 1]) {
+  const clearance = P.BALL_RADIUS + P.BALL_BORDER / 2 + F.goalLineWidth / 2;
+  for (const distance of [0, 4, 8, clearance - .01, clearance, clearance + .02]) {
+    const s = clear(); s.turn = scorer; P.shoot(s, scorer * 5, 20, 0);
+    Object.assign(s.bodies[P.BALL_ID], { x: 200, y: scorer === 0 ? F.top - distance : F.bottom + distance, vx: 0, vy: 0 });
+    P.step(s, P.STEP);
+    assert.equal(s.scores[scorer], distance > clearance ? 1 : 0, 'Toucher ou chevaucher la ligne ne suffit pas');
+    if (distance > clearance) assert.equal(s.phase, 'goal', 'Le franchissement complet déclenche le but au même pas');
+  }
+}
+console.log('PASS: deux buts, ballon sur la ligne ou à cheval sans point, déclenchement immédiat après franchissement complet du contour visible');
 {
   const s = clear(); P.shoot(s, 0, 20, 0); Object.assign(s.bodies[P.BALL_ID], { x: 200, y: F.top - 6, vx: 0, vy: 0 });
   P.step(s, P.STEP); assert.deepEqual(s.scores, [0, 0], 'Tout le ballon doit franchir la ligne');
@@ -207,7 +224,7 @@ console.log('PASS: rebonds dans les quatre coins arrondis, murs complets et tirs
 console.log('PASS: ligne complètement franchie, remise au centre, engagement de l’équipe qui a encaissé et victoire à trois');
 {
   const s = clear(); P.shoot(s, 0, 20, 0);
-  Object.assign(s.bodies[P.BALL_ID], { x: 200, y: F.bottom + 9, vy: 70 }); P.step(s, P.STEP);
+  Object.assign(s.bodies[P.BALL_ID], { x: 200, y: F.bottom + 10, vy: 70 }); P.step(s, P.STEP);
   assert.equal(s.scorer, 1); assert.deepEqual(s.scores, [0, 1]);
   assert(Math.abs(s.bodies[P.BALL_ID].vy) > 0);
   settle(s); assert.equal(s.turn, 0);
@@ -218,7 +235,7 @@ for (const scorer of [0, 1]) for (const first of P.FORMATIONS) for (const second
   let s = P.create([first, second], scorer);
   s.bodies[10].x = 166; s.bodies[11].x = 234;
   assert(P.shoot(s, scorer * 5, 20, 0));
-  Object.assign(s.bodies[P.BALL_ID], { x: 200, y: scorer === 0 ? F.top - 9 : F.bottom + 9, vx: 0, vy: 0 });
+  Object.assign(s.bodies[P.BALL_ID], { x: 200, y: scorer === 0 ? F.top - 10 : F.bottom + 10, vx: 0, vy: 0 });
   P.step(s, P.STEP); assert.equal(s.phase, 'goal'); assert.equal(s.scorer, scorer);
   for (let i = 0; i < 12; i++) P.step(s, .05);
   s = P.restore(JSON.parse(JSON.stringify(s))); assert(s, 'Le but peut être repris depuis une sauvegarde');

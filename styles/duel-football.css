@@ -64,12 +64,19 @@ body:has(#duel:not(.hidden)) { background: #6b62cc !important; justify-content: 
 .duel-board-wrap { position: relative; display: flex; align-items: center; justify-content: center; flex: 1 1 auto; min-height: 0; }
 .duel-board-wrap > .jdd-celebration { position: absolute; z-index: 5; }
 .duel-board-wrap .jdd-celebration-art { width: min(94%, 560px); max-height: 90%; animation-name: duel-goal-bounce; }
+.duel-board-wrap .jdd-celebration-spark { animation-name: duel-goal-sparks; animation-duration: .9s; }
 @keyframes duel-goal-bounce {
-  0% { opacity: 0; transform: scale(.45) rotate(-4deg); }
-  14% { opacity: 1; transform: scale(1.06) rotate(2deg); }
-  27% { transform: scale(.97) rotate(-1deg); }
-  40%, 83% { opacity: 1; transform: scale(1); }
+  0% { opacity: 1; transform: scale(.9) rotate(-5deg); }
+  4% { transform: scale(1.12) rotate(3deg); }
+  9% { transform: scale(.97) rotate(-2deg); }
+  15%, 43%, 75% { transform: scale(1.035) rotate(1deg); }
+  25%, 57%, 83% { opacity: 1; transform: scale(1); }
   100% { opacity: 0; transform: scale(.88); }
+}
+@keyframes duel-goal-sparks {
+  0% { opacity: 1; transform: translate(calc(var(--spark-x) * .05), calc(var(--spark-y) * .05)) scale(.7); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--spark-x), var(--spark-y)) rotate(280deg) scale(.5); }
 }
 #duel-canvas { display: block; max-width: 100%; max-height: 100%; border: 2px solid #252124; border-radius: 14px; box-shadow: 3px 3px 0 #252124; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: grab; }
 #duel-canvas:active { cursor: grabbing; }
