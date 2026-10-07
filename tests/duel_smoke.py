@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import shutil
 import threading
+from PIL import Image
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from playwright.sync_api import expect, sync_playwright
 
@@ -47,6 +48,7 @@ try:
                 match.physics = JDDDuelPhysics.create(match.physics.formations);
                 const s = match.physics;
                 s.bodies.forEach((p,i)=>{if(i<10){p.x=i<5?52:348;p.y=130+i%5*105;}});
+                s.bodies[10].x=166;s.bodies[11].x=234;
                 new Function('s',code)(s);
                 sessionStorage.setItem('duel-fixture',JSON.stringify(match));
             }''', code)
@@ -96,12 +98,20 @@ try:
         assert saved(page)['physics']['moves'] == [1, 0]
         print('PASS: identités compte/invité homonymes, sélection distincte, formations, vrais gestes, plafond 3 cm, annulation et pause/reprise', flush=True)
 
-        seed(page, "Object.assign(s.bodies[0],{x:200,y:440});Object.assign(s.bodies[10],{x:200,y:400});Object.assign(s.bodies[1],{x:200,y:285});")
+        seed(page, '')
+        keeper = saved(page)['physics']['bodies'][10]
+        assert keeper['r'] == 20 and len(saved(page)['physics']['bodies']) == 13
+        gesture(page, keeper, dx=-40, dy=-70)
+        s = saved(page)['physics']; assert s['active'] == 10 and s['moves'] == [1, 0]
+        expect(page.locator('#duel')).to_have_attribute('data-phase', 'aim', timeout=12000)
+        print('PASS: gardien sélectionné et lancé avec un vrai geste tactile', flush=True)
+
+        seed(page, "Object.assign(s.bodies[0],{x:200,y:440});Object.assign(s.bodies[JDDDuelPhysics.BALL_ID],{x:200,y:400});Object.assign(s.bodies[1],{x:200,y:285});")
         gesture(page, saved(page)['physics']['bodies'][0])
         expect(page.locator('#duel')).to_have_attribute('data-phase', 'moving')
         expect(page.locator('#duel')).to_have_attribute('data-phase', 'aim', timeout=12000)
         s = saved(page)['physics']; assert s['turn'] == 0 and s['active'] == 1 and s['passes'][0] == 1
-        assert 25 < s['bodies'][1]['y'] - s['bodies'][10]['y'] < 29
+        assert 29 < s['bodies'][1]['y'] - s['bodies'][12]['y'] < 33
         page.screenshot(path=str(OUT / 'passe-recue.png'))
         gesture(page, s['bodies'][0]); assert saved(page)['physics']['moves'][0] == 1
         page.locator('[data-duel="exit"]').click()
@@ -111,11 +121,23 @@ try:
         assert saved(page)['physics']['moves'][0] == 2
         print('PASS: passe tactile, repositionnement aligné, receveur imposé, second tir immédiat et conservation après retour au menu', flush=True)
 
-        seed(page, "s.scores=[2,0];Object.assign(s.bodies[0],{x:200,y:120});Object.assign(s.bodies[10],{x:200,y:82});")
+        seed(page, "s.scores=[2,0];Object.assign(s.bodies[0],{x:200,y:120});Object.assign(s.bodies[JDDDuelPhysics.BALL_ID],{x:200,y:82});")
         gesture(page, saved(page)['physics']['bodies'][0])
         expect(page.locator('#duel')).to_have_attribute('data-phase', 'goal')
+        celebration = page.locator('#duel .jdd-celebration')
+        expect(celebration).to_be_visible()
+        assert celebration.evaluate('n=>getComputedStyle(n).pointerEvents') == 'none'
+        assert celebration.evaluate('n=>getComputedStyle(n).backgroundColor') == 'rgba(0, 0, 0, 0)'
+        assert celebration.evaluate('n=>getComputedStyle(n).animationDuration') == '2s'
+        assert celebration.locator('.jdd-celebration-spark').count() == 12
+        art = celebration.locator('img')
+        expect(art).to_have_attribute('src', 'image/duel/goal.webp')
+        assert art.evaluate('n=>n.complete && n.naturalWidth>0')
+        page.wait_for_timeout(650)
+        assert float(art.evaluate('n=>getComputedStyle(n).opacity')) > .99
         page.screenshot(path=str(OUT / 'but.png'))
         expect(page.locator('#duel')).to_have_attribute('data-phase', 'finished')
+        expect(celebration).to_have_count(0)
         expect(page.locator('.duel-result h2')).to_have_text('Alex gagne !')
         expect(page.locator('#duel-score-0')).to_have_text('3')
         assert saved(page)['physics']['winner'] == 0
@@ -128,6 +150,28 @@ try:
         assert saved(page)['physics']['scores'] == [0, 0]
         context.close()
         print('PASS: animation de but, victoire à trois, résultat conservé et nouvelle partie à zéro', flush=True)
+
+        context, page = home()
+        page.emulate_media(reduced_motion='reduce')
+        page.locator('[data-duel="start"]').click()
+        seed(page, "Object.assign(s.bodies[0],{x:200,y:120});Object.assign(s.bodies[JDDDuelPhysics.BALL_ID],{x:200,y:82});")
+        gesture(page, saved(page)['physics']['bodies'][0])
+        celebration = page.locator('#duel .jdd-celebration')
+        expect(celebration).to_be_visible()
+        assert celebration.locator('img').evaluate('n=>getComputedStyle(n).animationName') == 'none'
+        assert celebration.locator('.jdd-celebration-spark').first.evaluate('n=>getComputedStyle(n).display') == 'none'
+        page.locator('[data-duel="pause"]').click(); expect(celebration).to_have_count(0)
+        page.locator('[data-duel="continue"]').click(); expect(celebration).to_have_count(0)
+        expect(page.locator('#duel')).to_have_attribute('data-phase', 'aim', timeout=12000)
+        assert saved(page)['physics']['scores'] == [1, 0]
+        seed(page, "Object.assign(s.bodies[0],{x:200,y:120});Object.assign(s.bodies[JDDDuelPhysics.BALL_ID],{x:200,y:82});")
+        gesture(page, saved(page)['physics']['bodies'][0]); expect(celebration).to_be_visible()
+        page.locator('[data-duel="exit"]').click(); expect(celebration).to_have_count(0)
+        context.close()
+        asset = Image.open(REPO / 'image/duel/goal.webp')
+        assert asset.mode == 'RGBA' and asset.getchannel('A').getextrema() == (0, 255)
+        assert asset.getpixel((0, 0))[3] == 0
+        print('PASS: visuel transparent, overlay sans blocage, réduction des animations, nettoyage à la pause et au menu', flush=True)
 
         for width, height in [(320, 568), (360, 640), (393, 852), (430, 932), (568, 320), (852, 393), (1280, 800)]:
             context, page = home(width, height, ['François', 'Solène'])

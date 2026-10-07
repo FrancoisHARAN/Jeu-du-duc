@@ -60,6 +60,15 @@ body:has(#duel:not(.hidden)) { background: #6b62cc !important; justify-content: 
 .duel-turn .jdd-arrow { width: 18px; height: 18px; flex-basis: 18px; }
 .duel-turn-text { min-width: 0; }
 .duel-board-wrap { position: relative; display: flex; align-items: center; justify-content: center; flex: 1 1 auto; min-height: 0; }
+.duel-board-wrap > .jdd-celebration { position: absolute; z-index: 5; }
+.duel-board-wrap .jdd-celebration-art { width: min(94%, 560px); max-height: 90%; animation-name: duel-goal-bounce; }
+@keyframes duel-goal-bounce {
+  0% { opacity: 0; transform: scale(.45) rotate(-4deg); }
+  14% { opacity: 1; transform: scale(1.06) rotate(2deg); }
+  27% { transform: scale(.97) rotate(-1deg); }
+  40%, 83% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(.88); }
+}
 #duel-canvas { display: block; max-width: 100%; max-height: 100%; border: 2px solid #252124; border-radius: 14px; box-shadow: 3px 3px 0 #252124; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: grab; }
 #duel-canvas:active { cursor: grabbing; }
 .duel-tip { margin: 9px 0 0; color: #fff9e9; font: 600 11px/1.35 'Montserrat', Arial, sans-serif; text-align: center; }

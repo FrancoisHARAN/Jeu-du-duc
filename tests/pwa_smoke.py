@@ -97,7 +97,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         )
         page = context.new_page()
         page.on('pageerror', lambda error: errors.append(str(error)))
-        page.on('console', lambda message: errors.append(message.text) if message.type == 'error' else None)
+        page.on('console', lambda message: errors.append(f"{message.text} ({message.location.get('url', '')})") if message.type == 'error' else None)
         page.set_default_timeout(30000)
 
         def wait_async(expression, arg):
@@ -145,14 +145,14 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
           return (await cache.keys()).map(r => r.url);
         }''', cache)
         quiz360_images = json.loads((site / 'data/culture.quiz360.images.json').read_text())
-        assert len(shell) == 83 + len(quiz360_images), len(shell)
+        assert len(shell) == 84 + len(quiz360_images), len(shell)
         for file in ['styles/accounts.css','vendor/supabase/supabase.js','scripts/supabase-config.js',
                      'scripts/core/participants.js','scripts/core/cloud.js','scripts/app/accounts.js']:
             assert any(url.endswith('/' + file) for url in shell), file
         for file in ['data/culture.quiz360.js', 'data/culture.quiz360.images.json', *quiz360_images]:
             assert base + file in shell
         assert base + 'scripts/core/statistics.js' in shell
-        for file in ['scripts/core/duel-physics.js', 'scripts/app/duel-football.js', 'styles/duel-football.css', 'image/home/duel.svg']:
+        for file in ['scripts/core/duel-physics.js', 'scripts/app/duel-football.js', 'styles/duel-football.css', 'image/home/duel.svg', 'image/duel/goal.webp']:
             assert base + file in shell
         assert base + 'styles/questions.css' in shell
         assert base + 'data/culture.imported.js' in shell
@@ -355,7 +355,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         assert page.locator('.duel-formations label').count() == 6
         page.locator('[data-duel="start"]').click()
         duel = page.evaluate('JSON.parse(localStorage.getItem("jdd.duel-football.v1"))')
-        assert len(duel['physics']['bodies']) == 11
+        assert len(duel['physics']['bodies']) == 13
         canvas = page.locator('#duel-canvas').bounding_box()
         pion = duel['physics']['bodies'][0]
         x = canvas['x'] + 2 + pion['x'] * (canvas['width'] - 4) / 400
@@ -367,9 +367,31 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         page.reload(wait_until='load'); page.locator('#duelBtn').click(); page.locator('[data-duel="resume"]').click()
         expect(page.locator('#duel')).to_have_attribute('data-phase', 'aim', timeout=12000)
         assert page.evaluate('JSON.parse(localStorage.getItem("jdd.duel-football.v1")).players') == duel['players']
+        page.add_init_script("{const fixture=sessionStorage.getItem('duel-offline-goal');if(fixture){localStorage.setItem('jdd.duel-football.v1',fixture);sessionStorage.removeItem('duel-offline-goal');}}")
+        page.evaluate('''() => {
+            const m=JSON.parse(localStorage.getItem('jdd.duel-football.v1'));
+            const s=m.physics=JDDDuelPhysics.create(m.physics.formations);
+            s.scores=[2,0];
+            s.bodies.slice(0,10).forEach((p,i)=>{p.x=i<5?52:348;p.y=130+i%5*105;});
+            s.bodies[10].x=166;s.bodies[11].x=234;
+            Object.assign(s.bodies[0],{x:200,y:120});Object.assign(s.bodies[JDDDuelPhysics.BALL_ID],{x:200,y:82});
+            sessionStorage.setItem('duel-offline-goal',JSON.stringify(m));
+        }''')
+        page.reload(wait_until='load'); page.locator('#duelBtn').click(); page.locator('[data-duel="resume"]').click()
+        canvas = page.locator('#duel-canvas').bounding_box()
+        x=canvas['x']+2+200*(canvas['width']-4)/400
+        y=canvas['y']+2+120*(canvas['height']-4)/680
+        page.mouse.move(x,y);page.mouse.down();page.mouse.move(x,y+90);page.mouse.up()
+        expect(page.locator('#duel .jdd-celebration')).to_be_visible()
+        assert page.locator('#duel .jdd-celebration img').evaluate('n=>n.complete&&n.naturalWidth>0')
+        expect(page.locator('#duel')).to_have_attribute('data-phase','finished')
+        expect(page.locator('#duel .jdd-celebration')).to_have_count(0)
         page.locator('[data-duel="exit"]').click()
-        print('PASS: Duel Foot, formations, tir physique et reprise du match en mode avion', flush=True)
+        print('PASS: Duel Foot, gardiens, tir physique, reprise et célébration de but en mode avion', flush=True)
         expect(page.locator('#setup')).to_be_visible()
+        # Les reprises du duel ont rechargé la banque ; garder les questions sans
+        # photo distante pour ce contrôle des modes, comme au début du test.
+        page.evaluate('JDD.DATA.cultureMcq = JDD.DATA.cultureMcq.filter(q => !q.image && !q.choiceImages)')
         for mode in ['debut', 'hardcore', 'alcool', 'culture', 'custom']:
             page.locator(f'[data-mode="{mode}"]').click()
             page.locator('#startBtn').click()

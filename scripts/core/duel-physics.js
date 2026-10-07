@@ -4,10 +4,12 @@
   const FIELD = Object.freeze({ width: 400, height: 680, left: 16, right: 384,
     top: 38, bottom: 642, corner: 56, goalLeft: 139, goalRight: 261, goalDepth: 30, wall: 3 });
   const FORMATIONS = ['1-2-2', '2-1-2', '2-2-1'];
-  const PUCK_RADIUS = 15, BALL_RADIUS = 8, MAX_SHOT = 720, STEP = 1 / 120;
+  const PUCK_RADIUS = 15, KEEPER_RADIUS = 20, BALL_RADIUS = 8, BALL_ID = 12;
+  const PASS_GAP = 8, GOAL_DURATION = 2, MAX_SHOT = 720, STEP = 1 / 120;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const length = b => Math.hypot(b.vx, b.vy);
-  const ball = s => s.bodies[10];
+  const ball = s => s.bodies[BALL_ID];
+  const isKeeper = p => p.team !== null && p.id === 10 + p.team;
   const walls = [
     [FIELD.left, FIELD.top + FIELD.corner, FIELD.left, FIELD.bottom - FIELD.corner],
     [FIELD.right, FIELD.top + FIELD.corner, FIELD.right, FIELD.bottom - FIELD.corner],
@@ -22,9 +24,12 @@
     [FIELD.left + FIELD.corner, FIELD.bottom - FIELD.corner, -1, 1],
     [FIELD.right - FIELD.corner, FIELD.bottom - FIELD.corner, 1, 1]];
   function body(id, team, x, y) {
-    const r = team === null ? BALL_RADIUS : PUCK_RADIUS, mass = team === null ? .45 : 1.6;
+    const keeper = team !== null && id === 10 + team;
+    const r = team === null ? BALL_RADIUS : keeper ? KEEPER_RADIUS : PUCK_RADIUS;
+    const mass = team === null ? .45 : keeper ? 2.7 : 1.6;
     return { id, team, x, y, vx: 0, vy: 0, r, mass, angle: 0, spin: 0 };
   }
+  function goalkeeper(team) { return body(10 + team, team, 200, team ? FIELD.top + 2 : FIELD.bottom - 2); }
   function formationPositions(formation, team) {
     const counts = (FORMATIONS.includes(formation) ? formation : FORMATIONS[0]).split('-').map(Number);
     const result = [];
@@ -40,11 +45,11 @@
   function reset(s, team = s.turn) {
     s.bodies = [];
     s.formations.forEach((formation, t) => formationPositions(formation, t).forEach((p, i) => s.bodies.push(body(t * 5 + i, t, p.x, p.y))));
-    s.bodies.push(body(10, null, 200, 340));
+    s.bodies.push(goalkeeper(0), goalkeeper(1), body(BALL_ID, null, 200, 340));
     s.turn = team; s.active = null; s.action = null; s.capture = null; s.quiet = 0; s.phase = 'aim';
   }
   function create(formations = FORMATIONS.slice(0, 2), starter = 0) {
-    const s = { version: 1, formations: [0, 1].map(i => FORMATIONS.includes(formations[i]) ? formations[i] : FORMATIONS[0]),
+    const s = { version: 2, formations: [0, 1].map(i => FORMATIONS.includes(formations[i]) ? formations[i] : FORMATIONS[0]),
       scores: [0, 0], turn: starter === 1 ? 1 : 0, phase: 'aim', active: null,
       action: null, capture: null, quiet: 0, moves: [0, 0], passes: [0, 0], goalTime: 0, winner: null, serial: 0 };
     reset(s); return s;
@@ -120,7 +125,7 @@
   function pass(s, receiver) {
     const b = ball(s);
     s.action.receiver = receiver.id; s.active = receiver.id; s.passes[s.turn]++; s.serial++;
-    const anchor = body(10, null, b.x, b.y); contain(anchor);
+    const anchor = body(BALL_ID, null, b.x, b.y); contain(anchor);
     s.capture = { id: receiver.id, x: anchor.x, y: anchor.y, elapsed: 0, orbit: Math.atan2(receiver.y - b.y, receiver.x - b.x) };
   }
   function canStand(x, y, r) {
@@ -133,7 +138,7 @@
     p.vx += ax * ratio * dt; p.vy += ay * ratio * dt;
   }
   function magnet(s, dt) {
-    const c = s.capture, p = s.bodies[c.id], b = ball(s), gap = p.r + b.r + 4;
+    const c = s.capture, p = s.bodies[c.id], b = ball(s), gap = p.r + b.r + PASS_GAP;
     c.elapsed += dt;
     force(b, c.x, c.y, 150, 24, 2600, dt);
     const goalY = s.turn === 0 ? FIELD.top : FIELD.bottom;
@@ -194,7 +199,7 @@
     dt = clamp(Number(dt) || 0, 0, .05);
     if (s.phase === 'goal') {
       s.goalTime += dt;
-      if (s.goalTime >= 1.1) {
+      if (s.goalTime >= GOAL_DURATION) {
         if (s.winner !== null) s.phase = 'finished'; else reset(s, 1 - s.scorer);
         s.serial++;
       }
@@ -211,15 +216,17 @@
     }
   }
   function restore(raw) {
-    if (!raw || raw.version !== 1 || !['aim', 'moving', 'goal', 'finished'].includes(raw.phase)
+    const legacy = raw?.version === 1, count = legacy ? 11 : 13;
+    if (!raw || ![1, 2].includes(raw.version) || !['aim', 'moving', 'goal', 'finished'].includes(raw.phase)
       || ![0, 1].includes(raw.turn) || !Array.isArray(raw.formations) || raw.formations.length !== 2
       || raw.formations.some(f => !FORMATIONS.includes(f)) || !Array.isArray(raw.scores) || raw.scores.length !== 2
-      || raw.scores.some(n => !Number.isInteger(n) || n < 0 || n > 3) || !Array.isArray(raw.bodies) || raw.bodies.length !== 11) return null;
-    for (let i = 0; i < 11; i++) {
-      const p = raw.bodies[i];
-      if (!p || p.id !== i || p.team !== (i === 10 ? null : Math.floor(i / 5))
+      || raw.scores.some(n => !Number.isInteger(n) || n < 0 || n > 3) || !Array.isArray(raw.bodies) || raw.bodies.length !== count) return null;
+    for (let i = 0; i < count; i++) {
+      const p = raw.bodies[i], team = i === count - 1 ? null : i < 10 ? Math.floor(i / 5) : i - 10;
+      const expected = body(i, team, 0, 0);
+      if (!p || p.id !== i || p.team !== team
         || ['x', 'y', 'vx', 'vy', 'r', 'mass', 'angle', 'spin'].some(k => !Number.isFinite(p[k]))
-        || p.r !== (i === 10 ? BALL_RADIUS : PUCK_RADIUS) || p.mass !== (i === 10 ? .45 : 1.6)
+        || p.r !== expected.r || p.mass !== expected.mass
         || p.x < 0 || p.x > 400 || p.y < 0 || p.y > 680 || length(p) > 1600.01) return null;
     }
     if (!Number.isInteger(raw.serial) || !Array.isArray(raw.moves) || !Array.isArray(raw.passes)
@@ -232,10 +239,30 @@
       || !Number.isFinite(raw.capture.elapsed) || !Number.isFinite(raw.capture.orbit) || raw.bodies[raw.capture.id]?.team !== raw.turn)) return null;
     if ((raw.phase === 'goal' && ![0, 1].includes(raw.scorer)) || ![null, 0, 1].includes(raw.winner)) return null;
     if (raw.phase === 'finished' && (raw.winner === null || raw.scores[raw.winner] !== 3)) return null;
-    return raw;
+    if (!legacy) return raw;
+    // Ajouter les gardiens sans déplacer les onze disques de l'ancienne partie.
+    const bodies = raw.bodies.slice(0, 10).map(p => ({ ...p }));
+    const savedBall = { ...raw.bodies[10], id: BALL_ID };
+    for (const team of [0, 1]) {
+      const keeper = goalkeeper(team), occupied = [...bodies, savedBall];
+      let found = false;
+      for (let row = 0; row < 11 && !found; row++) {
+        const y = team ? FIELD.top + 2 + row * 28 : FIELD.bottom - 2 - row * 28;
+        for (const offset of [0, -28, 28, -56, 56, -84, 84, -112, 112, -140, 140]) {
+          const x = 200 + offset;
+          if (canStand(x, y, keeper.r) && occupied.every(p => Math.hypot(x - p.x, y - p.y) >= keeper.r + p.r + 1)) {
+            keeper.x = x; keeper.y = y; found = true; break;
+          }
+        }
+      }
+      if (!found) return null;
+      bodies.push(keeper);
+    }
+    bodies.push(savedBall);
+    return { ...raw, version: 2, bodies };
   }
-  const api = { FIELD, FORMATIONS, PUCK_RADIUS, BALL_RADIUS, MAX_SHOT, STEP, walls, corners,
-    create, reset, step, shoot, selectable, restore, formationPositions, canStand };
+  const api = { FIELD, FORMATIONS, PUCK_RADIUS, KEEPER_RADIUS, BALL_RADIUS, BALL_ID, PASS_GAP, GOAL_DURATION, MAX_SHOT, STEP, walls, corners,
+    create, reset, step, shoot, selectable, restore, formationPositions, canStand, isKeeper };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else global.JDDDuelPhysics = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -2,8 +2,11 @@
 
 Un match local sur le même téléphone, accessible sous Grand Quiz Foot. Les deux
 joueurs sont choisis dans la bande existante, avec leurs identités compte/invité
-et leurs avatars. Chaque joueur choisit 1-2-2, 2-1-2 ou 2-2-1 ; cinq pions par
-camp et premier à trois buts. Les premiers joueurs de la bande sont présélectionnés.
+et leurs avatars. Chaque joueur choisit 1-2-2, 2-1-2 ou 2-2-1 ; cinq pions de
+champ et un gardien par camp, premier à trois buts. Les premiers joueurs de la
+bande sont présélectionnés. Le gardien, marqué G, démarre sur sa ligne de but ;
+son rayon est de 20 contre 15 pour les autres pions. Il est jouable, mobile et
+peut recevoir des passes comme tous ses coéquipiers.
 
 ## Contrôle et physique
 
@@ -13,7 +16,7 @@ glissement ; 3 cm CSS (environ 113 pixels) donnent la puissance maximale, quelle
 que soit la taille du terrain. Un petit déplacement ou un geste annulé ne tire
 pas. La flèche et son pourcentage montrent la puissance plafonnée.
 
-`scripts/core/duel-physics.js` contient un moteur indépendant du rendu : onze
+`scripts/core/duel-physics.js` contient un moteur indépendant du rendu : treize
 disques avec masse, vitesse, rotation, impulsions normales et tangentielles,
 friction progressive. Le pas de 1/120 seconde est subdivisé quand nécessaire,
 avec au plus trois unités parcourues par sous-pas. Dix passes du solveur corrigent
@@ -24,12 +27,14 @@ petit que les pions ; les touches décentrées changent sa direction et sa rotat
 
 Le premier contact avec un coéquipier autre que le tireur capture la passe.
 Un ressort amorti retient le ballon ; le receveur suit un petit arc autour de lui
-vers l'alignement avec le but adverse. Les disques gênants gardent leur masse et
+vers l'alignement avec le but adverse. Huit unités séparent les bords du ballon
+et du receveur, au lieu de quatre, pour faciliter les frappes décentrées. Cet
+espace reste identique pour un gardien. Les disques gênants gardent leur masse et
 sont poussés par les collisions. Près d'un mur, l'angle réalisable le plus proche
 est choisi. Une fois les mouvements terminés, le receveur est le seul pion actif
 et peut immédiatement rejouer. Aucun bouton entre les tirs. Sans passe ni but,
 le tour change. Un but exige le franchissement complet du ballon, puis une
-animation de 1,1 seconde et une remise aux formations ; le joueur qui encaisse
+animation de deux secondes et une remise aux formations ; le joueur qui encaisse
 reprend. À trois buts, le résultat reste affiché jusqu'à Rejouer ou Menu.
 
 ## Intégration
@@ -38,9 +43,15 @@ reprend. À trois buts, le résultat reste affiché jusqu'à Rejouer ou Menu.
 écrans. La simulation utilise requestAnimationFrame et s'arrête quand elle est
 immobile. Un départ au menu, une pause, un rechargement ou le passage en
 arrière-plan conserve les positions, le tour, le receveur, les scores et les
-identités dans `jdd.duel-football.v1`. Les états invalides sont ignorés. La reprise
+identités dans `jdd.duel-football.v1`. Le format physique v2 reprend les sauvegardes
+v1 en ajoutant des gardiens dans des emplacements libres près de leur but, sans
+déplacer les anciens pions ou le ballon ni perdre les scores ou le receveur.
+Les états invalides sont ignorés. La reprise
 ne compte pas le temps passé en arrière-plan. Les sons de tir et de but respectent
-l'interrupteur global ; la célébration respecte la réduction des animations.
+l'interrupteur global. Le visuel transparent `image/duel/goal.webp` utilise la
+célébration partagée : zoom/rebond, pièces et éclats, puis disparition en deux
+secondes. Il reste au-dessus du terrain sans bloquer les commandes et disparaît
+au menu ou à la pause ; la réduction des animations est respectée.
 
 Le match est local et ne requiert pas de nouvelle table Supabase. Ses scores ne
 sont pas mélangés aux statistiques du Grand Quiz Foot. Scripts, style et icône

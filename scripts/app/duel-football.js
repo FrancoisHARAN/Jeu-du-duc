@@ -2,6 +2,7 @@
 (function (global) {
   'use strict';
   const P = global.JDDDuelPhysics, F = P.FIELD, STORE = 'jdd.duel-football.v1';
+  const GOAL_ART = 'image/duel/goal.webp';
   const MAX_DRAG_CSS = 3 * 96 / 2.54; // Environ 3 cm CSS, indépendant du zoom du terrain.
   const COLORS = ['#f7c3d0', '#ffd938'], INK = '#252124', CREAM = '#fff9e9';
   const HOME = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9"/></svg>';
@@ -12,7 +13,11 @@
   let lastSerial = -1, lastSave = 0, feedback = null;
   const names = () => options.getSuggestedNames();
   function save() { if (match) try { localStorage.setItem(STORE, JSON.stringify(match)); } catch (_) { /* Partie disponible en mémoire. */ } }
-  function stop() { cancelAnimationFrame(frame); frame = 0; previous = 0; accumulator = 0; cancelDrag(); }
+  function clearGoal() {
+    const board = root?.querySelector('.duel-board-wrap');
+    if (board) global.JDDVisuals.clearCelebration(board);
+  }
+  function stop() { cancelAnimationFrame(frame); frame = 0; previous = 0; accumulator = 0; cancelDrag(); clearGoal(); }
   function sound(key) {
     if (!global.JDDSound.isEnabled()) return;
     try {
@@ -28,8 +33,8 @@
     return `<header class="duel-topbar"><button type="button" class="duel-pill" data-duel="exit">${HOME}<span>Menu</span></button><span class="duel-pill duel-title">Duel Foot</span>${live ? `<button type="button" class="duel-pill duel-pause" data-duel="pause" aria-label="Mettre le match en pause">${PAUSE}</button>` : ''}</header>`;
   }
   function preview(formation, team) {
-    const dots = P.formationPositions(formation, 0).map(p => `<circle cx="${p.x / 4}" cy="${(p.y - 330) / 4.8 + 8}" r="4.2" fill="${COLORS[team]}" stroke="${INK}" stroke-width="1.4"/>`).join('');
-    return `<svg viewBox="0 0 100 65" aria-hidden="true"><rect x="7" y="2" width="86" height="60" rx="12" fill="#a7d5bc" stroke="${INK}" stroke-width="1.5"/><path d="M7 12h86M39 62V49h22v13" fill="none" stroke="${CREAM}" stroke-width="1.5"/>${dots}</svg>`;
+    const dots = P.formationPositions(formation, 0).map(p => `<circle cx="${p.x / 4}" cy="${(p.y - 330) / 5.8 + 6}" r="4.2" fill="${COLORS[team]}" stroke="${INK}" stroke-width="1.4"/>`).join('');
+    return `<svg viewBox="0 0 100 65" aria-hidden="true"><rect x="7" y="2" width="86" height="60" rx="12" fill="#a7d5bc" stroke="${INK}" stroke-width="1.5"/><path d="M7 12h86M39 62V49h22v13" fill="none" stroke="${CREAM}" stroke-width="1.5"/>${dots}<circle cx="50" cy="56" r="5.6" fill="${COLORS[team]}" stroke="${INK}" stroke-width="1.6"/><text x="50" y="58.4" text-anchor="middle" fill="${INK}" font-family="Arial,sans-serif" font-size="7" font-weight="900">G</text></svg>`;
   }
   function updateSelection() {
     const people = names();
@@ -38,7 +43,7 @@
   }
   function renderSetup() {
     stop(); canvas = ctx = null; paused = false; updateSelection(); root.dataset.screen = 'setup';
-    root.innerHTML = `${topbar()}<section class="duel-panel"><div class="duel-window"><span aria-hidden="true">● ● ●</span><span>1 CONTRE 1</span><span aria-hidden="true">✦</span></div><div class="duel-settings"><div class="duel-intro"><img src="image/home/duel.svg" width="160" height="160" alt=""><div><h1>Duel Foot</h1><p>5 pions · Premier à 3 buts</p></div></div>${match ? `<button type="button" class="duel-button duel-button--green" data-duel="resume">${match.physics.phase === 'finished' ? 'Dernier résultat' : 'Reprendre le match'}</button>` : ''}<div class="duel-contenders">${[0, 1].map(team => `<fieldset class="duel-contender" data-team="${team}"><legend>Joueur ${team + 1}</legend><label class="duel-select-label" for="duel-player-${team}">Qui joue ?</label><select id="duel-player-${team}" data-duel-player="${team}">${names().length ? `<option value="" ${selection[team] ? '' : 'selected'} disabled>Choisir un joueur</option>` : '<option value="">Ajouter un joueur</option>'}${names().map(name => `<option value="${esc(name)}" ${name === selection[team] ? 'selected' : ''}>${esc(name)}</option>`).join('')}</select><div class="duel-formations" role="group" aria-label="Formation du joueur ${team + 1}">${P.FORMATIONS.map(formation => `<label><input type="radio" name="duel-formation-${team}" data-duel-formation="${team}" value="${formation}" ${formations[team] === formation ? 'checked' : ''}>${preview(formation, team)}<span>${formation}</span></label>`).join('')}</div></fieldset>`).join('')}</div><details class="duel-roster" ${names().length < 2 ? 'open' : ''}><summary>Ajouter ou retirer des joueurs</summary><div id="duel-players"></div></details><p id="duel-error" role="alert" hidden></p><button type="button" class="duel-button" data-duel="start" ${selection.filter(Boolean).length < 2 ? 'disabled' : ''}>Lancer le match ${global.JDDVisuals.arrow()}</button></div><div class="duel-floor" aria-hidden="true"></div></section>`;
+    root.innerHTML = `${topbar()}<section class="duel-panel"><div class="duel-window"><span aria-hidden="true">● ● ●</span><span>1 CONTRE 1</span><span aria-hidden="true">✦</span></div><div class="duel-settings"><div class="duel-intro"><img src="image/home/duel.svg" width="160" height="160" alt=""><div><h1>Duel Foot</h1><p>5 pions + 1 gardien · Premier à 3 buts</p></div></div>${match ? `<button type="button" class="duel-button duel-button--green" data-duel="resume">${match.physics.phase === 'finished' ? 'Dernier résultat' : 'Reprendre le match'}</button>` : ''}<div class="duel-contenders">${[0, 1].map(team => `<fieldset class="duel-contender" data-team="${team}"><legend>Joueur ${team + 1}</legend><label class="duel-select-label" for="duel-player-${team}">Qui joue ?</label><select id="duel-player-${team}" data-duel-player="${team}">${names().length ? `<option value="" ${selection[team] ? '' : 'selected'} disabled>Choisir un joueur</option>` : '<option value="">Ajouter un joueur</option>'}${names().map(name => `<option value="${esc(name)}" ${name === selection[team] ? 'selected' : ''}>${esc(name)}</option>`).join('')}</select><div class="duel-formations" role="group" aria-label="Formation du joueur ${team + 1}">${P.FORMATIONS.map(formation => `<label><input type="radio" name="duel-formation-${team}" data-duel-formation="${team}" value="${formation}" ${formations[team] === formation ? 'checked' : ''}>${preview(formation, team)}<span>${formation}</span></label>`).join('')}</div></fieldset>`).join('')}</div><details class="duel-roster" ${names().length < 2 ? 'open' : ''}><summary>Ajouter ou retirer des joueurs</summary><div id="duel-players"></div></details><p id="duel-error" role="alert" hidden></p><button type="button" class="duel-button" data-duel="start" ${selection.filter(Boolean).length < 2 ? 'disabled' : ''}>Lancer le match ${global.JDDVisuals.arrow()}</button></div><div class="duel-floor" aria-hidden="true"></div></section>`;
     editor = global.JDDPlayerEditor.mount(root.querySelector('#duel-players'), { getNames: names, addPlayer: options.addPlayer, removePlayer: options.removePlayer });
     global.scrollTo(0, 0);
   }
@@ -137,8 +142,6 @@
     }
     line(F.goalLeft + 3, F.top, F.goalRight - 3, F.top, '#fff9e9', 2);
     line(F.goalLeft + 3, F.bottom, F.goalRight - 3, F.bottom, '#fff9e9', 2);
-    ctx.fillStyle = '#5a5154'; ctx.font = '800 9px Montserrat,Arial,sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('BUT JAUNE', 200, F.top - 14); ctx.fillText('BUT ROSE', 200, F.bottom + 18);
   }
   function draw() {
     if (!ctx || !match) return;
@@ -150,8 +153,8 @@
         if (active && !paused) circle(p.x, p.y, p.r + 5, 'rgba(255,249,233,.65)', INK, 1.2);
         circle(p.x, p.y, p.r, COLORS[p.team], INK, 2.5);
         circle(p.x, p.y, p.r - 4, COLORS[p.team], 'rgba(255,249,233,.8)', 1.2);
-        ctx.fillStyle = INK; ctx.font = '900 13px Montserrat,Arial,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(String(p.id % 5 + 1), p.x, p.y + .5);
+        ctx.fillStyle = INK; ctx.font = `900 ${P.isKeeper(p) ? 17 : 13}px Montserrat,Arial,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(P.isKeeper(p) ? 'G' : String(p.id % 5 + 1), p.x, p.y + .5);
       } else {
         circle(p.x, p.y, p.r, CREAM, INK, 1.8);
         ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle); ctx.fillStyle = INK;
@@ -179,14 +182,6 @@
         ctx.fillStyle = INK; ctx.font = '900 11px Montserrat,Arial,sans-serif'; ctx.textAlign = 'center';
         ctx.fillText(`${Math.round(aim.power * 100)} %`, clampLabel(p.x), Math.min(656, p.y + 36));
       }
-    }
-    if (s.phase === 'goal') {
-      const reduced = global.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const t = s.goalTime, zoom = reduced ? 1 : t < .18 ? .6 + t * 3.5 : 1 + Math.sin(t * 12) * .035;
-      ctx.save(); ctx.translate(200, 340); ctx.scale(zoom, zoom); ctx.rotate(reduced ? 0 : Math.sin(t * 8) * .035);
-      roundRect(-94, -39, 188, 78, 18); ctx.fillStyle = '#ffd938'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.stroke();
-      ctx.fillStyle = INK; ctx.font = '900 45px Montserrat,Arial,sans-serif'; ctx.textAlign = 'center'; ctx.fillText('BUT !', 0, 15); ctx.restore();
-      if (!reduced) for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5, distance = 90 + t * 48; circle(200 + Math.cos(a) * distance, 340 + Math.sin(a) * distance * .6, 3.5, COLORS[i % 2], INK, 1); }
     }
   }
   const clampLabel = x => Math.max(45, Math.min(355, x));
@@ -229,7 +224,10 @@
     previous = now;
     while (accumulator >= P.STEP) { P.step(s, P.STEP); accumulator -= P.STEP; }
     if (s.serial !== lastSerial) {
-      if (s.phase === 'goal') sound('correct');
+      if (s.phase === 'goal') {
+        sound('correct');
+        global.JDDVisuals.celebrate(root.querySelector('.duel-board-wrap'), GOAL_ART);
+      } else clearGoal();
       lastSerial = s.serial; updateHUD(); save();
     }
     if (now - lastSave > 400 && s.phase === 'moving') { save(); lastSave = now; }
@@ -252,15 +250,19 @@
   function restore() {
     try {
       const value = JSON.parse(localStorage.getItem(STORE));
+      const physics = P.restore(value?.physics);
       if (value?.version === 1 && Array.isArray(value.players) && value.players.length === 2
         && value.players.every(p => typeof p.name === 'string' && p.name.length > 0 && p.name.length <= 40 && typeof p.label === 'string')
-        && P.restore(value.physics)) {
+        && physics) {
+        value.physics = physics;
         match = value; selection = value.players.map(p => p.label); formations = value.physics.formations.slice();
+        save();
       }
     } catch (_) { /* Ancienne partie invalide ignorée. */ }
   }
   function init(config) {
     options = config; root = document.getElementById('duel'); restore();
+    const goalArt = new Image(); goalArt.src = GOAL_ART;
     root.addEventListener('click', event => {
       const act = event.target.closest('[data-duel]')?.dataset.duel;
       if (act === 'start') start();
