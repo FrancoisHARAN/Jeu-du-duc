@@ -238,7 +238,7 @@
         if (s.goalTime + 1e-7 >= GOAL_DURATION) {
           if (s.winner !== null) {
             s.phase = 'finished'; s.bodies.forEach(p => { p.vx = p.vy = p.spin = 0; });
-          } else reset(s, s.scorer);
+          } else reset(s, 1 - s.scorer);
           s.serial++;
         }
       }

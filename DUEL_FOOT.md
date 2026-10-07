@@ -9,8 +9,9 @@ son rayon est de 20 contre 15 pour les autres pions. Il est jouable, mobile et
 peut recevoir des passes comme tous ses coéquipiers.
 L'engagement initial est tiré au sort une seule fois. L'équipe qui engage garde
 sa formation de base ; celle qui défend conserve les mêmes lignes, rapprochées
-du but et resserrées en largeur. Après un but, le marqueur engage et l'autre
-équipe se remet en défense. Les positions ne changent pas entre deux tirs.
+du but et resserrées en largeur. Après un but, l'équipe qui l'a encaissé engage
+en attaque et le marqueur se remet en défense. Les positions ne changent pas
+entre deux tirs.
 
 ## Contrôle et physique
 
@@ -43,8 +44,8 @@ est choisi. Une fois les mouvements terminés, le receveur est le seul pion acti
 et peut immédiatement rejouer. Aucun bouton entre les tirs. Sans passe ni but,
 le tour change. Un but exige le franchissement complet du ballon, puis une
 animation de deux secondes pendant laquelle les disques continuent à rebondir
-et à ralentir, puis une remise aux formations ; le marqueur reprend. Le score
-est verrouillé pendant la célébration, même si le ballon ressort du but.
+et à ralentir, puis une remise aux formations ; l'équipe qui a encaissé reprend.
+Le score est verrouillé pendant la célébration, même si le ballon ressort du but.
 À trois buts, le résultat reste affiché jusqu'à Rejouer ou Menu.
 
 ## Intégration
