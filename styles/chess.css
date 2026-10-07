@@ -63,6 +63,21 @@ body:has(#chess:not(.hidden)) { background: #6b62cc !important; justify-content:
 .chess-piece { display: block; width: 91%; height: 91%; overflow: visible; pointer-events: none; }
 .chess-moving { position: absolute; inset: 0; display: grid; place-items: center; z-index: 3; pointer-events: none; animation: chess-move .14s ease-out both; }
 @keyframes chess-move { from { transform: translate(var(--move-x), var(--move-y)); } to { transform: translate(0, 0); } }
+.chess-root > .jdd-celebration .jdd-celebration-art {
+  width: min(84vw, 78dvh, 560px);
+  max-height: 78dvh;
+  animation-name: chess-mate-jackpot;
+}
+.chess-root > .jdd-celebration .jdd-celebration-spark:nth-child(3n) { background: #00bffa; }
+@keyframes chess-mate-jackpot {
+  0% { opacity: 0; transform: scale(.35) rotate(-8deg); }
+  14% { opacity: 1; transform: scale(1.12) rotate(3deg); }
+  28% { transform: scale(.95) rotate(-2deg); }
+  42% { transform: scale(1.05) rotate(1deg); }
+  56%, 76% { opacity: 1; transform: scale(1); }
+  66% { transform: scale(1.04); }
+  100% { opacity: 0; transform: scale(.85); }
+}
 .chess-rank, .chess-file { position: absolute; font: 800 9px/1 Montserrat, Arial, sans-serif; color: #252124; pointer-events: none; }
 .chess-rank { top: 2px; left: 2px; }
 .chess-file { bottom: 2px; right: 2px; }

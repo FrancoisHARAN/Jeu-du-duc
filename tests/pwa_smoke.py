@@ -146,7 +146,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         }''', cache)
         quiz360_images = json.loads((site / 'data/culture.quiz360.images.json').read_text())
         flag_images = json.loads((site / 'data/culture.flags.images.json').read_text())
-        assert len(shell) == 93 + len(quiz360_images) + len(flag_images), len(shell)
+        assert len(shell) == 94 + len(quiz360_images) + len(flag_images), len(shell)
         for file in ['data/culture.flags.js', 'data/culture.flags.images.json',
                      'scripts/core/culture-flags.js', 'scripts/app/culture-flags.js', *flag_images]:
             assert base + file in shell
@@ -157,7 +157,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         for file in ['data/culture.quiz360.js', 'data/culture.quiz360.images.json', *quiz360_images]:
             assert base + file in shell
         assert base + 'scripts/core/statistics.js' in shell
-        for file in ['vendor/chess/chess.js', 'scripts/core/chess-match.js', 'scripts/core/chess-pieces.js', 'scripts/app/chess.js', 'styles/chess.css', 'image/home/chess.webp']:
+        for file in ['vendor/chess/chess.js', 'scripts/core/chess-match.js', 'scripts/core/chess-pieces.js', 'scripts/app/chess.js', 'styles/chess.css', 'image/home/chess.webp', 'image/chess/checkmate.webp']:
             assert base + file in shell
         for file in ['scripts/core/duel-physics.js', 'scripts/core/duel-ball.js', 'scripts/app/duel-football.js', 'styles/duel-football.css', 'image/home/duel-football.webp', 'image/duel/goal.webp']:
             assert base + file in shell
@@ -412,8 +412,21 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         assert page.evaluate('JSON.parse(localStorage.getItem("jdd.chess.v1")).fen')==chess['fen']
         page.locator('[data-square="e7"]').click();page.locator('[data-square="e5"]').click()
         assert len(page.evaluate('JSON.parse(localStorage.getItem("jdd.chess.v1")).moves'))==2
+        context.add_init_script('''const chessFixture=sessionStorage.getItem('pwa-chess-fixture');
+            if(chessFixture){localStorage.setItem('jdd.chess.v1',chessFixture);sessionStorage.removeItem('pwa-chess-fixture');}''')
+        page.evaluate('''() => {
+            const old=JSON.parse(localStorage.getItem('jdd.chess.v1'));
+            const match=JDDChessMatch.create(old.players,old.minutes,0,Date.now(),'7k/5Q2/6K1/8/8/8/8/8 w - - 0 1');
+            JDDChessMatch.pause(match);sessionStorage.setItem('pwa-chess-fixture',JSON.stringify(JDDChessMatch.snapshot(match)));
+        }''')
+        page.reload(wait_until='load');page.locator('#chessBtn').click();page.locator('[data-chess="resume"]').click()
+        page.locator('[data-square="f7"]').click();page.locator('[data-square="g7"]').click()
+        expect(page.locator('#chess .jdd-celebration')).to_be_visible()
+        assert page.locator('#chess .jdd-celebration-art').evaluate('n=>n.complete&&n.naturalWidth>0')
+        assert page.evaluate('JSON.parse(localStorage.getItem("jdd.chess.v1")).result.kind')=='mate'
+        expect(page.locator('#chess .jdd-celebration')).to_have_count(0,timeout=2800)
         page.locator('.chess-toolbar [data-chess="exit"]').click()
-        print('PASS: Échecs, pièces vectorielles, horloges, coups légaux et reprise en mode avion',flush=True)
+        print('PASS: Échecs, pièces vectorielles, horloges, reprise et célébration de mat en mode avion',flush=True)
         # Les reprises ont rechargé la banque ; garder les questions sans
         # photo distante pour ce contrôle des modes, comme au début du test.
         page.evaluate('JDD.DATA.cultureMcq = JDD.DATA.cultureMcq.filter(q => !q.image && !q.choiceImages && !q.flagKind)')

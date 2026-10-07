@@ -24,6 +24,14 @@ pendant ce choix. Le mat, le pat, le matériel insuffisant, la triple répétiti
 et la règle des 50 coups terminent automatiquement la partie. L'abandon et une
 nulle convenue entre les deux joueurs sont également disponibles.
 
+Lors du coup qui donne échec et mat, le visuel fourni apparaît pendant deux
+secondes, sans fond, avec des rebonds et des éclats façon « big win ». Il reste
+entièrement visible en portrait et en paysage, laisse les commandes accessibles
+et disparaît immédiatement au retour au menu ou au choix de rejouer. Il ne se
+relance pas à la reprise d'un résultat et ne s'affiche pas pour les autres fins
+de partie. Avec la réduction des mouvements, le visuel reste fixe pendant les
+deux secondes. Le visuel est préchargé et conservé hors ligne par la PWA.
+
 ## Horloges et reprise
 
 `scripts/core/chess-match.js` gère la partie et les deux horloges indépendamment

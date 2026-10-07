@@ -43,6 +43,35 @@ try:
                 const s=JDDChessMatch.create(old.players,old.minutes,0,Date.now(),fen);JDDChessMatch.pause(s);
                 if(clock!==null)s.remaining.w=clock;sessionStorage.setItem('chess-fixture',JSON.stringify(JDDChessMatch.snapshot(s)));}''',[fen,clock])
             page.reload(wait_until='load');page.locator('#chessBtn').tap();page.locator('[data-chess="resume"]').tap()
+        def watch_celebration(page):
+            page.evaluate('''() => {
+                window.mateTimes={added:0,removed:0,count:0};
+                const observer=new MutationObserver(records=>{
+                    for(const record of records) {
+                        for(const node of record.addedNodes) if(node.classList?.contains('jdd-celebration')) {
+                            mateTimes.added=performance.now();mateTimes.count++;
+                        }
+                        for(const node of record.removedNodes) if(node.classList?.contains('jdd-celebration')) {
+                            mateTimes.removed=performance.now();observer.disconnect();
+                        }
+                    }
+                });observer.observe(document.querySelector('#chess'),{childList:true});
+            }''')
+        def celebration(page):
+            overlay=page.locator('#chess > .jdd-celebration')
+            expect(overlay).to_be_visible()
+            assert overlay.evaluate('n=>getComputedStyle(n).pointerEvents')=='none'
+            assert overlay.evaluate('n=>getComputedStyle(n).backgroundColor')=='rgba(0, 0, 0, 0)'
+            assert overlay.locator('.jdd-celebration-spark').count()==12
+            art=overlay.locator('img')
+            expect(art).to_have_attribute('src','image/chess/checkmate.webp')
+            assert art.evaluate('n=>n.complete && n.naturalWidth>0')
+            assert art.evaluate('n=>getComputedStyle(n).animationDuration')=='2s'
+            assert art.evaluate('n=>getComputedStyle(n).animationName')=='chess-mate-jackpot'
+            page.wait_for_timeout(400)
+            rect=art.bounding_box();width=page.viewport_size['width'];height=page.viewport_size['height']
+            assert rect['x']>=0 and rect['y']>=0 and rect['x']+rect['width']<=width and rect['y']+rect['height']<=height,rect
+            return overlay
 
         context,page=home()
         assert page.locator('[data-chess-player="0"] option').all_text_contents()==['Choisir un joueur','François','François (invité)','Solène']
@@ -88,14 +117,41 @@ try:
         print('PASS: deux roques tactiles, quatre choix de promotion avec horloge active et prise en passant',flush=True)
 
         seed(page,'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
-        for a,b in [('f2','f3'),('e7','e5'),('g2','g4'),('d8','h4')]:play(page,a,b)
+        for a,b in [('f2','f3'),('e7','e5'),('g2','g4')]:
+            play(page,a,b);expect(page.locator('#chess .jdd-celebration')).to_have_count(0)
+        watch_celebration(page);play(page,'d8','h4')
         expect(page.locator('#chess')).to_have_attribute('data-phase','finished')
         assert saved(page)['result']=={'kind':'mate','winner':'b'} and not saved(page)['running']
         expect(page.locator('[data-chess="replay"]')).to_be_visible();assert page.locator('[data-square]:disabled').count()==64
+        overlay=celebration(page);page.screenshot(path=str(OUT/'echec-et-mat.png'))
+        remaining=saved(page)['remaining'];expect(overlay).to_have_count(0,timeout=2800)
+        times=page.evaluate('mateTimes');assert times['count']==1 and 1900<=times['removed']-times['added']<=2800,times
+        assert saved(page)['remaining']==remaining
+        page.locator('.chess-toolbar [data-chess="exit"]').tap();page.locator('#chessBtn').tap();page.locator('[data-chess="resume"]').tap()
+        expect(page.locator('#chess .jdd-celebration')).to_have_count(0)
         seed(page,'7k/5Q2/5K2/8/8/8/8/8 b - - 0 1');assert saved(page)['result']['kind']=='stalemate'
+        expect(page.locator('#chess .jdd-celebration')).to_have_count(0)
         seed(page,'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',80)
         expect(page.locator('#chess')).to_have_attribute('data-phase','finished',timeout=2500);assert saved(page)['result']=={'kind':'timeout','winner':'b'}
         expect(page.locator('#chess-clock-w')).to_have_text('0:00')
+        expect(page.locator('#chess .jdd-celebration')).to_have_count(0)
+        seed(page,'7k/5Q2/6K1/8/8/8/8/8 w - - 0 1')
+        play(page,'f7','f6');assert saved(page)['result'] is None
+        expect(page.locator('[data-square="h8"].is-check')).to_have_count(1)
+        expect(page.locator('#chess .jdd-celebration')).to_have_count(0)
+        seed(page,'7k/5P2/6K1/8/8/8/8/8 w - - 0 1');play(page,'f7','f8')
+        page.locator('[data-promotion="q"]').tap();assert saved(page)['result']['kind']=='mate'
+        celebration(page);page.locator('[data-chess="replay"]').tap()
+        expect(page.locator('#chess .jdd-celebration')).to_have_count(0)
+        page.locator('[data-chess="start"]').tap()
+        seed(page,'7k/5Q2/6K1/8/8/8/8/8 w - - 0 1');page.emulate_media(reduced_motion='reduce');play(page,'f7','g7')
+        expect(page.locator('#chess .jdd-celebration')).to_be_visible()
+        assert page.locator('#chess .jdd-celebration-art').evaluate('n=>getComputedStyle(n).animationName')=='none'
+        assert page.locator('#chess .jdd-celebration-spark').first.evaluate('n=>getComputedStyle(n).display')=='none'
+        page.locator('.chess-toolbar [data-chess="exit"]').tap()
+        expect(page.locator('#chess .jdd-celebration')).to_have_count(0)
+        page.emulate_media(reduced_motion='no-preference')
+        print('PASS: mat seul, visuel transparent 2 s, horloges arrêtées, promotion, réduction des mouvements, menu/rejouer et aucun replay du résultat',flush=True)
         print('PASS: mat, pat, temps écoulé et plateau bloqué à la fin',flush=True)
         context.close()
 
@@ -108,6 +164,10 @@ try:
             assert bounds['y']>=0 and bounds['y']+bounds['height']<=height+1,(width,height,bounds)
             if width<500:assert bounds['width']>=width-22,(width,bounds)
             if width in [320,852,1280]:page.screenshot(path=str(OUT/f'plateau-{width}.png'))
+            seed(page,'7k/5Q2/6K1/8/8/8/8/8 w - - 0 1');play(page,'f7','g7');celebration(page)
+            if width in [320,852,1280]:page.screenshot(path=str(OUT/f'mat-{width}.png'))
+            page.locator('.chess-toolbar [data-chess="exit"]').tap()
+            expect(page.locator('#chess .jdd-celebration')).to_have_count(0)
             context.close()
         context,page=home(320,568,['M'*40,'Solène']);page.locator('[data-chess="start"]').tap()
         assert page.locator('.chess-player-name strong').evaluate_all('ns=>ns.every(n=>n.scrollWidth<=n.clientWidth+1)')
@@ -118,6 +178,7 @@ try:
         expect(page.locator('[data-chess="start"]')).to_be_enabled();page.locator('[data-chess="start"]').tap()
         assert [p['name'] for p in saved(page)['players']]==['Nicolas','Solène'];context.close()
         im=Image.open(REPO/'image/home/chess.webp');assert im.mode=='RGBA' and im.getpixel((0,0))[3]==0
+        im=Image.open(REPO/'image/chess/checkmate.webp');assert im.mode=='RGBA' and im.getpixel((0,0))[3]==0
         assert not errors,errors;browser.close()
         print('PASS: sept formats, plateau large sur téléphone, noms longs, ajout des joueurs, visuel transparent et aucune erreur JavaScript',flush=True)
 finally:server.shutdown()

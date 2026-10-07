@@ -2,6 +2,7 @@
 (function (global) {
   'use strict';
   const C = global.JDDChessMatch, ART = 'image/home/chess.webp', STORE = 'jdd.chess.v1';
+  const CHECKMATE_ART = 'image/chess/checkmate.webp';
   const labels = { p: 'Pion', r: 'Tour', n: 'Cavalier', b: 'Fou', q: 'Dame', k: 'Roi' };
   const reasons = { mate: 'Échec et mat', stalemate: 'Pat', material: 'Matériel insuffisant', repetition: 'Triple répétition', fifty: 'Règle des 50 coups', timeout: 'Temps écoulé', resign: 'Abandon', agreement: 'Accord des joueurs' };
   const esc = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -21,6 +22,7 @@
     if (selection[0] === selection[1]) selection[1] = people.find(n => n !== selection[0]) || '';
   }
   function setup() {
+    global.JDDVisuals.clearCelebration(root);
     clearInterval(timer); closeDialog(); selected = pending = null; updateSelection(); root.dataset.screen = 'setup';
     root.innerHTML = `${toolbar()}<section class="chess-panel"><div class="chess-window"><span aria-hidden="true">● ● ●</span><span>1 CONTRE 1</span><span aria-hidden="true">✦</span></div><div class="chess-settings"><div class="chess-intro"><img src="${ART}" width="640" height="640" alt=""><h1>Échecs</h1></div>${match ? `<button class="chess-button chess-button--green" data-chess="resume" type="button">${match.result ? 'Dernier résultat' : 'Reprendre la partie'}</button>` : ''}<div class="chess-contenders">${[0, 1].map(i => `<label class="chess-contender" for="chess-player-${i}"><span>Joueur ${i + 1}</span><select id="chess-player-${i}" data-chess-player="${i}"><option value="" ${selection[i] ? '' : 'selected'} disabled>Choisir un joueur</option>${names().map(n => `<option value="${esc(n)}" ${selection[i] === n ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>`).join('')}</div><fieldset class="chess-timing"><legend>Temps par joueur</legend><div>${C.MINUTES.map(n => `<label><input type="radio" name="chess-minutes" value="${n}" ${minutes === n ? 'checked' : ''}><span>${n} min</span></label>`).join('')}</div></fieldset><details class="chess-roster" ${names().length < 2 ? 'open' : ''}><summary>Ajouter des joueurs</summary><div id="chess-players"></div></details><button class="chess-button" data-chess="start" type="button" ${selection.some(n => !n) || selection[0] === selection[1] ? 'disabled' : ''}>Lancer la partie ${global.JDDVisuals.arrow()}</button></div><div class="chess-floor" aria-hidden="true"></div></section>`;
     global.JDDPlayerEditor.mount(root.querySelector('#chess-players'), { getNames: names, addPlayer: options.addPlayer, removePlayer: options.removePlayer });
@@ -119,6 +121,8 @@
     closeDialog(); pending = selected = null;
     if (played) tapSound(); save(); renderBoard(played); hud();
     root.querySelector(`[data-square="${to}"]`)?.focus({ preventScroll: true });
+    if (match.result) clearInterval(timer);
+    if (played && match.result?.kind === 'mate') global.JDDVisuals.celebrate(root, CHECKMATE_ART);
   }
   function showDialog(kind, content) {
     const dialog = root.querySelector('dialog'); dialog.dataset.kind = kind; dialog.innerHTML = content;
@@ -149,10 +153,12 @@
   }
   function startTimer() { clearInterval(timer); if (opened && match?.running && !match.result && !document.hidden) timer = setInterval(tick, 100); }
   function exit() {
+    global.JDDVisuals.clearCelebration(root);
     if (match) C.pause(match); save(); closeDialog(); clearInterval(timer); opened = false; options.onExit();
   }
   function init(config) {
     options = config; root = document.getElementById('chess');
+    const checkmateArt = new Image(); checkmateArt.src = CHECKMATE_ART;
     try { match = C.restore(JSON.parse(localStorage.getItem(STORE))); if (match) { C.pause(match); minutes = match.minutes; selection = match.players.map(p => p.label); save(); } } catch (_) {}
     root.addEventListener('click', event => {
       const square = event.target.closest('[data-square]'); if (square) { select(square.dataset.square); return; }
@@ -188,9 +194,9 @@
     });
     global.addEventListener('jdd:players', () => { if (opened && root.dataset.screen === 'setup') setup(); });
     global.addEventListener('resize', fitNames); document.fonts?.ready.then(fitNames);
-    global.addEventListener('pagehide', () => { save(); clearInterval(timer); });
+    global.addEventListener('pagehide', () => { global.JDDVisuals.clearCelebration(root); save(); clearInterval(timer); });
     global.addEventListener('pageshow', event => { if (event.persisted && opened) { tick(); startTimer(); } });
-    document.addEventListener('visibilitychange', () => { if (opened && root.dataset.screen === 'match') { tick(); if (document.hidden) clearInterval(timer); else startTimer(); } });
+    document.addEventListener('visibilitychange', () => { if (opened && root.dataset.screen === 'match') { tick(); if (document.hidden) { global.JDDVisuals.clearCelebration(root); clearInterval(timer); } else startTimer(); } });
   }
   global.JDDModules ||= {};
   global.JDDModules.chess = { init, onOpen() { opened = true; setup(); }, onClose: exit };
