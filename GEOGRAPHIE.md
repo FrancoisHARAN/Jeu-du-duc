@@ -20,7 +20,12 @@ Une partie commencée conserve sa bande, même si l'accueil est modifié ensuite
   la formule haversine, rayon terrestre moyen 6 371,0088 km ; aucun calcul en pixels.
 - Appréciations villes : parfait / super / nul / éclaté au sol. Seuils France :
   10 / 60 / 200 km ; monde : 50 / 500 / 2 000 km.
-- Pays et départements : 1 000 points pour le bon polygone, zéro sinon.
+- Pays : 1 000 points pour le bon polygone, zéro sinon.
+- Départements : 1 000 points pour la bonne réponse, 250 pour un département
+  limitrophe, zéro sinon. Les voisins partagent une frontière terrestre réelle ;
+  être simplement proche ne suffit pas. La bonne réponse reste verte, le voisin
+  choisi est jaune et une autre erreur est rose. Un voisin rapporte des points
+  mais ne compte pas comme une bonne réponse ou un placement parfait dans les stats.
 - Le bilan de chaque tour affiche la sélection et la vraie réponse ; le dernier
   tour mène au classement. Rejouer et revenir au menu restent disponibles.
 - Sortir de Géographie ou mettre l'application en arrière-plan met le tour en
@@ -72,6 +77,8 @@ Sources récupérées le 6 octobre 2026 :
   Les 96 départements métropolitains sont présents, dont Corse-du-Sud (2A),
   Haute-Corse (2B), Paris (75) et la petite couronne. Les coordonnées originales
   et les codes restent conservés ; la simplification de la source allège les contours.
+  La propriété `neighbors` contient les codes des départements avec lesquels
+  chaque polygone partage une ligne de frontière : 238 paires, symétriques.
 - [Leaflet 1.9.4](https://github.com/Leaflet/Leaflet/tree/v1.9.4), distribution
   locale issue du paquet officiel sur jsDelivr.
 - [Natural Earth, fleuves 1:10 millions](https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_10m_rivers_lake_centerlines.geojson)
@@ -115,9 +122,14 @@ Le fichier enregistre les empreintes SHA-256 des sources. Les tracés détaillé
 des fleuves sont généralisés, les massifs sont fusionnés et limités aux terres
 de `countries.geojson`. Le fichier local pèse environ 2,6 Mio avant compression.
 
+`python tools/prepare-department-neighbors.py` régénère les voisins à partir des
+contours locaux avec Shapely, sans déplacer les coordonnées. Cette préparation
+reste hors navigateur : le jeu et la PWA lisent directement les voisins dans
+le GeoJSON déjà précaché, sans requête ni dépendance supplémentaire.
+
 `python tests/geography_smoke.py` vérifie les coordonnées cliquées, l'édition
 des épingles, la distance, la révélation des polygones, les points, le chrono,
 l'alternance, l'absence de doublons, la reprise, six formats d'écran, le pinch
 et le déplacement tactiles dans Chromium. `python tests/pwa_smoke.py` vérifie
-les données et les trois cartes en mode hors connexion sous `/Jeu-du-duc/`.
+les données, les trois cartes et les points limitrophes hors connexion sous `/Jeu-du-duc/`.
 Un essai sur iPhone et Android réels complète les gestes simulés du navigateur.

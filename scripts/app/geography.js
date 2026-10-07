@@ -3,6 +3,7 @@
   'use strict';
   const STORE_KEY = 'jdd.geography.v1';
   const TURN_MS = 30000;
+  const NEIGHBOR_POINTS = 250;
   const REVEAL_SECONDS = .45;
   const CELEBRATION_MS = 2000;
   const MODES = { cities: 'Où est la ville ?', countries: 'Trouve le pays', departments: 'Trouve le département' };
@@ -50,7 +51,7 @@
   function roundCount(people) { return people.length ? Math.ceil(10 / people.length) * people.length : 10; }
   function renderSetup(mode) {
     disposeMap(); chosenMode = mode; setPhase('setup');
-    root.innerHTML = `${topbar(MODES[mode])}<section class="geo-panel">${windowBar(MODES[mode])}<div class="geo-settings"><h1>${escape(MODES[mode])}</h1>${mode === 'cities' ? `<fieldset class="geo-zones"><legend>Les villes</legend><label><input type="radio" name="geo-zone" value="france" ${zone === 'france' ? 'checked' : ''}>France</label><label><input type="radio" name="geo-zone" value="world" ${zone === 'world' ? 'checked' : ''}>Monde</label></fieldset>` : ''}<fieldset class="geo-player-picker"><legend>Qui joue ?</legend><div id="geo-players"></div></fieldset><p id="geo-format" class="geo-help"></p><button type="button" class="geo-button" data-geo="start">Lancer la partie ↗</button><p id="geo-error" role="alert" hidden></p><button type="button" class="geo-link" data-geo="menu">Retour à Géographie</button></div><div class="geo-floor" aria-hidden="true"></div></section>`;
+    root.innerHTML = `${topbar(MODES[mode])}<section class="geo-panel">${windowBar(MODES[mode])}<div class="geo-settings"><h1>${escape(MODES[mode])}</h1>${mode === 'cities' ? `<fieldset class="geo-zones"><legend>Les villes</legend><label><input type="radio" name="geo-zone" value="france" ${zone === 'france' ? 'checked' : ''}>France</label><label><input type="radio" name="geo-zone" value="world" ${zone === 'world' ? 'checked' : ''}>Monde</label></fieldset>` : ''}${mode === 'departments' ? `<p class="geo-help">Bonne réponse : 1 000 pts · Limitrophe : ${NEIGHBOR_POINTS} pts</p>` : ''}<fieldset class="geo-player-picker"><legend>Qui joue ?</legend><div id="geo-players"></div></fieldset><p id="geo-format" class="geo-help"></p><button type="button" class="geo-button" data-geo="start">Lancer la partie ↗</button><p id="geo-error" role="alert" hidden></p><button type="button" class="geo-link" data-geo="menu">Retour à Géographie</button></div><div class="geo-floor" aria-hidden="true"></div></section>`;
     editor = global.JDDPlayerEditor.mount(root.querySelector('#geo-players'), {
       getNames: names, addPlayer: options.addPlayer, removePlayer: options.removePlayer,
     });
@@ -92,7 +93,7 @@
   function answerStyle(feature) {
     const code = feature.properties.code;
     if (match.result && code === target().id) return { ...baseStyle(), fillColor: '#8bd5ae', color: '#18714a', weight: 3 };
-    if (match.guess === code) return { ...baseStyle(), fillColor: match.result ? '#f1a4b6' : '#ffd938', color: '#252124', weight: 3 };
+    if (match.guess === code) return { ...baseStyle(), fillColor: match.result && !match.result.neighbor ? '#f1a4b6' : '#ffd938', color: '#252124', weight: 3 };
     return baseStyle();
   }
   function icon(kind) {
@@ -255,10 +256,12 @@
     clearInterval(clock); clock = null;
     const km = isCity() && match.guess ? distance(match.guess, target()) : null;
     const correct = !isCity() && match.guess === target().id;
+    const neighbor = match.mode === 'departments' && !correct && Boolean(match.guess)
+      && data.departments.features.find(f => f.properties.code === target().id)?.properties.neighbors?.includes(match.guess) === true;
     const thresholds = match.zone === 'france' ? [10, 60, 200] : [50, 500, 2000];
-    const rating = isCity() ? km === null ? 'ÉCLATÉ AU SOL 💀' : km <= thresholds[0] ? 'PARFAIT 👑' : km <= thresholds[1] ? 'SUPER 🔥' : km <= thresholds[2] ? 'NUL 😬' : 'ÉCLATÉ AU SOL 💀' : correct ? 'PARFAIT 👑' : 'RATÉ 😬';
-    const points = isCity() ? km === null ? 0 : Math.round(1000 * Math.exp(-Math.max(0, km - (match.zone === 'france' ? 5 : 25)) / (match.zone === 'france' ? 140 : 1600))) : correct ? 1000 : 0;
-    match.result = { km, correct, rating, points, timedOut };
+    const rating = isCity() ? km === null ? 'ÉCLATÉ AU SOL 💀' : km <= thresholds[0] ? 'PARFAIT 👑' : km <= thresholds[1] ? 'SUPER 🔥' : km <= thresholds[2] ? 'NUL 😬' : 'ÉCLATÉ AU SOL 💀' : correct ? 'PARFAIT 👑' : neighbor ? 'LIMITROPHE 👍' : 'RATÉ 😬';
+    const points = isCity() ? km === null ? 0 : Math.round(1000 * Math.exp(-Math.max(0, km - (match.zone === 'france' ? 5 : 25)) / (match.zone === 'france' ? 140 : 1600))) : correct ? 1000 : neighbor ? NEIGHBOR_POINTS : 0;
+    match.result = { km, correct, neighbor, rating, points, timedOut };
     match.scores[match.index % match.players.length] += points;
     match.rows.push({ target: target().id, player: player(), guess: match.guess, ...match.result });
     match.deadline = 0; setPhase('answer'); save(); reveal(true);

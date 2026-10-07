@@ -2,6 +2,7 @@
 import json
 import math
 import os
+from itertools import combinations
 from pathlib import Path
 import shutil
 import threading
@@ -30,6 +31,21 @@ with Image.open(REPO / 'image/geography/mega-win.webp') as image:
 assert (REPO / 'image/geography/mega-win.webp').stat().st_size < 200_000
 assert len(departments['features']) == 96
 assert {f['properties']['code'] for f in departments['features']} == {f'{i:02}' for i in range(1, 96) if i != 20} | {'2A', '2B'}
+neighbors = {f['properties']['code']: f['properties']['neighbors'] for f in departments['features']}
+assert neighbors['75'] == ['92', '93', '94']
+assert neighbors['2A'] == ['2B'] and neighbors['2B'] == ['2A']
+assert neighbors['45'] == ['18', '28', '41', '58', '77', '89', '91']
+# Vérifier indépendamment chaque voisin avec les segments des contours originaux.
+edges = {}
+for feature in departments['features']:
+    code, geometry = feature['properties']['code'], feature['geometry']
+    polygons = geometry['coordinates'] if geometry['type'] == 'MultiPolygon' else [geometry['coordinates']]
+    edges[code] = {tuple(sorted((tuple(a), tuple(b))))
+                   for polygon in polygons for ring in polygon for a, b in zip(ring, ring[1:])}
+    assert neighbors[code] == sorted(set(neighbors[code])) and code not in neighbors[code]
+    assert set(neighbors[code]) <= set(neighbors)
+for first, second in combinations(edges, 2):
+    assert (second in neighbors[first]) == (first in neighbors[second]) == bool(edges[first] & edges[second])
 for pool in cities.values():
     if not isinstance(pool, list) or not pool or not isinstance(pool[0], dict):
         continue
@@ -227,22 +243,65 @@ try:
         print('PASS: pays cliqués à leurs coordonnées, tours équilibrés, cibles uniques et classement', flush=True)
 
         context, page = home(['Alice'])
+        cases = [('75', '92', 250), ('2A', '2B', 250), ('45', '41', 250),
+                 ('83', '84', 250), ('91', '75', 0), ('92', '92', 1000),
+                 ('2B', '06', 0), ('93', None, 0), ('94', '75', 250), ('17', '17', 1000)]
+        page.evaluate('''order => {
+          const shuffle=JDD.shuffle;
+          JDD.shuffle=list=>shuffle(list).sort((a,b)=>(order.indexOf(a.id)<0?99:order.indexOf(a.id))-(order.indexOf(b.id)<0?99:order.indexOf(b.id)));
+          JDDCloud.begin=()=>({participants:[{kind:'account',id:'test-account',label:'Alice'}]});
+          JDDCloud.record=(match,rows)=>{window.recordedGeoStats=rows;};
+        }''', [case[0] for case in cases])
         start(page, 'departments')
         assert page.locator('#geo-map path.leaflet-interactive').count() == 96
         assert page.locator('[data-geo-code="2A"]').count() == page.locator('[data-geo-code="2B"]').count() == 1
-        code = state(page)['targets'][0]['id']
-        wrong = '17' if code != '17' else '75'
-        select_region(page, wrong, 'departments')
-        action(page, 'validate')
-        assert state(page)['result']['points'] == 0
-        assert page.locator(f'[data-geo-code="{wrong}"]').get_attribute('fill') == '#f1a4b6'
-        assert page.locator(f'[data-geo-code="{code}"]').get_attribute('fill') == '#8bd5ae'
-        action(page, 'next')
-        select_region(page, '75', 'departments')
-        assert state(page)['guess'] == '75', 'Paris reste sélectionnable à fort zoom.'
-        action(page, 'exit')
+        total_points = 0
+        for turn, (code, guess, points) in enumerate(cases):
+            assert state(page)['targets'][turn]['id'] == code
+            if guess:
+                select_region(page, guess, 'departments')
+            if turn in [3, 7]:
+                page.evaluate('offset += 31000')
+                expect(page.locator('#geography')).to_have_attribute('data-screen', 'answer')
+                assert state(page)['result']['timedOut']
+            else:
+                action(page, 'validate')
+            result = state(page)['result']
+            assert result['points'] == points and result['correct'] == (code == guess), (code, guess, result)
+            assert result['neighbor'] == (points == 250)
+            total_points += points
+            assert state(page)['scores'] == [total_points]
+            assert len(state(page)['rows']) == turn + 1
+            assert page.locator(f'[data-geo-code="{code}"]').get_attribute('fill') == '#8bd5ae'
+            if guess != code and guess:
+                assert page.locator(f'[data-geo-code="{guess}"]').get_attribute('fill') == ('#ffd938' if points else '#f1a4b6')
+            if turn == 0:
+                expect(page.locator('#geo-result')).to_contain_text('LIMITROPHE')
+                expect(page.locator('#geo-result')).to_contain_text('+250 pts')
+                layout(page)
+                page.screenshot(path=str(OUT / 'departement-limitrophe.png'), full_page=True)
+                action(page, 'exit');page.locator('#geographyBtn').click();action(page, 'resume')
+                expect(page.locator('#geography')).to_have_attribute('data-screen', 'answer')
+                assert state(page)['scores'] == [250] and len(state(page)['rows']) == 1
+                assert page.locator('[data-geo-code="92"]').get_attribute('fill') == '#ffd938'
+            action(page, 'next')
+        expect(page.locator('#geography')).to_have_attribute('data-screen', 'results')
+        assert state(page)['scores'] == [3250]
+        metrics = page.evaluate('recordedGeoStats[0].metrics')
+        assert metrics['points'] == 3250 and metrics['turns'] == 10
+        assert metrics['correct_places'] == metrics['perfect_places'] == 2, metrics
         context.close()
-        print('PASS: 96 départements, Corse 2A/2B, Paris au zoom et révélation du bon choix', flush=True)
+        print('PASS: 96 départements, vrais voisins 250 pts, exact 1 000, proche sans frontière 0, Corse, chrono, reprise et stats sans fausse bonne réponse', flush=True)
+
+        # Le bonus limitrophe concerne seulement les départements, pas les pays.
+        context, page = home(['Alice'])
+        page.evaluate('''() => {const shuffle=JDD.shuffle;
+          JDD.shuffle=list=>shuffle(list).sort((a,b)=>(b.id==='FRA')-(a.id==='FRA'));}''')
+        start(page, 'countries')
+        assert state(page)['targets'][0]['id'] == 'FRA'
+        select_region(page, 'ESP', 'countries');action(page, 'validate')
+        assert state(page)['result']['points'] == 0 and not state(page)['result']['neighbor']
+        action(page, 'exit');context.close()
 
         context, page = home(['Alice'])
         # Auckland près de l'antiméridien : distance et ligne suivent le court trajet.

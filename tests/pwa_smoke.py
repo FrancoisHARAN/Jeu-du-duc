@@ -280,6 +280,9 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         page.evaluate('''() => { const create=L.map;
           L.map=(...args)=>{window.offlineGeoMap=create(...args);return offlineGeoMap;}; }''')
         for mode, expected in [('cities', 242), ('countries', 242), ('departments', 96)]:
+            if mode == 'departments':
+                page.evaluate('''() => {window.offlineGeoShuffle=JDD.shuffle;
+                  JDD.shuffle=list=>offlineGeoShuffle(list).sort((a,b)=>(b.id==='75')-(a.id==='75'));}''')
             page.locator('#geographyBtn').click()
             page.locator(f'[data-geo-mode="{mode}"]').click()
             page.locator('[data-geo="start"]').click()
@@ -299,8 +302,22 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
                 expect(page.locator('#geography')).to_have_attribute('data-screen', 'answer')
                 assert page.locator('.geo-pin--truth').count() == 1
                 expect(page.locator('#geo-mega-win')).to_be_visible()
+            if mode == 'departments':
+                page.evaluate('''() => {
+                  const match=JSON.parse(localStorage.getItem('jdd.geography.v1'));
+                  if(match.targets[0].id!=='75')throw new Error('Paris attendu');
+                  offlineGeoMap.eachLayer(layer=>{
+                    if(layer.feature?.properties.code==='92')layer.fire('click',{});
+                  });
+                }''')
+                page.locator('[data-geo="validate"]').click()
+                expect(page.locator('#geography')).to_have_attribute('data-screen', 'answer')
+                result=page.evaluate('JSON.parse(localStorage.getItem("jdd.geography.v1")).result')
+                assert result['neighbor'] and result['points']==250 and not result['correct']
+                expect(page.locator('#geo-result')).to_contain_text('+250 pts')
+                page.evaluate('() => {JDD.shuffle=offlineGeoShuffle;}')
             page.locator('[data-geo="exit"]').click()
-        print('PASS: trois cartes vectorielles et données géographiques hors connexion', flush=True)
+        print('PASS: trois cartes vectorielles, données et score limitrophe de 250 pts hors connexion', flush=True)
         # Banque du classeur, chacun pour soi et équipes disponibles en mode avion.
         page.evaluate('window.footNow=Date.now;window.footOffset=0;Date.now=()=>footNow()+footOffset')
         for format in ['individual', 'teams']:
