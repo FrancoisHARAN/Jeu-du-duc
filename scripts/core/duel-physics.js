@@ -30,13 +30,14 @@
     return { id, team, x, y, vx: 0, vy: 0, r, mass, angle: 0, spin: 0 };
   }
   function goalkeeper(team) { return body(10 + team, team, 200, team ? FIELD.top + 2 : FIELD.bottom - 2); }
-  function formationPositions(formation, team) {
+  function formationPositions(formation, team, defending = false) {
     const counts = (FORMATIONS.includes(formation) ? formation : FORMATIONS[0]).split('-').map(Number);
     const result = [];
     counts.forEach((count, row) => {
       for (let col = 0; col < count; col++) {
-        const x = count === 1 ? 200 : 126 + col * 148;
-        const y = FIELD.top + (FIELD.bottom - FIELD.top) * [.85, .71, .565][row];
+        const spread = defending ? 96 : 148;
+        const x = count === 1 ? 200 : 200 - spread / 2 + col * spread;
+        const y = FIELD.top + (FIELD.bottom - FIELD.top) * (defending ? [.89, .79, .68] : [.85, .71, .565])[row];
         result.push({ x: team ? 400 - x : x, y: team ? 680 - y : y });
       }
     });
@@ -44,12 +45,12 @@
   }
   function reset(s, team = s.turn) {
     s.bodies = [];
-    s.formations.forEach((formation, t) => formationPositions(formation, t).forEach((p, i) => s.bodies.push(body(t * 5 + i, t, p.x, p.y))));
+    s.formations.forEach((formation, t) => formationPositions(formation, t, t !== team).forEach((p, i) => s.bodies.push(body(t * 5 + i, t, p.x, p.y))));
     s.bodies.push(goalkeeper(0), goalkeeper(1), body(BALL_ID, null, 200, 340));
     s.turn = team; s.active = null; s.action = null; s.capture = null; s.quiet = 0; s.phase = 'aim';
   }
-  function create(formations = FORMATIONS.slice(0, 2), starter = 0) {
-    const s = { version: 2, formations: [0, 1].map(i => FORMATIONS.includes(formations[i]) ? formations[i] : FORMATIONS[0]),
+  function create(formations = FORMATIONS.slice(0, 2), starter = Math.random() < .5 ? 0 : 1) {
+    const s = { version: 3, formations: [0, 1].map(i => FORMATIONS.includes(formations[i]) ? formations[i] : FORMATIONS[0]),
       scores: [0, 0], turn: starter === 1 ? 1 : 0, phase: 'aim', active: null,
       action: null, capture: null, quiet: 0, moves: [0, 0], passes: [0, 0], goalTime: 0, winner: null, serial: 0 };
     reset(s); return s;
@@ -126,7 +127,8 @@
     const b = ball(s);
     s.action.receiver = receiver.id; s.active = receiver.id; s.passes[s.turn]++; s.serial++;
     const anchor = body(BALL_ID, null, b.x, b.y); contain(anchor);
-    s.capture = { id: receiver.id, x: anchor.x, y: anchor.y, elapsed: 0, orbit: Math.atan2(receiver.y - b.y, receiver.x - b.x) };
+    s.capture = { id: receiver.id, stage: 'coast', coastQuiet: 0, x: anchor.x, y: anchor.y,
+      elapsed: 0, orbit: Math.atan2(receiver.y - b.y, receiver.x - b.x) };
   }
   function canStand(x, y, r) {
     const p = body(0, 0, x, y); p.r = r; contain(p);
@@ -140,6 +142,30 @@
   function magnet(s, dt) {
     const c = s.capture, p = s.bodies[c.id], b = ball(s), gap = p.r + b.r + PASS_GAP;
     c.elapsed += dt;
+    if (c.stage === 'coast') {
+      // Liaison souple, sans ancrage au terrain : l'impulsion totale est conservée.
+      // Le tireur peut encore pousser le receveur pendant les rebonds de la passe.
+      const dx = b.x - p.x, dy = b.y - p.y, d = Math.hypot(dx, dy);
+      if (d > gap && c.elapsed > .06) {
+        const nx = dx / d, ny = dy / d;
+        const relative = (b.vx - p.vx) * nx + (b.vy - p.vy) * ny;
+        const impulse = clamp((d - gap) * 55 + relative * 6, 0, 900) * dt;
+        b.vx -= nx * impulse / b.mass; b.vy -= ny * impulse / b.mass;
+        p.vx += nx * impulse / p.mass; p.vy += ny * impulse / p.mass;
+      }
+      c.coastQuiet = s.bodies.every(body => length(body) < 12) ? c.coastQuiet + dt : 0;
+      if (c.coastQuiet < .12) return false;
+      // Recaler depuis la position atteinte par le receveur, sans le ramener
+      // au premier contact. Le ballon rejoint sa position devant lui par ressort.
+      const goalY = s.turn === 0 ? FIELD.top : FIELD.bottom;
+      const direction = Math.atan2(goalY - p.y, 200 - p.x);
+      const anchor = body(BALL_ID, null, p.x + Math.cos(direction) * gap,
+        clamp(p.y + Math.sin(direction) * gap, FIELD.top + BALL_RADIUS + FIELD.wall, FIELD.bottom - BALL_RADIUS - FIELD.wall));
+      contain(anchor);
+      c.x = anchor.x; c.y = anchor.y; c.stage = 'align'; c.elapsed = 0;
+      c.orbit = Math.atan2(p.y - b.y, p.x - b.x);
+      s.serial++;
+    }
     force(b, c.x, c.y, 150, 24, 2600, dt);
     const goalY = s.turn === 0 ? FIELD.top : FIELD.bottom;
     let ideal = Math.atan2(b.y - goalY, b.x - 200);
@@ -159,10 +185,10 @@
     s.scores[scorer]++; s.scorer = scorer; s.phase = 'goal'; s.goalTime = 0;
     s.capture = null; s.action = null; s.serial++;
     if (s.scores[scorer] >= 3) s.winner = scorer;
-    s.bodies.forEach(p => { p.vx = p.vy = p.spin = 0; });
   }
   function integrate(s, dt) {
-    const aligned = s.capture ? magnet(s, dt) : true;
+    const playing = s.phase === 'moving';
+    const aligned = playing && s.capture ? magnet(s, dt) : true;
     for (const p of s.bodies) {
       const speed = length(p), decay = Math.exp(-(p.team === null ? 1.15 : 1.4) * dt);
       const drag = Math.max(0, speed * decay - (p.team === null ? 9 : 13) * dt) / Math.max(.001, speed);
@@ -174,19 +200,20 @@
     for (let iteration = 0; iteration < 10; iteration++) {
       for (let i = 0; i < s.bodies.length; i++) for (let j = i + 1; j < s.bodies.length; j++) {
         const a = s.bodies[i], b = s.bodies[j], impact = collide(a, b, iteration === 0);
-        if (iteration === 0 && impact > .001 && b.team === null && a.team === s.turn
+        if (playing && iteration === 0 && impact > .001 && b.team === null && a.team === s.turn
           && a.id !== s.action.shooter && s.action.receiver === null) pass(s, a);
       }
       s.bodies.forEach(contain);
     }
+    if (!playing) return;
     const b = ball(s);
-    if (b.x - b.r > FIELD.goalLeft && b.x + b.r < FIELD.goalRight) {
+    if ((!s.capture || s.capture.stage === 'coast') && b.x - b.r > FIELD.goalLeft && b.x + b.r < FIELD.goalRight) {
       if (b.y + b.r < FIELD.top) { goal(s, 0); return; }
       if (b.y - b.r > FIELD.bottom) { goal(s, 1); return; }
     }
     s.action.elapsed += dt;
     const still = s.bodies.every(p => length(p) < 4);
-    const ready = !s.capture || aligned || s.capture.elapsed > 2.8;
+    const ready = !s.capture || (s.capture.stage === 'align' && (aligned || s.capture.elapsed > 2.8));
     s.quiet = still && ready ? s.quiet + dt : 0;
     if (s.quiet > .16) {
       s.bodies.forEach(p => { p.vx = p.vy = p.spin = 0; });
@@ -197,27 +224,29 @@
   }
   function step(s, dt) {
     dt = clamp(Number(dt) || 0, 0, .05);
-    if (s.phase === 'goal') {
-      s.goalTime += dt;
-      if (s.goalTime >= GOAL_DURATION) {
-        if (s.winner !== null) s.phase = 'finished'; else reset(s, 1 - s.scorer);
-        s.serial++;
-      }
-      return;
-    }
-    if (s.phase !== 'moving') return;
+    if (!['moving', 'goal'].includes(s.phase)) return;
     // Aucun déplacement n'atteint le rayon du ballon, même à la puissance maximale.
     let remaining = dt;
-    while (remaining > 1e-7 && s.phase === 'moving') {
+    while (remaining > 1e-7 && ['moving', 'goal'].includes(s.phase)) {
       // Recalculer après chaque collision, qui peut accélérer le petit ballon.
       const speed = Math.max(1, ...s.bodies.map(length));
       const slice = Math.min(remaining, STEP, 3 / (speed + 24));
+      const celebrating = s.phase === 'goal';
       integrate(s, slice); remaining -= slice;
+      if (celebrating) {
+        s.goalTime += slice;
+        if (s.goalTime + 1e-7 >= GOAL_DURATION) {
+          if (s.winner !== null) {
+            s.phase = 'finished'; s.bodies.forEach(p => { p.vx = p.vy = p.spin = 0; });
+          } else reset(s, s.scorer);
+          s.serial++;
+        }
+      }
     }
   }
   function restore(raw) {
     const legacy = raw?.version === 1, count = legacy ? 11 : 13;
-    if (!raw || ![1, 2].includes(raw.version) || !['aim', 'moving', 'goal', 'finished'].includes(raw.phase)
+    if (!raw || ![1, 2, 3].includes(raw.version) || !['aim', 'moving', 'goal', 'finished'].includes(raw.phase)
       || ![0, 1].includes(raw.turn) || !Array.isArray(raw.formations) || raw.formations.length !== 2
       || raw.formations.some(f => !FORMATIONS.includes(f)) || !Array.isArray(raw.scores) || raw.scores.length !== 2
       || raw.scores.some(n => !Number.isInteger(n) || n < 0 || n > 3) || !Array.isArray(raw.bodies) || raw.bodies.length !== count) return null;
@@ -237,9 +266,12 @@
       || !Number.isFinite(raw.action.elapsed) || (raw.action.receiver !== null && raw.bodies[raw.action.receiver]?.team !== raw.turn))) return null;
     if (raw.capture && (!Number.isFinite(raw.capture.x) || !Number.isFinite(raw.capture.y)
       || !Number.isFinite(raw.capture.elapsed) || !Number.isFinite(raw.capture.orbit) || raw.bodies[raw.capture.id]?.team !== raw.turn)) return null;
+    if (raw.version === 3 && raw.capture && (!['coast', 'align'].includes(raw.capture.stage)
+      || !Number.isFinite(raw.capture.coastQuiet) || raw.capture.coastQuiet < 0)) return null;
     if ((raw.phase === 'goal' && ![0, 1].includes(raw.scorer)) || ![null, 0, 1].includes(raw.winner)) return null;
     if (raw.phase === 'finished' && (raw.winner === null || raw.scores[raw.winner] !== 3)) return null;
-    if (!legacy) return raw;
+    const capture = raw.capture && raw.version < 3 ? { ...raw.capture, stage: 'align', coastQuiet: 0 } : raw.capture;
+    if (!legacy) return raw.version === 3 ? raw : { ...raw, version: 3, capture };
     // Ajouter les gardiens sans déplacer les onze disques de l'ancienne partie.
     const bodies = raw.bodies.slice(0, 10).map(p => ({ ...p }));
     const savedBall = { ...raw.bodies[10], id: BALL_ID };
@@ -259,7 +291,7 @@
       bodies.push(keeper);
     }
     bodies.push(savedBall);
-    return { ...raw, version: 2, bodies };
+    return { ...raw, version: 3, bodies, capture };
   }
   const api = { FIELD, FORMATIONS, PUCK_RADIUS, KEEPER_RADIUS, BALL_RADIUS, BALL_ID, PASS_GAP, GOAL_DURATION, MAX_SHOT, STEP, walls, corners,
     create, reset, step, shoot, selectable, restore, formationPositions, canStand, isKeeper };

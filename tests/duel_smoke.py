@@ -36,16 +36,30 @@ try:
             context.add_init_script("const fixture=sessionStorage.getItem('duel-fixture');if(fixture){localStorage.setItem('jdd.duel-football.v1',fixture);sessionStorage.removeItem('duel-fixture');}")
             page = context.new_page(); page.on('pageerror', lambda error: errors.append(str(error)))
             page.goto(base, wait_until='load')
+            page.evaluate('Math.random=()=>.25')
             assert page.locator('#footballBtn + #duelBtn').count() == 1
             page.locator('#duelBtn').click()
             return context, page
 
         def saved(page): return page.evaluate('JSON.parse(localStorage.getItem("jdd.duel-football.v1"))')
 
+        def watch_board(page):
+            page.evaluate('''() => {
+                window.duelRects=[];
+                const sample=()=>{const c=document.getElementById('duel-canvas');
+                    if(c){const r=c.getBoundingClientRect();duelRects.push([r.x,r.y,r.width,r.height,c.width,c.height]);}
+                    window.duelRectFrame=requestAnimationFrame(sample);};sample();
+            }''')
+
+        def assert_fixed_board(page):
+            rects = page.evaluate('cancelAnimationFrame(window.duelRectFrame);duelRects')
+            assert len(rects) > 5
+            assert all(abs(value - rects[0][i]) < .25 for r in rects for i, value in enumerate(r)), rects
+
         def seed(page, code):
             page.evaluate('''code => {
                 const match = JSON.parse(localStorage.getItem('jdd.duel-football.v1'));
-                match.physics = JDDDuelPhysics.create(match.physics.formations);
+                match.physics = JDDDuelPhysics.create(match.physics.formations, 0);
                 const s = match.physics;
                 s.bodies.forEach((p,i)=>{if(i<10){p.x=i<5?52:348;p.y=130+i%5*105;}});
                 s.bodies[10].x=166;s.bodies[11].x=234;
@@ -82,6 +96,7 @@ try:
         assert m['players'][0]['id'] != m['players'][1]['id']
         assert m['physics']['formations'] == ['2-2-1', '1-2-2']
         page.screenshot(path=str(OUT / 'terrain-mobile.png'))
+        watch_board(page)
         gesture(page, m['physics']['bodies'][0], dy=40, cancel=True)
         assert saved(page)['physics']['moves'] == [0, 0]
         gesture(page, m['physics']['bodies'][0], dy=4)
@@ -93,6 +108,7 @@ try:
         assert abs(s['bodies'][0]['vx']) < .1 and 650 < abs(s['bodies'][0]['vy']) <= 720
         page.locator('[data-duel="pause"]').click(); stopped = saved(page)
         page.wait_for_timeout(400); assert saved(page) == stopped
+        assert_fixed_board(page)
         page.reload(wait_until='load'); page.locator('#duelBtn').click(); page.locator('[data-duel="resume"]').click()
         expect(page.locator('#duel')).to_have_attribute('data-phase', 'aim', timeout=12000)
         assert saved(page)['physics']['moves'] == [1, 0]
@@ -106,12 +122,15 @@ try:
         expect(page.locator('#duel')).to_have_attribute('data-phase', 'aim', timeout=12000)
         print('PASS: gardien sélectionné et lancé avec un vrai geste tactile', flush=True)
 
-        seed(page, "Object.assign(s.bodies[0],{x:200,y:440});Object.assign(s.bodies[JDDDuelPhysics.BALL_ID],{x:200,y:400});Object.assign(s.bodies[1],{x:200,y:285});")
+        seed(page, "Object.assign(s.bodies[0],{x:200,y:600});Object.assign(s.bodies[JDDDuelPhysics.BALL_ID],{x:200,y:560});Object.assign(s.bodies[1],{x:200,y:445});")
+        watch_board(page)
         gesture(page, saved(page)['physics']['bodies'][0])
         expect(page.locator('#duel')).to_have_attribute('data-phase', 'moving')
         expect(page.locator('#duel')).to_have_attribute('data-phase', 'aim', timeout=12000)
         s = saved(page)['physics']; assert s['turn'] == 0 and s['active'] == 1 and s['passes'][0] == 1
+        assert s['bodies'][1]['y'] < 400, 'Le receveur avance grâce à la passe'
         assert 29 < s['bodies'][1]['y'] - s['bodies'][12]['y'] < 33
+        assert_fixed_board(page)
         page.screenshot(path=str(OUT / 'passe-recue.png'))
         gesture(page, s['bodies'][0]); assert saved(page)['physics']['moves'][0] == 1
         page.locator('[data-duel="exit"]').click()
@@ -122,8 +141,10 @@ try:
         print('PASS: passe tactile, repositionnement aligné, receveur imposé, second tir immédiat et conservation après retour au menu', flush=True)
 
         seed(page, "s.scores=[2,0];Object.assign(s.bodies[0],{x:200,y:120});Object.assign(s.bodies[JDDDuelPhysics.BALL_ID],{x:200,y:82});")
+        watch_board(page)
         gesture(page, saved(page)['physics']['bodies'][0])
         expect(page.locator('#duel')).to_have_attribute('data-phase', 'goal')
+        scored_ball = saved(page)['physics']['bodies'][12]
         celebration = page.locator('#duel .jdd-celebration')
         expect(celebration).to_be_visible()
         assert celebration.evaluate('n=>getComputedStyle(n).pointerEvents') == 'none'
@@ -135,8 +156,11 @@ try:
         assert art.evaluate('n=>n.complete && n.naturalWidth>0')
         page.wait_for_timeout(650)
         assert float(art.evaluate('n=>getComputedStyle(n).opacity')) > .99
+        moving_ball = saved(page)['physics']['bodies'][12]
+        assert abs(moving_ball['y'] - scored_ball['y']) > 2, 'Le ballon continue à bouger après le but'
         page.screenshot(path=str(OUT / 'but.png'))
         expect(page.locator('#duel')).to_have_attribute('data-phase', 'finished')
+        assert_fixed_board(page)
         expect(celebration).to_have_count(0)
         expect(page.locator('.duel-result h2')).to_have_text('Alex gagne !')
         expect(page.locator('#duel-score-0')).to_have_text('3')
@@ -150,6 +174,7 @@ try:
         assert saved(page)['physics']['scores'] == [0, 0]
         context.close()
         print('PASS: animation de but, victoire à trois, résultat conservé et nouvelle partie à zéro', flush=True)
+        print('PASS: cadre fixe pendant les tirs, passes, pauses et buts, ballon toujours animé après un but', flush=True)
 
         context, page = home()
         page.emulate_media(reduced_motion='reduce')

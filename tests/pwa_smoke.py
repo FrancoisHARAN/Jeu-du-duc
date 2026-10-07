@@ -357,7 +357,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         duel = page.evaluate('JSON.parse(localStorage.getItem("jdd.duel-football.v1"))')
         assert len(duel['physics']['bodies']) == 13
         canvas = page.locator('#duel-canvas').bounding_box()
-        pion = duel['physics']['bodies'][0]
+        pion = duel['physics']['bodies'][duel['physics']['turn']*5]
         x = canvas['x'] + 2 + pion['x'] * (canvas['width'] - 4) / 400
         y = canvas['y'] + 2 + pion['y'] * (canvas['height'] - 4) / 680
         page.mouse.move(x, y); page.mouse.down(); page.mouse.move(x, y - 90); page.mouse.up()
@@ -370,7 +370,7 @@ with tempfile.TemporaryDirectory(prefix='jdd-pwa-') as tmp:
         page.add_init_script("{const fixture=sessionStorage.getItem('duel-offline-goal');if(fixture){localStorage.setItem('jdd.duel-football.v1',fixture);sessionStorage.removeItem('duel-offline-goal');}}")
         page.evaluate('''() => {
             const m=JSON.parse(localStorage.getItem('jdd.duel-football.v1'));
-            const s=m.physics=JDDDuelPhysics.create(m.physics.formations);
+            const s=m.physics=JDDDuelPhysics.create(m.physics.formations,0);
             s.scores=[2,0];
             s.bodies.slice(0,10).forEach((p,i)=>{p.x=i<5?52:348;p.y=130+i%5*105;});
             s.bodies[10].x=166;s.bodies[11].x=234;

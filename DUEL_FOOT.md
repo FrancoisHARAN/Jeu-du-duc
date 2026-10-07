@@ -7,6 +7,10 @@ champ et un gardien par camp, premier à trois buts. Les premiers joueurs de la
 bande sont présélectionnés. Le gardien, marqué G, démarre sur sa ligne de but ;
 son rayon est de 20 contre 15 pour les autres pions. Il est jouable, mobile et
 peut recevoir des passes comme tous ses coéquipiers.
+L'engagement initial est tiré au sort une seule fois. L'équipe qui engage garde
+sa formation de base ; celle qui défend conserve les mêmes lignes, rapprochées
+du but et resserrées en largeur. Après un but, le marqueur engage et l'autre
+équipe se remet en défense. Les positions ne changent pas entre deux tirs.
 
 ## Contrôle et physique
 
@@ -25,17 +29,23 @@ arcs de rayon 56 ; les poches des buts possèdent leurs murs latéraux et arriè
 Les mêmes coordonnées servent au dessin et aux collisions. Le ballon est plus
 petit que les pions ; les touches décentrées changent sa direction et sa rotation.
 
-Le premier contact avec un coéquipier autre que le tireur capture la passe.
-Un ressort amorti retient le ballon ; le receveur suit un petit arc autour de lui
-vers l'alignement avec le but adverse. Huit unités séparent les bords du ballon
+Le premier contact avec un coéquipier autre que le tireur enregistre la passe.
+Une liaison souple entre le ballon et le receveur applique des impulsions égales
+et opposées : aucun ancrage fixe ne coupe leur inertie. Le tireur poursuit sa
+course et peut pousser le receveur ; une passe forte avance davantage. Le recalage
+commence quand tous les disques ralentissent, depuis la position atteinte par
+le receveur. Le ballon et le pion se repositionnent avec des ressorts amortis
+et des collisions, sans téléportation. Huit unités séparent les bords du ballon
 et du receveur, au lieu de quatre, pour faciliter les frappes décentrées. Cet
 espace reste identique pour un gardien. Les disques gênants gardent leur masse et
 sont poussés par les collisions. Près d'un mur, l'angle réalisable le plus proche
 est choisi. Une fois les mouvements terminés, le receveur est le seul pion actif
 et peut immédiatement rejouer. Aucun bouton entre les tirs. Sans passe ni but,
 le tour change. Un but exige le franchissement complet du ballon, puis une
-animation de deux secondes et une remise aux formations ; le joueur qui encaisse
-reprend. À trois buts, le résultat reste affiché jusqu'à Rejouer ou Menu.
+animation de deux secondes pendant laquelle les disques continuent à rebondir
+et à ralentir, puis une remise aux formations ; le marqueur reprend. Le score
+est verrouillé pendant la célébration, même si le ballon ressort du but.
+À trois buts, le résultat reste affiché jusqu'à Rejouer ou Menu.
 
 ## Intégration
 
@@ -43,15 +53,19 @@ reprend. À trois buts, le résultat reste affiché jusqu'à Rejouer ou Menu.
 écrans. La simulation utilise requestAnimationFrame et s'arrête quand elle est
 immobile. Un départ au menu, une pause, un rechargement ou le passage en
 arrière-plan conserve les positions, le tour, le receveur, les scores et les
-identités dans `jdd.duel-football.v1`. Le format physique v2 reprend les sauvegardes
-v1 en ajoutant des gardiens dans des emplacements libres près de leur but, sans
-déplacer les anciens pions ou le ballon ni perdre les scores ou le receveur.
-Les états invalides sont ignorés. La reprise
-ne compte pas le temps passé en arrière-plan. Les sons de tir et de but respectent
+identités dans `jdd.duel-football.v1`. Le format physique v3 reprend les sauvegardes
+v1 et v2 ; les gardiens manquants sont ajoutés dans des emplacements libres près
+de leur but, sans déplacer les anciens pions ou le ballon ni perdre les scores
+ou le receveur. Les états invalides sont ignorés. La reprise ne compte pas le
+temps passé en arrière-plan. Les sons de tir et de but respectent
 l'interrupteur global. Le visuel transparent `image/duel/goal.webp` utilise la
 célébration partagée : zoom/rebond, pièces et éclats, puis disparition en deux
 secondes. Il reste au-dessus du terrain sans bloquer les commandes et disparaît
 au menu ou à la pause ; la réduction des animations est respectée.
+Le bandeau de tour garde une hauteur fixe. Les changements de score ou de phase
+ne redimensionnent plus le canvas ; seuls un changement de taille d'écran et
+le chargement des polices peuvent le faire. Les marges et le score sont plus
+compacts pour laisser davantage de place au terrain mobile.
 
 Le match est local et ne requiert pas de nouvelle table Supabase. Ses scores ne
 sont pas mélangés aux statistiques du Grand Quiz Foot. Scripts, style et icône

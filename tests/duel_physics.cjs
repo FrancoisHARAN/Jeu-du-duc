@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const P = require('../scripts/core/duel-physics.js');
 const F = P.FIELD;
 function clear() {
-  const s = P.create();
+  const s = P.create(undefined, 0);
   s.bodies.forEach((p, i) => { if (i < 10) { p.x = i < 5 ? 52 : 348; p.y = 130 + (i % 5) * 105; } });
   s.bodies[10].x = 166; s.bodies[11].x = 234;
   return s;
@@ -31,13 +31,29 @@ function settle(s, limit = 1500) {
   assert(frames < limit, 'Le tour doit se terminer sans intervention'); return frames;
 }
 for (const f of P.FORMATIONS) {
-  const s = P.create([f, f]); integrity(s);
+  const s = P.create([f, f], 0); integrity(s);
   assert.equal(s.bodies.filter(p => p.team === 0).length, 6); assert.equal(s.bodies.filter(p => p.team === 1).length, 6);
   assert.equal(s.bodies.filter(P.isKeeper).length, 2);
   assert.equal(s.bodies[10].r, P.KEEPER_RADIUS); assert.equal(s.bodies[11].r, P.KEEPER_RADIUS);
   assert.equal(s.bodies[10].y + s.bodies[11].y, 680);
   assert(P.selectable(s, 10)); assert(!P.selectable(s, 11));
-  for (let i = 0; i < 5; i++) assert.equal(s.bodies[i].y + s.bodies[i + 5].y, 680);
+  for (let i = 0; i < 5; i++) {
+    const attack = P.formationPositions(f, 1)[i], defense = s.bodies[i + 5];
+    assert(defense.y < attack.y, 'La défense est plus proche de son but');
+    assert(Math.abs(defense.x - 200) <= Math.abs(attack.x - 200));
+  }
+  const reversed = P.create([f, f], 1); integrity(reversed);
+  for (let i = 0; i < 5; i++) {
+    assert.equal(s.bodies[i].y + reversed.bodies[i + 5].y, 680);
+    assert.equal(s.bodies[i + 5].y + reversed.bodies[i].y, 680);
+  }
+}
+{
+  const random = Math.random;
+  try {
+    Math.random = () => .1; assert.equal(P.create().turn, 0);
+    Math.random = () => .9; assert.equal(P.create().turn, 1);
+  } finally { Math.random = random; }
 }
 assert(P.BALL_RADIUS < P.PUCK_RADIUS);
 assert(P.KEEPER_RADIUS > P.PUCK_RADIUS);
@@ -49,8 +65,8 @@ assert(P.KEEPER_RADIUS > P.PUCK_RADIUS);
 console.log('PASS: trois formations symétriques, cinq pions + gardien jouable par camp, puissance plafonnée et alternance automatique');
 {
   const s = clear(), p = s.bodies[0], b = s.bodies[P.BALL_ID], receiver = s.bodies[1];
-  Object.assign(p, { x: 200, y: 440 }); Object.assign(b, { x: 200, y: 400 }); Object.assign(receiver, { x: 200, y: 285 });
-  P.shoot(s, 0, 0, -700); settle(s);
+  Object.assign(p, { x: 200, y: 600 }); Object.assign(b, { x: 200, y: 560 }); Object.assign(receiver, { x: 200, y: 445 });
+  P.shoot(s, 0, 0, -500); settle(s);
   assert.equal(s.turn, 0); assert.equal(s.active, 1); assert.equal(s.passes[0], 1);
   assert(receiver.y > b.y && Math.abs(receiver.x - b.x) < 2, 'Pion → ballon → but adverse');
   assert(Math.abs(Math.hypot(receiver.x - b.x, receiver.y - b.y) - (receiver.r + b.r + P.PASS_GAP)) < 1.5, 'Petit espace devant le receveur');
@@ -61,6 +77,48 @@ console.log('PASS: trois formations symétriques, cinq pions + gardien jouable p
   assert.equal(s.turn, 0); assert.equal(s.active, 2); assert.equal(s.passes[0], 2);
 }
 console.log('PASS: capture, rotation naturelle de 180°, petit espace, receveur actif et deux passes enchaînées');
+{
+  function reception(power) {
+    let s = clear();
+    Object.assign(s.bodies[0], { x: 200, y: 600 }); Object.assign(s.bodies[P.BALL_ID], { x: 200, y: 560 });
+    Object.assign(s.bodies[1], { x: 200, y: 470 }); P.shoot(s, 0, 0, -power);
+    let contact = null, coastEnd = null, saved = false;
+    for (let i = 0; i < 1500 && s.phase === 'moving'; i++) {
+      const oldStage = s.capture?.stage; P.step(s, P.STEP); integrity(s);
+      if (s.capture?.stage === 'coast') {
+        if (contact === null) {
+          contact = s.bodies[1].y;
+          assert(s.bodies[1].vy < -20, 'La passe transfère la vitesse au receveur');
+          assert(s.bodies[0].vy < -20, 'Le tireur garde son inertie');
+        }
+        if (!saved) {
+          const copy = JSON.parse(JSON.stringify(s)); s = P.restore(copy);
+          assert.deepEqual(s, copy); saved = true;
+        }
+      }
+      if (oldStage === 'coast' && s.capture?.stage === 'align') coastEnd = s.bodies[1].y;
+    }
+    assert.equal(s.phase, 'aim'); assert.equal(s.active, 1); assert.equal(s.turn, 0);
+    assert(contact !== null && coastEnd !== null && saved);
+    assert(s.bodies[1].y < contact - 20, 'Le receveur avance après le contact');
+    assert(Math.abs(s.bodies[1].y - coastEnd) < 6, 'Le recalage conserve la position atteinte');
+    return s.bodies[1].y;
+  }
+  const soft = reception(300), strong = reception(700);
+  assert(strong < soft - 40, 'Une passe plus forte fait progresser davantage');
+  const s = clear();
+  Object.assign(s.bodies[0], { x: 200, y: 600 }); Object.assign(s.bodies[1], { x: 200, y: 520, vy: -60 });
+  Object.assign(s.bodies[P.BALL_ID], { x: 220, y: 485, vy: -60 }); P.shoot(s, 0, 0, -700);
+  s.action.receiver = 1; s.active = 1; s.passes[0] = 1;
+  s.capture = { id: 1, stage: 'coast', coastQuiet: 0, x: 220, y: 485, elapsed: .1, orbit: 1.5 };
+  let pushed = false;
+  for (let i = 0; i < 80 && s.phase === 'moving'; i++) {
+    P.step(s, P.STEP); integrity(s);
+    if (Math.hypot(s.bodies[0].x - s.bodies[1].x, s.bodies[0].y - s.bodies[1].y) < 35 && s.bodies[1].vy < -100) pushed = true;
+  }
+  assert(pushed, 'Les collisions du tireur avec le receveur restent actives pendant la réception'); settle(s);
+}
+console.log('PASS: inertie conservée, poussée du receveur, avance liée à la puissance, recalage final et reprise pendant la réception');
 {
   const s = clear(); Object.assign(s.bodies[P.BALL_ID], { x: 200, y: 308.8, vy: -6 });
   Object.assign(s.bodies[1], { x: 200, y: 285 });
@@ -102,7 +160,7 @@ for (const [x, y, rx, ry] of [[200, 340, 200, 313], [42, 340, 65, 340], [90, 80,
   Object.assign(s.bodies[2], { x: 200, y: 540 });
   Object.assign(s.bodies[5], { x: x + 32, y: y + 25 });
   s.phase = 'moving'; s.active = 1; s.action = { shooter: 0, receiver: 1, elapsed: 0 };
-  s.capture = { id: 1, x, y, orbit: Math.atan2(ry - y, rx - x), elapsed: 0 };
+  s.capture = { id: 1, stage: 'align', coastQuiet: 0, x, y, orbit: Math.atan2(ry - y, rx - x), elapsed: 0 };
   const blocker = { x: s.bodies[5].x, y: s.bodies[5].y };
   settle(s); assert.equal(s.turn, 0); assert.equal(s.active, 1);
   assert(Math.hypot(blocker.x - s.bodies[5].x, blocker.y - s.bodies[5].y) > 5, 'Un pion gênant doit être poussé physiquement');
@@ -127,11 +185,17 @@ console.log('PASS: rebonds dans les quatre coins arrondis, murs complets et tirs
   const s = clear(); P.shoot(s, 0, 20, 0); Object.assign(s.bodies[P.BALL_ID], { x: 200, y: F.top - 6, vx: 0, vy: 0 });
   P.step(s, P.STEP); assert.deepEqual(s.scores, [0, 0], 'Tout le ballon doit franchir la ligne');
   s.bodies[P.BALL_ID].vy = -100; P.step(s, .05); assert.deepEqual(s.scores, [1, 0]); assert.equal(s.phase, 'goal');
-  for (let i = 0; i < 39; i++) P.step(s, .05);
+  const goalY = s.bodies[P.BALL_ID].y;
+  assert(Math.abs(s.bodies[P.BALL_ID].vy) > 0, 'Un but ne coupe pas la vitesse');
+  for (let i = 0; i < 8; i++) P.step(s, .05);
+  assert(s.bodies[P.BALL_ID].y > goalY && s.bodies[P.BALL_ID].vy > 0, 'Le ballon rebondit sur le fond du but');
+  assert.deepEqual(s.scores, [1, 0], 'Les rebonds ne comptent pas un deuxième but');
+  for (let i = 0; i < 31; i++) P.step(s, .05);
   assert.equal(s.phase, 'goal', 'La célébration dure deux secondes');
   assert(s.goalTime < P.GOAL_DURATION);
-  settle(s); assert.equal(s.turn, 1); assert.equal(s.bodies[P.BALL_ID].y, 340); assert.deepEqual(s.scores, [1, 0]);
+  settle(s); assert.equal(s.turn, 0); assert.equal(s.bodies[P.BALL_ID].y, 340); assert.deepEqual(s.scores, [1, 0]);
   assert.equal(s.bodies[10].x, 200); assert.equal(s.bodies[11].x, 200);
+  assert.deepEqual(s.bodies.slice(5, 10).map(p => ({ x: p.x, y: p.y })), P.formationPositions(s.formations[1], 1, true));
   for (let goal = 2; goal <= 3; goal++) {
     s.bodies[11].x = 234; s.turn = 0; s.active = null; P.shoot(s, 0, 20, 0);
     Object.assign(s.bodies[P.BALL_ID], { x: 200, y: F.top - 9, vx: 0, vy: -30 }); P.step(s, P.STEP); settle(s);
@@ -139,7 +203,16 @@ console.log('PASS: rebonds dans les quatre coins arrondis, murs complets et tirs
   }
   assert.equal(s.phase, 'finished'); assert.equal(s.winner, 0); assert(!P.shoot(s, 0, 0, -500));
 }
-console.log('PASS: ligne complètement franchie, remise au centre, formations conservées, reprise par le joueur encaissant et victoire à trois');
+console.log('PASS: ligne complètement franchie, remise au centre, formations conservées, engagement du marqueur et victoire à trois');
+{
+  const s = clear(); P.shoot(s, 0, 20, 0);
+  Object.assign(s.bodies[P.BALL_ID], { x: 200, y: F.bottom + 9, vy: 70 }); P.step(s, P.STEP);
+  assert.equal(s.scorer, 1); assert.deepEqual(s.scores, [0, 1]);
+  assert(Math.abs(s.bodies[P.BALL_ID].vy) > 0);
+  settle(s); assert.equal(s.turn, 1);
+  assert.deepEqual(s.bodies.slice(0, 5).map(p => ({ x: p.x, y: p.y })), P.formationPositions(s.formations[0], 0, true));
+  assert.deepEqual(s.bodies.slice(5, 10).map(p => ({ x: p.x, y: p.y })), P.formationPositions(s.formations[1], 1));
+}
 {
   const modern = clear(); modern.scores = [1, 2]; modern.moves = [6, 4]; modern.passes = [2, 1];
   // Ancienne réception sauvegardée, avec un pion déjà devant l'emplacement du gardien.
@@ -158,12 +231,12 @@ console.log('PASS: ligne complètement franchie, remise au centre, formations co
     if (phase === 'goal') { old.scorer = 1; old.goalTime = .4; }
     if (phase === 'finished') { old.scores[1] = 3; old.winner = 1; }
     const restored = P.restore(old);
-    assert(restored); assert.equal(restored.version, 2); assert.equal(restored.bodies.length, 13);
+    assert(restored); assert.equal(restored.version, 3); assert.equal(restored.bodies.length, 13);
     assert.deepEqual(restored.scores, old.scores); assert.deepEqual(restored.moves, old.moves);
     assert.equal(restored.active, 6); assert.equal(restored.turn, 1);
     assert.deepEqual(restored.bodies.slice(0, 10), old.bodies.slice(0, 10));
     assert.deepEqual(restored.bodies[P.BALL_ID], { ...old.bodies[10], id: P.BALL_ID });
-    assert.deepEqual(restored.action, old.action); assert.deepEqual(restored.capture, old.capture);
+    assert.deepEqual(restored.action, old.action); assert.deepEqual(restored.capture, old.capture ? { ...old.capture, stage: 'align', coastQuiet: 0 } : null);
     assert.notEqual(restored.bodies[10].x, 200, 'Le nouveau gardien évite le pion sauvegardé');
     for (const keeper of restored.bodies.filter(P.isKeeper)) {
       assert(P.canStand(keeper.x, keeper.y, keeper.r));
@@ -171,12 +244,21 @@ console.log('PASS: ligne complètement franchie, remise au centre, formations co
     }
     assert(P.restore(JSON.parse(JSON.stringify(restored))));
   }
-  const corrupt = P.create(); corrupt.bodies[11].team = 0; assert.equal(P.restore(corrupt), null);
+  const corrupt = P.create(undefined, 0); corrupt.bodies[11].team = 0; assert.equal(P.restore(corrupt), null);
 }
-console.log('PASS: sauvegardes v1 migrées sans perte, gardiens ajoutés sans chevauchement, états v2 validés');
+console.log('PASS: sauvegardes v1 migrées sans perte, gardiens ajoutés sans chevauchement, états v3 validés');
+{
+  const old = clear(); old.version = 2; old.scores = [1, 2];
+  old.phase = 'moving'; old.active = 1; old.action = { shooter: 0, receiver: 1, elapsed: 1 };
+  old.capture = { id: 1, x: 200, y: 340, elapsed: .5, orbit: 1.2 };
+  const updated = P.restore(old);
+  assert.equal(updated.version, 3); assert.equal(updated.capture.stage, 'align');
+  assert.deepEqual(updated.bodies, old.bodies); assert.deepEqual(updated.scores, old.scores);
+  assert.deepEqual(updated.action, old.action);
+}
 {
   let seed = 22; const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 32; };
-  const s = P.create();
+  const s = P.create(undefined, 0);
   for (let n = 0; n < 150; n++) {
     if (s.phase === 'finished') { s.scores = [0, 0]; s.winner = null; P.reset(s); }
     const choices = s.bodies.filter(p => P.selectable(s, p.id)), p = choices[Math.floor(random() * choices.length)], angle = random() * Math.PI * 2;

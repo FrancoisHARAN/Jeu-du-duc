@@ -76,19 +76,22 @@
     canvas.addEventListener('pointerdown', pointerDown); canvas.addEventListener('pointermove', pointerMove);
     canvas.addEventListener('pointerup', pointerUp); canvas.addEventListener('pointercancel', cancelDrag);
     canvas.addEventListener('lostpointercapture', cancelDrag);
-    resize(); updateHUD();
+    updateHUD(); resize();
     if (match.physics.phase === 'finished') results(); else loop();
     global.scrollTo(0, 0);
   }
   function resize() {
-    cancelDrag();
     if (!opened || !canvas || !ctx) return;
     const wrap = root.querySelector('.duel-board-wrap'), size = wrap.getBoundingClientRect();
-    scale = Math.min((size.width - 4) / F.width, (size.height - 4) / F.height);
-    if (!(scale > 0)) return;
     const ratio = Math.min(2, global.devicePixelRatio || 1);
-    canvas.style.width = `${F.width * scale + 4}px`; canvas.style.height = `${F.height * scale + 4}px`;
-    canvas.width = Math.round(F.width * scale * ratio); canvas.height = Math.round(F.height * scale * ratio);
+    const nextScale = Math.min((size.width - 4) / F.width, (size.height - 4) / F.height);
+    if (!(nextScale > 0)) return;
+    const width = Math.round(F.width * nextScale * ratio), height = Math.round(F.height * nextScale * ratio);
+    if (Math.abs(scale - nextScale) > .0001 || canvas.width !== width || canvas.height !== height) {
+      cancelDrag(); scale = nextScale;
+      canvas.style.width = `${F.width * scale + 4}px`; canvas.style.height = `${F.height * scale + 4}px`;
+      canvas.width = width; canvas.height = height;
+    }
     ctx.setTransform(canvas.width / F.width, 0, 0, canvas.height / F.height, 0, 0); draw();
     root.querySelectorAll('.duel-player strong, .duel-turn-text, .duel-result h2').forEach(fitWords);
   }
@@ -100,13 +103,13 @@
     const text = document.createElement('span'); text.className = 'duel-turn-text';
     text.textContent = paused ? 'Match en pause' : s.phase === 'goal' ? `But pour ${match.players[s.scorer].name} !`
       : s.phase === 'finished' ? `${match.players[s.winner].name} gagne !`
-      : s.phase === 'moving' ? (s.capture ? `Passe ! ${match.players[s.turn].name} rejoue` : 'À toi après les rebonds…')
-      : `${match.players[s.turn].name}${s.active !== null ? ' · Passe réussie, rejoue !' : ' · À toi !'}`;
+      : s.phase === 'moving' ? (s.capture ? `Passe · ${match.players[s.turn].name} rejoue` : 'Tir en cours')
+      : `${match.players[s.turn].name}${s.active !== null ? ' · Rejoue !' : ' · À toi !'}`;
     status.replaceChildren(text);
     if (s.phase === 'aim' && !paused) status.insertAdjacentHTML('beforeend', global.JDDVisuals.arrow(s.turn === 0 ? 'up' : 'down'));
     root.dataset.phase = s.phase; root.dataset.turn = s.turn;
     canvas.setAttribute('aria-label', `Terrain : ${match.players[s.turn].name} joue. Score ${s.scores[0]} à ${s.scores[1]}. Tire un pion vers l’arrière puis relâche.`);
-    resize();
+    fitWords(text);
   }
   function roundRect(x, y, width, height, radius) { ctx.beginPath(); ctx.roundRect(x, y, width, height, radius); }
   function circle(x, y, r, fill, stroke = INK, width = 2) {
@@ -230,7 +233,7 @@
       } else clearGoal();
       lastSerial = s.serial; updateHUD(); save();
     }
-    if (now - lastSave > 400 && s.phase === 'moving') { save(); lastSave = now; }
+    if (now - lastSave > 400 && ['moving', 'goal'].includes(s.phase)) { save(); lastSave = now; }
     draw();
     if (s.phase === 'finished') { results(); save(); }
     else if (s.phase === 'moving' || s.phase === 'goal') frame = requestAnimationFrame(loop);
